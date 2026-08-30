@@ -98,5 +98,37 @@ def incident(
     typer.echo("bundle         : store/incidents/.../package/scenario.bundle.json")
 
 
+@app.command()
+def qa(
+    irwin: str = typer.Option(None, "--irwin", help="IRWIN incident id."),
+    historic: str = typer.Option(
+        None, "--historic", help="Historic fire id, e.g. jolly-mountain-2017."),
+    store_root: str = typer.Option("store", "--store", help="Store root."),
+) -> None:
+    """Build the per-incident QA report (qa.html) from an already-assembled bundle."""
+    if not (irwin or historic):
+        raise typer.BadParameter("provide --irwin or --historic")
+
+    from ember.incidents.model import IncidentStore, hist_id
+    from ember.incidents.qa import build_qa_report
+
+    if historic:
+        from ember.incidents.assemble import parse_historic_id
+
+        name, year = parse_historic_id(historic)
+        incident_id = hist_id(name, year)
+    else:
+        from ember.incidents.wfigs import normalize_irwin
+
+        incident_id = normalize_irwin(irwin)
+
+    store = IncidentStore.create(store_root, incident_id)
+    if not store.bundle_json.exists():
+        raise typer.BadParameter(
+            f"no bundle for {incident_id} under {store_root} — assemble it first")
+    out = build_qa_report(store)
+    typer.secho(f"qa report      : {out}", fg=typer.colors.GREEN)
+
+
 if __name__ == "__main__":
     app()
