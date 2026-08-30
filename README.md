@@ -1,5 +1,7 @@
 # Ember
 
+[![CI](https://github.com/WheezardX/Ember/actions/workflows/ci.yml/badge.svg)](https://github.com/WheezardX/Ember/actions/workflows/ci.yml)
+
 Project Ember — the wildfire product. It turns fire incidents (historic and, later,
 live) into replayable scenario bundles: immutable perimeter/hotspot observations, a
 derived **arrival-time raster** (per-cell first-burn time), and a coarse baked world
