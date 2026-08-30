@@ -30,6 +30,12 @@ dependencies:
   - trimesh
   - scipy
   - networkx
+  # --- weather timeline (Epic 3 C-stream): HRRR grib decode + tabular sidecars ---
+  - herbie-data        # HRRR fetch/subsetting (AWS noaa-hrrr-bdp-pds)
+  - cfgrib             # GRIB2 decode (pulls eccodes)
+  - xarray             # gridded fields
+  - pandas             # station series / timeline tables
+  - pyarrow            # parquet sidecars
   # --- app runtime ---
   - pydantic>=2
   - typer
