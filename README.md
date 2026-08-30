@@ -16,17 +16,31 @@ physical-print product) and ember owns everything wildfire-specific. Ember calls
 
 ## Status
 
-Epic 3, **Phase 1** — one historic fire end-to-end:
+Epic 3 (fire data) is essentially complete: historic **and** live incidents assemble into
+scenario bundles with terrain/fuels, an arrival-time raster, FIRMS hotspots, NIROPS IR,
+and a HRRR + RAWS weather timeline; idempotent refresh, fire-state tiles, and a QA report.
+
+## Commands
 
 ```
-ember incident --historic jolly-mountain-2017
+ember incident --historic jolly-mountain-2017   # historic fire → bundle
+ember incident --irwin "{GUID}"                  # live fire (WFIGS) → bundle
+    [--no-bake] [--no-enrich] [--weather [--weather-hours N]] [--dry-run]
+ember qa       --historic jolly-mountain-2017    # qa.html (arrival heatmap + inventory)
+ember tiles    --historic jolly-mountain-2017    # time-indexed fire-state tiles
 ```
 
-fetches GeoMAC perimeters → immutable observations → arrival-time raster → a coarse
-DEM + LANDFIRE fuels bake for the fire AOI → a scenario bundle. `--no-bake` skips
-the world bake for the fast arrival-only path. `--irwin` (live fires) is Phase 2.
+`incident` fetches perimeters → immutable observations → arrival-time raster → a coarse
+DEM + LANDFIRE fuels bake → a scenario bundle; enrichment adds FIRMS hotspots (live) +
+NIROPS IR (best-effort), and `--weather` a HRRR/RAWS timeline. Re-running is an idempotent
+refresh (observations are append-only). Outputs live under `store/` (git-ignored).
 
-See `EPIC_3_PLAN.md` for the plan and `WILDFIRE_DESIGN.md` for the product design.
+## Docs
+- `docs/arrival-algorithm.md` — how the arrival raster is derived (+ its honest caveats)
+- `docs/bundle-format.md` — scenario bundle + store layout reference
+- `docs/CREDENTIALS.md` — API keys (FIRMS, Synoptic): where to generate + rotate
+- `docs/flagships/jolly-mountain-2017.md` — flagship QA memo
+- `EPIC_3_PLAN.md` (plan) · `WILDFIRE_DESIGN.md` (product design) · `adr/` (decisions)
 
 ## Setup
 
