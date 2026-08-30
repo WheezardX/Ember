@@ -168,7 +168,7 @@ def test_assemble_wires_bake_into_bundle(tmp_path, monkeypatch):
     monkeypatch.setattr(asm, "bake_world_for_aoi", _fake_bake)
 
     bundle = asm.assemble_historic(
-        "synth-2017", store_root=tmp_path, buffer_km=1.0, resolution_m=90.0,
+        "synth-2017", store_root=tmp_path, buffer_km=1.0, resolution_m=90.0, enrich=False,
     )
 
     # bbox handed to the bake == the buffered final-footprint bounds
@@ -196,7 +196,7 @@ def test_assemble_no_bake_leaves_world_unpinned(tmp_path, monkeypatch):
     monkeypatch.setattr(asm, "bake_world_for_aoi", _no_call)
     bundle = asm.assemble_historic(
         "synth-2017", store_root=tmp_path, buffer_km=1.0, resolution_m=90.0,
-        bake_world=False,
+        bake_world=False, enrich=False,
     )
     assert bundle.world_region is None and bundle.world_manifest_hash is None
     assert bundle.provenance["world"] is None
@@ -223,7 +223,8 @@ def test_assemble_live_wires_wfigs(tmp_path, monkeypatch):
     monkeypatch.setattr(asm, "bake_world_for_aoi",
                         lambda name, bbox, **kw: RunResult(region="r", config_hash="h"))
 
-    bundle = asm.assemble_live(guid, store_root=tmp_path, buffer_km=1.0, resolution_m=90.0)
+    bundle = asm.assemble_live(guid, store_root=tmp_path, buffer_km=1.0, resolution_m=90.0,
+                               enrich=False)
 
     assert bundle.incident_id == guid  # IRWIN is canonical for live
     assert bundle.provenance["perimeter_source"] == "wfigs"
@@ -248,6 +249,74 @@ def test_assemble_live_no_perimeter_raises(tmp_path, monkeypatch):
 
     with pytest.raises(RuntimeError, match="no mapped perimeter"):
         asm.assemble_live("{ABC}", store_root=tmp_path)
+
+
+def _live_meta():
+    from ember.incidents.wfigs import IncidentMeta
+
+    return IncidentMeta(
+        irwin="{ABC}", name="Synth", discovered_at=datetime(2026, 7, 1, tzinfo=UTC),
+        contained_at=None, size_acres=100.0, final_acres=None, percent_contained=None,
+        cause=None, state=None)
+
+
+@pytest.mark.geo
+def test_enrich_adds_hotspots_and_ir_observations(tmp_path, monkeypatch):
+    """When enrich=True on a live fire, FIRMS (B3) + NIROPS (B4) land as observations."""
+    from terrain.runner import RunResult
+
+    import ember.incidents.assemble as asm
+    from ember.incidents.firms import Hotspot
+    from ember.incidents.nirops import IRProduct
+
+    monkeypatch.setattr(asm, "fetch_incident", lambda irwin: _live_meta())
+    monkeypatch.setattr(asm, "fetch_current_perimeters",
+                        lambda irwin, fallback_name="": _growing_perimeters())
+    monkeypatch.setattr(asm, "bake_world_for_aoi",
+                        lambda name, bbox, **kw: RunResult(region="r", config_hash="h"))
+    monkeypatch.setattr(asm, "get_secret", lambda name: "TESTKEY")  # FIRMS key present
+    monkeypatch.setattr(asm, "fetch_hotspots", lambda bbox, days=10: [
+        Hotspot(acq_at=datetime(2026, 7, 2, 9, 30, tzinfo=UTC), lon=-121.0, lat=47.3,
+                frp=12.3, confidence="n", satellite="N", daynight="D"),
+        Hotspot(acq_at=datetime(2026, 7, 2, 20, 15, tzinfo=UTC), lon=-121.0, lat=47.3,
+                frp=40.0, confidence="h", satellite="Aqua", daynight="N"),
+    ])
+    monkeypatch.setattr(asm, "discover_ir_products", lambda name, year: [
+        IRProduct(flight_date=datetime(2026, 7, 2, tzinfo=UTC), kind="kmz",
+                  filename="20260702_Synth_IR.kmz", url="https://x/20260702_Synth_IR.kmz"),
+    ])
+
+    bundle = asm.assemble_live("{ABC}", store_root=tmp_path, buffer_km=1.0,
+                               resolution_m=90.0, bake_world=False, enrich=True)
+
+    assert {"perimeter", "hotspots", "ir"} <= {o.kind for o in bundle.observations}
+    hs = next(o for o in bundle.observations if o.kind == "hotspots")
+    assert hs.source == "firms" and hs.attributes["count"] == 2
+    iro = next(o for o in bundle.observations if o.kind == "ir")
+    assert iro.source == "nirops" and iro.attributes["product_count"] == 1
+    dirn = tmp_path / "incidents" / "abc"  # id_to_dirname('{ABC}')
+    assert (dirn / hs.path).exists() and (dirn / iro.path).exists()
+
+
+@pytest.mark.geo
+def test_enrich_skips_firms_without_key(tmp_path, monkeypatch):
+    from terrain.runner import RunResult
+
+    import ember.incidents.assemble as asm
+
+    monkeypatch.setattr(asm, "fetch_incident", lambda irwin: _live_meta())
+    monkeypatch.setattr(asm, "fetch_current_perimeters",
+                        lambda irwin, fallback_name="": _growing_perimeters())
+    monkeypatch.setattr(asm, "bake_world_for_aoi",
+                        lambda name, bbox, **kw: RunResult(region="r", config_hash="h"))
+    monkeypatch.setattr(asm, "get_secret", lambda name: None)  # no FIRMS key
+    monkeypatch.setattr(asm, "discover_ir_products", lambda name, year: [])  # no IR
+    monkeypatch.setattr(asm, "fetch_hotspots",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no key -> no fetch")))
+
+    bundle = asm.assemble_live("{ABC}", store_root=tmp_path, buffer_km=1.0,
+                               resolution_m=90.0, bake_world=False, enrich=True)
+    assert {o.kind for o in bundle.observations} == {"perimeter"}
 
 
 @pytest.mark.network

@@ -8,6 +8,7 @@ sharing the same downstream so a live fire travels the identical path as a histo
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,6 +19,7 @@ from terrain.util.logging import get_logger
 from ember.incidents.arcgis import Perimeter
 from ember.incidents.arrival import build_arrival_raster, build_incident_grid
 from ember.incidents.bake import bake_world_for_aoi
+from ember.incidents.firms import fetch_hotspots, hotspots_geojson
 from ember.incidents.geomac import fetch_perimeter_series
 from ember.incidents.model import (
     BundleManifest,
@@ -27,6 +29,8 @@ from ember.incidents.model import (
     SizePoint,
     hist_id,
 )
+from ember.incidents.nirops import discover_ir_products
+from ember.incidents.secrets import get_secret
 from ember.incidents.wfigs import fetch_current_perimeters, fetch_incident, normalize_irwin
 
 log = get_logger(__name__)
@@ -47,14 +51,60 @@ def _write_geojson(path: Path, geom) -> None:
     path.write_text(json.dumps(fc), encoding="utf-8")
 
 
+def _enrich_hotspots(
+    store: IncidentStore, aoi_geom, days: int, now: datetime
+) -> ObservationEnvelope | None:
+    """B3 — attach FIRMS hotspots over the AOI as an immutable observation (best-effort)."""
+    minx, miny, maxx, maxy = aoi_geom.bounds
+    hs = fetch_hotspots([minx, miny, maxx, maxy], days=days)
+    if not hs:
+        return None
+    hdir = store.observations_dir("hotspots")
+    hdir.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(hotspots_geojson(hs))
+    gh = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    fp = hdir / f"firms_{now.strftime('%Y%m%dT%H%M')}_{gh[:12]}.geojson"
+    fp.write_text(payload, encoding="utf-8")
+    return ObservationEnvelope(
+        kind="hotspots", source="firms", observed_at=max(h.acq_at for h in hs),
+        fetched_at=now, geometry_hash=gh, path=str(fp.relative_to(store.dir)),
+        attributes={"count": len(hs), "days": days},
+    )
+
+
+def _enrich_nirops(
+    store: IncidentStore, name: str, year: int, now: datetime
+) -> ObservationEnvelope | None:
+    """B4 — attach discovered NIROPS IR product listing as an observation (best-effort)."""
+    products = discover_ir_products(name, year)
+    if not products:
+        return None
+    idir = store.observations_dir("ir")
+    idir.mkdir(parents=True, exist_ok=True)
+    listing = [{"flight_date": p.flight_date.isoformat() if p.flight_date else None,
+                "kind": p.kind, "filename": p.filename, "url": p.url} for p in products]
+    payload = json.dumps({"source": "nirops", "products": listing})
+    gh = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    fp = idir / f"nirops_{year}_{gh[:12]}.json"
+    fp.write_text(payload, encoding="utf-8")
+    latest = max((p.flight_date for p in products if p.flight_date), default=None)
+    return ObservationEnvelope(
+        kind="ir", source="nirops", observed_at=latest, fetched_at=now,
+        geometry_hash=gh, path=str(fp.relative_to(store.dir)),
+        attributes={"product_count": len(products)},
+    )
+
+
 def _finalize_incident(
     store: IncidentStore, incident_id: str, record: IncidentRecord,
     series: list[Perimeter], now: datetime, *, perimeter_source: str,
     store_root: str | Path, buffer_km: float, resolution_m: float,
     bake_world: bool, world_resolution_m: float,
+    enrich: bool = True, hotspots_days: int | None = None,
 ) -> BundleManifest:
     """Shared downstream for both historic and live: write the immutable observations,
-    derive the AOI + arrival raster, bake the world (A2), and emit the bundle."""
+    optionally enrich with FIRMS hotspots (B3) + NIROPS IR (B4), derive the AOI +
+    arrival raster, bake the world (A2), and emit the bundle."""
     store.incident_json.write_text(record.model_dump_json(indent=2), encoding="utf-8")
 
     # immutable, content-addressed observations (one geojson per perimeter)
@@ -74,6 +124,25 @@ def _finalize_incident(
     # AOI (final footprint + buffer) — drives the terrain bake below
     aoi_geom = series[-1].geom.buffer(buffer_km / 111.0)
     _write_geojson(store.aoi_geojson, aoi_geom)
+
+    # additional observations (B3 FIRMS hotspots, B4 NIROPS IR) — best-effort, never block
+    if enrich:
+        if hotspots_days and get_secret("FIRMS_MAP_KEY"):
+            try:
+                env = _enrich_hotspots(store, aoi_geom, hotspots_days, now)
+                if env:
+                    envelopes.append(env)
+                    log.info("firms: +%d hotspots (%d-day window)",
+                             env.attributes["count"], hotspots_days)
+            except Exception as ex:  # noqa: BLE001 — enrichment must not sink the bundle
+                log.warning("firms enrichment skipped: %s", ex)
+        try:
+            env = _enrich_nirops(store, record.name, record.year, now)
+            if env:
+                envelopes.append(env)
+                log.info("nirops: +%d IR product(s)", env.attributes["product_count"])
+        except Exception as ex:  # noqa: BLE001
+            log.warning("nirops enrichment skipped: %s", ex)
 
     # derived: arrival-time raster (the keystone)
     grid = build_incident_grid(series, buffer_km, resolution_m)
@@ -121,6 +190,7 @@ def assemble_historic(
     slug: str, store_root: str | Path = "store", *,
     buffer_km: float = 3.0, resolution_m: float = 30.0,
     bake_world: bool = True, world_resolution_m: float = 30.0,
+    enrich: bool = True,
 ) -> BundleManifest:
     """Assemble a historic fire (by slug like 'jolly-mountain-2017') into a bundle.
 
@@ -147,10 +217,14 @@ def assemble_historic(
         size_series=[SizePoint(at=p.observed_at, acres=p.acres) for p in series if p.observed_at],
         cross_ids={"geomac": f"{year}"},
     )
+    # historic fires predate the FIRMS NRT horizon, so hotspots_days is left None
+    # (a trailing-window fetch would attach current, unrelated detections). NIROPS is
+    # still attempted — it simply returns absent for years not in the archive.
     return _finalize_incident(
         store, incident_id, record, series, now, perimeter_source=f"geomac-{year}",
         store_root=store_root, buffer_km=buffer_km, resolution_m=resolution_m,
         bake_world=bake_world, world_resolution_m=world_resolution_m,
+        enrich=enrich, hotspots_days=None,
     )
 
 
@@ -158,6 +232,7 @@ def assemble_live(
     irwin: str, store_root: str | Path = "store", *,
     buffer_km: float = 5.0, resolution_m: float = 30.0,
     bake_world: bool = True, world_resolution_m: float = 30.0,
+    enrich: bool = True, firms_days: int = 10,
 ) -> BundleManifest:
     """Assemble a live fire by IRWIN id (B1 + B2 via WFIGS) into a bundle.
 
@@ -191,4 +266,5 @@ def assemble_live(
         store, incident_id, record, series, now, perimeter_source="wfigs",
         store_root=store_root, buffer_km=buffer_km, resolution_m=resolution_m,
         bake_world=bake_world, world_resolution_m=world_resolution_m,
+        enrich=enrich, hotspots_days=firms_days,
     )

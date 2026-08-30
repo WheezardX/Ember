@@ -1,3 +1,6 @@
+# Secrets — API keys (FIRMS_MAP_KEY, SYNOPTIC_TOKEN, ...); never commit
+.secrets.toml
+
 # Pipeline / incident outputs & caches — never commit
 /store/
 /cache/

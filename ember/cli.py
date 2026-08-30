@@ -33,6 +33,11 @@ def incident(
         help="Bake a coarse DEM + LANDFIRE fuels for the fire AOI (network). "
              "--no-bake produces the arrival raster only.",
     ),
+    enrich: bool = typer.Option(
+        True, "--enrich/--no-enrich",
+        help="Attach FIRMS hotspots (live only; needs FIRMS_MAP_KEY) + NIROPS IR "
+             "products (best-effort). --no-enrich skips both.",
+    ),
 ) -> None:
     """Assemble a fire incident into a scenario bundle."""
     if not (irwin or historic):
@@ -43,16 +48,23 @@ def incident(
     if irwin:
         from ember.incidents.assemble import assemble_live
 
-        bundle = assemble_live(irwin, bake_world=bake)
+        bundle = assemble_live(irwin, bake_world=bake, enrich=enrich)
     else:
         from ember.incidents.assemble import assemble_historic
 
-        bundle = assemble_historic(historic, bake_world=bake)
+        bundle = assemble_historic(historic, bake_world=bake, enrich=enrich)
     p = bundle.provenance["arrival"]
     typer.secho(f"incident       : {bundle.incident_id}", fg=typer.colors.GREEN)
     typer.echo(f"perimeters     : {len(bundle.observations)} (immutable observations)")
     typer.echo(f"burned         : {p['burned_km2']} km2 over {p['duration_h'] / 24:.0f} days")
     typer.secho(f"arrival raster : {bundle.derived['arrival_time']}", fg=typer.colors.GREEN)
+    obs = bundle.observations
+    hotspots = sum(o.attributes.get("count", 0) for o in obs if o.kind == "hotspots")
+    ir = sum(o.attributes.get("product_count", 0) for o in obs if o.kind == "ir")
+    if hotspots:
+        typer.echo(f"firms hotspots : {hotspots}")
+    if ir:
+        typer.echo(f"nirops IR      : {ir} product(s)")
     if bundle.world_region:
         w = bundle.provenance["world"]
         typer.secho(f"world baked     : {bundle.world_region} "
