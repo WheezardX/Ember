@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ember"
+version = "0.0.1"
+description = "Project Ember — wildfire product built on the `terrain` world-data engine."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "BNE Games LLC" }]
+
+# Pure-Python runtime deps only. The geospatial stack (pdal, gdal, rasterio) is
+# provisioned via the environment (see environment.yml / adr/0002 in Terrain), NOT
+# pinned here, because those wheels are environment-sensitive on Windows.
+#
+# `terrain` is the world-data engine ember runs on. It is not published to any
+# index, so it is declared as a git dependency for reproducible external builds.
+# For day-to-day development, install it editable side-by-side instead (see README):
+#   pip install -e ../Terrain
+# An editable install already present in the environment satisfies this requirement.
+dependencies = [
+  "terrain @ git+https://github.com/WheezardX/Terrain.git",
+  "pydantic>=2",
+  "typer>=0.12",
+  "shapely>=2",
+  "pyproj>=3.6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+ember = "ember.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ember"]
+
+# hatchling refuses to build a wheel from a project with a direct-reference (git)
+# dependency unless we opt in — we only ever build ember for internal use.
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Typer's API *requires* `typer.Option(...)` as a parameter default — B008 is a
+# false positive for this idiom.
+"ember/cli.py" = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "geo: requires the geospatial stack (pdal/gdal) — skipped if not importable",
+  "network: hits external data sources (GeoMAC, LANDFIRE, Copernicus, etc.)",
+  "slow: full-AOI / large runs, not the iteration loop",
+]

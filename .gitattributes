@@ -1,0 +1,10 @@
+# Normalize line endings: LF in the repo, checked out native on each OS.
+* text=auto eol=lf
+
+# Binary assets (should be gitignored anyway, but be explicit).
+*.tif binary
+*.stl binary
+*.glb binary
+*.laz binary
+*.copc binary
+*.png binary

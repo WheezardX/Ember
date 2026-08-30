@@ -1,0 +1,39 @@
+# Geospatial + runtime environment for Project Ember.
+#
+# Ember runs on the `terrain` world-data engine. The simplest setup reuses
+# Terrain's existing conda env (it already has the full geospatial stack):
+#
+#   conda activate terrain
+#   pip install -e ../Terrain      # the engine, editable
+#   pip install -e .               # ember, editable
+#
+# This file defines a STANDALONE `ember` env for when you want ember isolated from
+# Terrain's env. It mirrors the geospatial stack; you still install terrain + ember
+# editable into it with the two pip commands above.
+# Rationale for the conda-forge stack: adr/0002 in the Terrain repo.
+name: ember
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  # --- geospatial stack (the reason we use conda-forge) ---
+  - pdal
+  - python-pdal        # PDAL Python bindings
+  - gdal
+  - rasterio
+  - numpy
+  # --- vector / CRS ---
+  - shapely
+  - pyproj
+  # --- Sentinel-2 STAC + meshing (used by terrain during incident bakes) ---
+  - pystac-client
+  - trimesh
+  - scipy
+  - networkx
+  # --- app runtime ---
+  - pydantic>=2
+  - typer
+  # --- dev ---
+  - pytest
+  - ruff
+  - pip

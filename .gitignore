@@ -1,0 +1,24 @@
+# Pipeline / incident outputs & caches — never commit
+/store/
+/cache/
+*.cog.tif
+*.copc.laz
+*.laz
+*.las
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
