@@ -92,14 +92,16 @@ def build_hrrr_timeline(
 
     gaps: list[str] = []
     wanted = [v for v in variables if v in _VMAP]
+    want_precip = "precip" in variables  # from the 1-h forecast bucket, not F00 (=0)
     for v in variables:
-        if v not in _VMAP:
-            gaps.append(f"variable {v!r} deferred in HRRR v0 (e.g. precip needs a forecast bucket)")
+        if v not in _VMAP and v != "precip":
+            gaps.append(f"variable {v!r} not supported by the HRRR adapter")
 
     grid, clon_g, clat_g = target_grid(bbox, grid_res_m)
     ny, nx = grid.ny, grid.nx
     times = [t0 + timedelta(minutes=step_minutes * i) for i in range(num_steps)]
-    fields = {v: np.full((num_steps, ny, nx), np.nan, dtype="float32") for v in wanted}
+    out_vars = [*wanted, "precip"] if want_precip else list(wanted)
+    fields = {v: np.full((num_steps, ny, nx), np.nan, dtype="float32") for v in out_vars}
     steps: list[StepProvenance] = []
     nn_idx = None  # nearest source cell per target cell; built once (grid is static)
 
@@ -140,13 +142,44 @@ def build_hrrr_timeline(
         for v in wanted:
             if v in vals:
                 fields[v][i] = vals[v][nn_idx].reshape(ny, nx)
-        steps.append(StepProvenance(index=i, valid_time=vt, gridded_source="hrrr:anl"))
 
-    n_ok = sum(1 for s in steps if s.gridded_source == "hrrr:anl")
+        src = "hrrr:anl"
+        if want_precip:
+            # 1-h accumulated precip valid at vt = the F01 bucket of the vt-1h run
+            tp = _fetch_precip(vt - timedelta(hours=1), product, save_dir)
+            if tp is not None:
+                fields["precip"][i] = tp[nn_idx].reshape(ny, nx)
+                src = "hrrr:anl+f01precip"
+            else:
+                gaps.append(f"{vt.isoformat()}: precip (F01 bucket) unavailable")
+        steps.append(StepProvenance(index=i, valid_time=vt, gridded_source=src))
+
+    n_ok = sum(1 for s in steps if s.gridded_source.startswith("hrrr:anl"))
     log.info("hrrr timeline: %d/%d steps, %d var(s), grid %dx%d @ %.0fm, %d gap(s)",
-             n_ok, num_steps, len(wanted), nx, ny, grid_res_m, len(gaps))
+             n_ok, num_steps, len(out_vars), nx, ny, grid_res_m, len(gaps))
     return HrrrTimeline(grid=grid, times=times, steps=steps, fields=fields,
-                        variables=wanted, gaps=gaps)
+                        variables=out_vars, gaps=gaps)
+
+
+def _fetch_precip(run_time: datetime, product: str, save_dir):
+    """1-h accumulated APCP (mm) from a run's F01 bucket; flat source array or None."""
+    import numpy as np
+    from herbie import Herbie
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            H = Herbie(run_time.strftime("%Y-%m-%d %H:%M"), model="hrrr", product=product,
+                       fxx=1, save_dir=str(save_dir), verbose=False)
+            if H.grib is None:
+                return None
+            ds = H.xarray(r":APCP:surface:", remove_grib=False)
+        except Exception:  # noqa: BLE001
+            return None
+    for d in (ds if isinstance(ds, list) else [ds]):
+        if "tp" in d.data_vars:
+            return np.asarray(d["tp"].values).ravel()
+    return None
 
 
 def write_grid_sidecar(tl: HrrrTimeline, path) -> None:

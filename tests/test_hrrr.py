@@ -36,8 +36,10 @@ def test_hrrr_timeline_live(tmp_path):
     tl = build_hrrr_timeline(
         [-121.1, 47.2, -120.8, 47.5], t0, num_steps=2, step_minutes=60,
         save_dir=tmp_path / "hrrr", grid_res_m=3000.0,
+        variables=("wind10_u", "wind10_v", "t2", "rh2", "precip"),
     )
-    assert set(tl.variables) == {"wind10_u", "wind10_v", "t2", "rh2"}
+    assert set(tl.variables) == {"wind10_u", "wind10_v", "t2", "rh2", "precip"}
+    assert np.isfinite(tl.fields["precip"]).any()  # forecast-bucket precip populated
     assert tl.grid.crs == "EPSG:32610"
     # at least one step populated with plausible 2 m temperatures (~250-330 K)
     t2 = tl.fields["t2"]
