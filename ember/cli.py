@@ -130,5 +130,42 @@ def qa(
     typer.secho(f"qa report      : {out}", fg=typer.colors.GREEN)
 
 
+def _resolve_incident_id(irwin: str | None, historic: str | None) -> str:
+    if not (irwin or historic):
+        raise typer.BadParameter("provide --irwin or --historic")
+    from ember.incidents.model import hist_id
+
+    if historic:
+        from ember.incidents.assemble import parse_historic_id
+
+        name, year = parse_historic_id(historic)
+        return hist_id(name, year)
+    from ember.incidents.wfigs import normalize_irwin
+
+    return normalize_irwin(irwin)
+
+
+@app.command()
+def tiles(
+    irwin: str = typer.Option(None, "--irwin", help="IRWIN incident id."),
+    historic: str = typer.Option(
+        None, "--historic", help="Historic fire id, e.g. jolly-mountain-2017."),
+    store_root: str = typer.Option("store", "--store", help="Store root."),
+) -> None:
+    """Tile the arrival raster into time-indexed fire-state tiles (D3)."""
+    from ember.incidents.firetiles import tile_fire_state
+    from ember.incidents.model import IncidentStore
+
+    incident_id = _resolve_incident_id(irwin, historic)
+    store = IncidentStore.create(store_root, incident_id)
+    if not store.bundle_json.exists():
+        raise typer.BadParameter(
+            f"no bundle for {incident_id} under {store_root} — assemble it first")
+    m = tile_fire_state(store, incident_id)
+    n = m["layers"]["arrival_time"]["tiles"]
+    typer.secho(f"fire-state tiles: {n} arrival tile(s) -> tiles/firestate.manifest.json",
+                fg=typer.colors.GREEN)
+
+
 if __name__ == "__main__":
     app()
