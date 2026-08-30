@@ -1,4 +1,4 @@
-"""Epic 3 Phase 1 — incident model, arrival raster, historic assembly."""
+"""Epic 3 — incident model, arrival raster, historic (Phase 1) + live WFIGS (Phase 2)."""
 
 import os
 from datetime import UTC, datetime, timedelta
@@ -42,6 +42,36 @@ def test_parse_historic_id():
     assert parse_historic_id("jolly-mountain-2017") == ("Jolly Mountain", 2017)
     with pytest.raises(ValueError):
         parse_historic_id("no-year")
+
+
+def test_normalize_irwin():
+    from ember.incidents.wfigs import normalize_irwin
+
+    guid = "{5689AD11-5D8E-40B2-A8E1-C72A774FD1D7}"
+    assert normalize_irwin("5689ad11-5d8e-40b2-a8e1-c72a774fd1d7") == guid
+    assert normalize_irwin(guid) == guid
+    assert normalize_irwin("  {5689ad11-5d8e-40b2-a8e1-c72a774fd1d7}  ") == guid
+
+
+@pytest.mark.geo
+def test_features_to_perimeters_wfigs_field_aliases():
+    """WFIGS poly_* attribute names resolve through the shared cleaning stage."""
+    from shapely.geometry import Point, mapping
+
+    from ember.incidents.arcgis import features_to_perimeters
+
+    epoch_ms = int(datetime(2025, 7, 4, tzinfo=UTC).timestamp() * 1000)
+    feat = {
+        "geometry": mapping(Point(-121.0, 47.3).buffer(0.01)),
+        "properties": {"poly_IncidentName": "Test Fire",
+                       "poly_PolygonDateTime": epoch_ms, "poly_GISAcres": 123.0},
+    }
+    series = features_to_perimeters([feat], fallback_name="fallback")
+    assert len(series) == 1
+    p = series[0]
+    assert p.name == "Test Fire" and p.acres == 123.0
+    assert p.observed_at == datetime(2025, 7, 4, tzinfo=UTC)
+    assert p.geom.geom_type == "MultiPolygon"  # normalized
 
 
 def _growing_perimeters():
@@ -172,6 +202,54 @@ def test_assemble_no_bake_leaves_world_unpinned(tmp_path, monkeypatch):
     assert bundle.provenance["world"] is None
 
 
+@pytest.mark.geo
+def test_assemble_live_wires_wfigs(tmp_path, monkeypatch):
+    """assemble_live keys off IRWIN, tags observations 'wfigs', shares the downstream."""
+    from terrain.runner import RunResult
+
+    import ember.incidents.assemble as asm
+    from ember.incidents.wfigs import IncidentMeta
+
+    guid = "{5689AD11-5D8E-40B2-A8E1-C72A774FD1D7}"
+    meta = IncidentMeta(
+        irwin=guid, name="Williams Creek",
+        discovered_at=datetime(2025, 7, 1, tzinfo=UTC), contained_at=None,
+        size_acres=120.0, final_acres=None, percent_contained=10.0,
+        cause="Human", state="US-WA",
+    )
+    monkeypatch.setattr(asm, "fetch_incident", lambda irwin: meta)
+    monkeypatch.setattr(asm, "fetch_current_perimeters",
+                        lambda irwin, fallback_name="": _growing_perimeters())
+    monkeypatch.setattr(asm, "bake_world_for_aoi",
+                        lambda name, bbox, **kw: RunResult(region="r", config_hash="h"))
+
+    bundle = asm.assemble_live(guid, store_root=tmp_path, buffer_km=1.0, resolution_m=90.0)
+
+    assert bundle.incident_id == guid  # IRWIN is canonical for live
+    assert bundle.provenance["perimeter_source"] == "wfigs"
+    assert all(o.source == "wfigs" for o in bundle.observations)
+    assert bundle.world_region == "r" and bundle.world_manifest_hash == "h"
+    # store dir is derived from the IRWIN guid
+    assert (tmp_path / "incidents" / "5689ad11-5d8e-40b2-a8e1-c72a774fd1d7").is_dir()
+
+
+@pytest.mark.geo
+def test_assemble_live_no_perimeter_raises(tmp_path, monkeypatch):
+    import ember.incidents.assemble as asm
+    from ember.incidents.wfigs import IncidentMeta
+
+    meta = IncidentMeta(irwin="{ABC}", name="Located Only", discovered_at=None,
+                        contained_at=None, size_acres=None, final_acres=None,
+                        percent_contained=None, cause=None, state=None)
+    monkeypatch.setattr(asm, "fetch_incident", lambda irwin: meta)
+    monkeypatch.setattr(asm, "fetch_current_perimeters", lambda irwin, fallback_name="": [])
+    monkeypatch.setattr(asm, "bake_world_for_aoi",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no bake")))
+
+    with pytest.raises(RuntimeError, match="no mapped perimeter"):
+        asm.assemble_live("{ABC}", store_root=tmp_path)
+
+
 @pytest.mark.network
 @pytest.mark.slow
 @pytest.mark.geo
@@ -191,3 +269,29 @@ def test_assemble_historic_jolly_mountain(tmp_path):
         assert ds.crs.to_epsg() == 32610
     # burned footprint matches the documented ~36,808 ac (150 km2) within tolerance
     assert 130 < bundle.provenance["arrival"]["burned_km2"] < 170
+
+
+@pytest.mark.network
+@pytest.mark.geo
+@pytest.mark.skipif(not RUN_NETWORK, reason="hits live WFIGS FeatureServers")
+def test_wfigs_live_incident_and_perimeter():
+    """Discover a current fire that has a perimeter, then resolve it via B1 + B2."""
+    from ember.incidents.arcgis import arcgis_query
+    from ember.incidents.wfigs import fetch_current_perimeters, fetch_incident
+
+    # find a current perimeter, take its IRWIN (guaranteed to have both a location + poly)
+    fc = arcgis_query(
+        "WFIGS_Interagency_Perimeters_Current",
+        {"where": "poly_GISAcres > 1000", "outFields": "poly_IRWINID,poly_IncidentName",
+         "orderByFields": "poly_GISAcres DESC", "resultRecordCount": "1",
+         "returnGeometry": "false", "f": "json"},
+    )
+    feats = fc.get("features", [])
+    if not feats:
+        pytest.skip("no current fire >1000 ac with a perimeter right now")
+    irwin = feats[0]["attributes"]["poly_IRWINID"]
+
+    perims = fetch_current_perimeters(irwin)
+    assert perims and perims[0].geom.geom_type == "MultiPolygon"
+    meta = fetch_incident(irwin)
+    assert meta.name and meta.irwin.startswith("{")

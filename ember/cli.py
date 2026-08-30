@@ -37,13 +37,17 @@ def incident(
     """Assemble a fire incident into a scenario bundle."""
     if not (irwin or historic):
         raise typer.BadParameter("provide --irwin or --historic")
+    if irwin and historic:
+        raise typer.BadParameter("provide only one of --irwin or --historic")
+
     if irwin:
-        typer.secho("live --irwin assembly is Epic 3 Phase 2 (not yet implemented)", fg="yellow")
-        raise typer.Exit(1)
+        from ember.incidents.assemble import assemble_live
 
-    from ember.incidents.assemble import assemble_historic
+        bundle = assemble_live(irwin, bake_world=bake)
+    else:
+        from ember.incidents.assemble import assemble_historic
 
-    bundle = assemble_historic(historic, bake_world=bake)
+        bundle = assemble_historic(historic, bake_world=bake)
     p = bundle.provenance["arrival"]
     typer.secho(f"incident       : {bundle.incident_id}", fg=typer.colors.GREEN)
     typer.echo(f"perimeters     : {len(bundle.observations)} (immutable observations)")
