@@ -46,6 +46,12 @@ def incident(
     weather_hours: int = typer.Option(
         24, "--weather-hours", help="Length of the weather window in hours (with --weather)."
     ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run",
+        help="Report what a (re)fetch would add/rebuild without writing or baking. "
+             "Re-running normally is an idempotent refresh: observations are append-only "
+             "and derived products rebuild only when a new perimeter arrives.",
+    ),
 ) -> None:
     """Assemble a fire incident into a scenario bundle."""
     if not (irwin or historic):
@@ -57,12 +63,19 @@ def incident(
         from ember.incidents.assemble import assemble_live
 
         bundle = assemble_live(irwin, bake_world=bake, enrich=enrich,
-                               weather=weather, weather_hours=weather_hours)
+                               weather=weather, weather_hours=weather_hours, dry_run=dry_run)
     else:
         from ember.incidents.assemble import assemble_historic
 
         bundle = assemble_historic(historic, bake_world=bake, enrich=enrich,
-                                   weather=weather, weather_hours=weather_hours)
+                                   weather=weather, weather_hours=weather_hours, dry_run=dry_run)
+
+    if dry_run:
+        added = bundle.provenance.get("refresh", {}).get("perimeters_added")
+        typer.secho(f"dry-run        : {bundle.incident_id} "
+                    f"(plan logged{'' if added is None else f'; +{added} new perimeter(s)'})",
+                    fg=typer.colors.YELLOW)
+        return
     p = bundle.provenance["arrival"]
     typer.secho(f"incident       : {bundle.incident_id}", fg=typer.colors.GREEN)
     typer.echo(f"perimeters     : {len(bundle.observations)} (immutable observations)")

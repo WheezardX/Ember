@@ -17,7 +17,7 @@ from shapely.geometry import mapping
 from terrain.util.logging import get_logger
 
 from ember.incidents.arcgis import Perimeter
-from ember.incidents.arrival import build_arrival_raster, build_incident_grid
+from ember.incidents.arrival import ALGORITHM, build_arrival_raster, build_incident_grid
 from ember.incidents.bake import bake_world_for_aoi
 from ember.incidents.firms import fetch_hotspots, hotspots_geojson
 from ember.incidents.geomac import fetch_perimeter_series
@@ -50,6 +50,39 @@ def _write_geojson(path: Path, geom) -> None:
     fc = {"type": "FeatureCollection",
           "features": [{"type": "Feature", "properties": {}, "geometry": mapping(geom)}]}
     path.write_text(json.dumps(fc), encoding="utf-8")
+
+
+def _read_geojson_geom(path: Path):
+    from shapely.geometry import shape
+
+    feats = json.loads(path.read_text(encoding="utf-8")).get("features", [])
+    return shape(feats[0]["geometry"]) if feats else None
+
+
+def _load_prior_bundle(store: IncidentStore) -> BundleManifest | None:
+    """The prior bundle is the record of what's already observed (F1 refresh)."""
+    if not store.bundle_json.exists():
+        return None
+    try:
+        return BundleManifest.model_validate_json(store.bundle_json.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _perimeters_from_envelopes(
+    store: IncidentStore, envs: list[ObservationEnvelope]
+) -> list[Perimeter]:
+    """Rehydrate stored perimeter observations (geom from disk, meta from envelope)."""
+    out: list[Perimeter] = []
+    for e in envs:
+        if e.kind != "perimeter":
+            continue
+        geom = _read_geojson_geom(store.dir / e.path)
+        if geom is not None:
+            out.append(Perimeter(observed_at=e.observed_at,
+                                 acres=float(e.attributes.get("acres", 0.0)),
+                                 geom=geom, name="", ghash=e.geometry_hash))
+    return out
 
 
 def _enrich_hotspots(
@@ -102,18 +135,41 @@ def _finalize_incident(
     store_root: str | Path, buffer_km: float, resolution_m: float,
     bake_world: bool, world_resolution_m: float,
     enrich: bool = True, hotspots_days: int | None = None,
-    weather: bool = False, weather_hours: int = 24,
+    weather: bool = False, weather_hours: int = 24, dry_run: bool = False,
 ) -> BundleManifest:
-    """Shared downstream for both historic and live: write the immutable observations,
-    optionally enrich with FIRMS hotspots (B3) + NIROPS IR (B4), derive the AOI +
-    arrival raster, bake the world (A2), and emit the bundle."""
+    """Shared downstream for both historic and live, with F1 refresh semantics:
+    perimeter observations are append-only (content-addressed; already-seen hashes are
+    skipped), and the arrival raster + enrichment + world bake are rebuilt only when a
+    new perimeter arrives (or the derived product is missing). A re-run of an unchanged
+    incident does ~zero work. ``dry_run`` reports the plan without writing or fetching."""
+    prior = _load_prior_bundle(store)
+    prior_obs = list(prior.observations) if prior else []
+    prior_perim_hashes = {e.geometry_hash for e in prior_obs if e.kind == "perimeter"}
+
+    new_perims = [p for p in series if p.ghash not in prior_perim_hashes]
+    arrival_cog = store.derived(f"arrival_time.{ALGORITHM}.cog.tif")
+    changed = bool(new_perims) or not arrival_cog.exists()
+
+    if dry_run:
+        log.info("dry-run %s: fetched=%d new_perimeter(s)=%d arrival_rebuild=%s "
+                 "bake=%s enrich=%s weather=%s",
+                 incident_id, len(series), len(new_perims), changed, bake_world, enrich, weather)
+        return prior or BundleManifest(incident_id=incident_id, created_utc=now,
+                                       aoi_geojson=str(store.aoi_geojson.name))
+
+    if prior is not None and not changed:
+        log.info("refresh %s: no new perimeters, arrival up to date — nothing to do",
+                 incident_id)
+        return prior
+
     store.incident_json.write_text(record.model_dump_json(indent=2), encoding="utf-8")
 
-    # immutable, content-addressed observations (one geojson per perimeter)
-    envelopes: list[ObservationEnvelope] = []
+    # perimeter observations: APPEND-ONLY. Existing ones stay on disk; write only new.
+    envelopes: list[ObservationEnvelope] = list(prior_obs)
+    obs_hashes = {e.geometry_hash for e in envelopes}
     pdir = store.observations_dir("perimeters")
     pdir.mkdir(parents=True, exist_ok=True)
-    for p in series:
+    for p in new_perims:
         ts = p.observed_at.strftime("%Y%m%dT%H%M") if p.observed_at else "unknown"
         fp = pdir / f"{ts}_{p.ghash[:12]}.geojson"
         _write_geojson(fp, p.geom)
@@ -122,33 +178,47 @@ def _finalize_incident(
             fetched_at=now, geometry_hash=p.ghash,
             path=str(fp.relative_to(store.dir)), attributes={"acres": p.acres},
         ))
+        obs_hashes.add(p.ghash)
+
+    # full perimeter set (rehydrated prior + this fetch) drives AOI + arrival
+    by_hash = {pp.ghash: pp for pp in _perimeters_from_envelopes(store, prior_obs)}
+    for p in series:
+        by_hash[p.ghash] = p  # this fetch's geoms are authoritative
+    _epoch = datetime.min.replace(tzinfo=UTC)
+    full = sorted(by_hash.values(), key=lambda pp: pp.observed_at or _epoch)
 
     # AOI (final footprint + buffer) — drives the terrain bake below
-    aoi_geom = series[-1].geom.buffer(buffer_km / 111.0)
+    aoi_geom = full[-1].geom.buffer(buffer_km / 111.0)
     _write_geojson(store.aoi_geojson, aoi_geom)
 
-    # additional observations (B3 FIRMS hotspots, B4 NIROPS IR) — best-effort, never block
+    # additional observations (B3 FIRMS hotspots, B4 NIROPS IR) — best-effort, never block.
+    # Append-only: a snapshot whose content hash is already stored is not re-added.
+    def _append(env: ObservationEnvelope | None) -> bool:
+        if env and env.geometry_hash not in obs_hashes:
+            envelopes.append(env)
+            obs_hashes.add(env.geometry_hash)
+            return True
+        return False
+
     if enrich:
         if hotspots_days and get_secret("FIRMS_MAP_KEY"):
             try:
                 env = _enrich_hotspots(store, aoi_geom, hotspots_days, now)
-                if env:
-                    envelopes.append(env)
+                if _append(env):
                     log.info("firms: +%d hotspots (%d-day window)",
                              env.attributes["count"], hotspots_days)
             except Exception as ex:  # noqa: BLE001 — enrichment must not sink the bundle
                 log.warning("firms enrichment skipped: %s", ex)
         try:
             env = _enrich_nirops(store, record.name, record.year, now)
-            if env:
-                envelopes.append(env)
+            if _append(env):
                 log.info("nirops: +%d IR product(s)", env.attributes["product_count"])
         except Exception as ex:  # noqa: BLE001
             log.warning("nirops enrichment skipped: %s", ex)
 
-    # derived: arrival-time raster (the keystone)
-    grid = build_incident_grid(series, buffer_km, resolution_m)
-    arr_stats = build_arrival_raster(series, grid, store.derived(""), resolution_m=resolution_m)
+    # derived: arrival-time raster (the keystone) — rebuilt from the FULL perimeter set
+    grid = build_incident_grid(full, buffer_km, resolution_m)
+    arr_stats = build_arrival_raster(full, grid, store.derived(""), resolution_m=resolution_m)
     alg = arr_stats["algorithm"]
 
     # world bake (A2): DEM + LANDFIRE fuels for the fire AOI, via the terrain engine.
@@ -173,7 +243,7 @@ def _finalize_incident(
     # best-effort, anchored on the latest perimeter time. Never blocks the bundle.
     weather_path: str | None = None
     if weather:
-        ref = series[-1].observed_at or now
+        ref = full[-1].observed_at or now
         w_t0 = ref.replace(minute=0, second=0, microsecond=0) - timedelta(hours=weather_hours - 1)
         minx, miny, maxx, maxy = aoi_geom.bounds
         try:
@@ -200,11 +270,14 @@ def _finalize_incident(
         },
         provenance={"arrival": arr_stats, "perimeter_source": perimeter_source,
                     "buffer_km": buffer_km, "resolution_m": resolution_m,
-                    "world": world_prov},
+                    "world": world_prov,
+                    "refresh": {"perimeters_total": len(full),
+                                "perimeters_added": len(new_perims)}},
     )
     store.bundle_json.write_text(bundle.model_dump_json(indent=2), encoding="utf-8")
-    log.info("assembled %s: %d perimeter(s), source=%s, world=%s, %s",
-             incident_id, len(series), perimeter_source, world_region or "(none)", arr_stats)
+    log.info("assembled %s: %d perimeter(s) total (+%d new), source=%s, world=%s, %s",
+             incident_id, len(full), len(new_perims), perimeter_source,
+             world_region or "(none)", arr_stats)
     return bundle
 
 
@@ -213,6 +286,7 @@ def assemble_historic(
     buffer_km: float = 3.0, resolution_m: float = 30.0,
     bake_world: bool = True, world_resolution_m: float = 30.0,
     enrich: bool = True, weather: bool = False, weather_hours: int = 24,
+    dry_run: bool = False,
 ) -> BundleManifest:
     """Assemble a historic fire (by slug like 'jolly-mountain-2017') into a bundle.
 
@@ -247,6 +321,7 @@ def assemble_historic(
         store_root=store_root, buffer_km=buffer_km, resolution_m=resolution_m,
         bake_world=bake_world, world_resolution_m=world_resolution_m,
         enrich=enrich, hotspots_days=None, weather=weather, weather_hours=weather_hours,
+        dry_run=dry_run,
     )
 
 
@@ -255,6 +330,7 @@ def assemble_live(
     buffer_km: float = 5.0, resolution_m: float = 30.0,
     bake_world: bool = True, world_resolution_m: float = 30.0,
     enrich: bool = True, firms_days: int = 10, weather: bool = False, weather_hours: int = 24,
+    dry_run: bool = False,
 ) -> BundleManifest:
     """Assemble a live fire by IRWIN id (B1 + B2 via WFIGS) into a bundle.
 
@@ -289,4 +365,5 @@ def assemble_live(
         store_root=store_root, buffer_km=buffer_km, resolution_m=resolution_m,
         bake_world=bake_world, world_resolution_m=world_resolution_m,
         enrich=enrich, hotspots_days=firms_days, weather=weather, weather_hours=weather_hours,
+        dry_run=dry_run,
     )

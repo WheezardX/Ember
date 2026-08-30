@@ -319,6 +319,72 @@ def test_enrich_skips_firms_without_key(tmp_path, monkeypatch):
     assert {o.kind for o in bundle.observations} == {"perimeter"}
 
 
+def _count_arrivals(monkeypatch, asm):
+    """Wrap build_arrival_raster with a call counter; returns the counter dict."""
+    calls = {"n": 0}
+    real = asm.build_arrival_raster
+
+    def counting(*a, **k):
+        calls["n"] += 1
+        return real(*a, **k)
+
+    monkeypatch.setattr(asm, "build_arrival_raster", counting)
+    return calls
+
+
+@pytest.mark.geo
+def test_refresh_is_idempotent(tmp_path, monkeypatch):
+    """Re-running an unchanged incident adds nothing and does not rebuild the arrival raster."""
+    import ember.incidents.assemble as asm
+
+    monkeypatch.setattr(asm, "fetch_perimeter_series", lambda name, year: _growing_perimeters())
+    calls = _count_arrivals(monkeypatch, asm)
+
+    kw = dict(store_root=tmp_path, buffer_km=1.0, resolution_m=90.0, bake_world=False, enrich=False)
+    b1 = asm.assemble_historic("synth-2017", **kw)
+    b2 = asm.assemble_historic("synth-2017", **kw)  # refresh, nothing new
+
+    assert calls["n"] == 1  # arrival built once, not on the idempotent re-run
+    assert len(b2.observations) == len(b1.observations) == 5
+    assert b2.created_utc == b1.created_utc  # returned the prior bundle unchanged
+
+
+@pytest.mark.geo
+def test_refresh_appends_new_perimeter(tmp_path, monkeypatch):
+    """A new perimeter is appended (observations grow) and triggers exactly one rebuild."""
+    import ember.incidents.assemble as asm
+
+    full = _growing_perimeters()
+    seqs = iter([full[:3], full])  # first fetch 3, second fetch all 5 (2 new)
+    monkeypatch.setattr(asm, "fetch_perimeter_series", lambda name, year: next(seqs))
+    calls = _count_arrivals(monkeypatch, asm)
+
+    kw = dict(store_root=tmp_path, buffer_km=1.0, resolution_m=90.0, bake_world=False, enrich=False)
+    b1 = asm.assemble_historic("synth-2017", **kw)
+    assert len(b1.observations) == 3
+    b2 = asm.assemble_historic("synth-2017", **kw)
+    assert len(b2.observations) == 5  # appended the 2 new perimeters
+    assert b2.provenance["refresh"] == {"perimeters_total": 5, "perimeters_added": 2}
+    assert calls["n"] == 2  # rebuilt once per change
+
+
+@pytest.mark.geo
+def test_dry_run_writes_nothing(tmp_path, monkeypatch):
+    import ember.incidents.assemble as asm
+    from ember.incidents.model import IncidentStore
+
+    monkeypatch.setattr(asm, "fetch_perimeter_series", lambda name, year: _growing_perimeters())
+    def _no_build(*a, **k):
+        raise AssertionError("no arrival build in dry-run")
+
+    monkeypatch.setattr(asm, "build_arrival_raster", _no_build)
+
+    asm.assemble_historic("synth-2017", store_root=tmp_path, buffer_km=1.0, resolution_m=90.0,
+                          bake_world=False, enrich=False, dry_run=True)
+    store = IncidentStore.create(tmp_path, "hist:synth-2017")
+    assert not store.bundle_json.exists()  # dry-run wrote nothing
+
+
 @pytest.mark.network
 @pytest.mark.slow
 @pytest.mark.geo
