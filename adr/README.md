@@ -16,3 +16,4 @@ terrain/ember split) is copied here for context.
 |---|-------|--------|
 | 0005 | Split the project at the Terrain / Ember boundary | accepted |
 | 0006 | Extract Ember into its own repository | accepted |
+| 0007 | Weather timeline schema v0 | accepted (provisional) |
