@@ -38,6 +38,14 @@ def incident(
         help="Attach FIRMS hotspots (live only; needs FIRMS_MAP_KEY) + NIROPS IR "
              "products (best-effort). --no-enrich skips both.",
     ),
+    weather: bool = typer.Option(
+        False, "--weather/--no-weather",
+        help="Build a weather timeline (HRRR grid + RAWS stations; RAWS needs "
+             "SYNOPTIC_TOKEN). Off by default — HRRR is per-hour fetches.",
+    ),
+    weather_hours: int = typer.Option(
+        24, "--weather-hours", help="Length of the weather window in hours (with --weather)."
+    ),
 ) -> None:
     """Assemble a fire incident into a scenario bundle."""
     if not (irwin or historic):
@@ -48,11 +56,13 @@ def incident(
     if irwin:
         from ember.incidents.assemble import assemble_live
 
-        bundle = assemble_live(irwin, bake_world=bake, enrich=enrich)
+        bundle = assemble_live(irwin, bake_world=bake, enrich=enrich,
+                               weather=weather, weather_hours=weather_hours)
     else:
         from ember.incidents.assemble import assemble_historic
 
-        bundle = assemble_historic(historic, bake_world=bake, enrich=enrich)
+        bundle = assemble_historic(historic, bake_world=bake, enrich=enrich,
+                                   weather=weather, weather_hours=weather_hours)
     p = bundle.provenance["arrival"]
     typer.secho(f"incident       : {bundle.incident_id}", fg=typer.colors.GREEN)
     typer.echo(f"perimeters     : {len(bundle.observations)} (immutable observations)")
@@ -65,6 +75,8 @@ def incident(
         typer.echo(f"firms hotspots : {hotspots}")
     if ir:
         typer.echo(f"nirops IR      : {ir} product(s)")
+    if bundle.weather:
+        typer.secho(f"weather        : {bundle.weather}", fg=typer.colors.GREEN)
     if bundle.world_region:
         w = bundle.provenance["world"]
         typer.secho(f"world baked     : {bundle.world_region} "

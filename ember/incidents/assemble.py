@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from shapely.geometry import mapping
@@ -32,6 +32,7 @@ from ember.incidents.model import (
 from ember.incidents.nirops import discover_ir_products
 from ember.incidents.secrets import get_secret
 from ember.incidents.wfigs import fetch_current_perimeters, fetch_incident, normalize_irwin
+from ember.weather.build import build_weather_timeline
 
 log = get_logger(__name__)
 
@@ -101,6 +102,7 @@ def _finalize_incident(
     store_root: str | Path, buffer_km: float, resolution_m: float,
     bake_world: bool, world_resolution_m: float,
     enrich: bool = True, hotspots_days: int | None = None,
+    weather: bool = False, weather_hours: int = 24,
 ) -> BundleManifest:
     """Shared downstream for both historic and live: write the immutable observations,
     optionally enrich with FIRMS hotspots (B3) + NIROPS IR (B4), derive the AOI +
@@ -167,10 +169,30 @@ def _finalize_incident(
             "dem_cog": str(rr.dem_cog) if rr.dem_cog else None, "fuels": rr.fuels,
         }
 
+    # weather timeline (C2 HRRR + C3 RAWS -> C4) — opt-in (HRRR is per-hour fetches),
+    # best-effort, anchored on the latest perimeter time. Never blocks the bundle.
+    weather_path: str | None = None
+    if weather:
+        ref = series[-1].observed_at or now
+        w_t0 = ref.replace(minute=0, second=0, microsecond=0) - timedelta(hours=weather_hours - 1)
+        minx, miny, maxx, maxy = aoi_geom.bounds
+        try:
+            mani = build_weather_timeline(
+                incident_id, [minx, miny, maxx, maxy], w_t0, weather_hours, 60,
+                weather_dir=store.weather_dir, save_dir=store.weather_dir / "raw",
+            )
+            if mani is not None:
+                weather_path = "weather/timeline.v0.json"
+                log.info("weather: %d-h timeline (grid=%s, %d station(s))",
+                         weather_hours, mani.grid is not None, len(mani.stations))
+        except Exception as ex:  # noqa: BLE001 — weather is best-effort
+            log.warning("weather timeline skipped: %s", ex)
+
     bundle = BundleManifest(
         incident_id=incident_id, created_utc=now,
         aoi_geojson=str(store.aoi_geojson.relative_to(store.dir)),
         world_region=world_region, world_manifest_hash=world_hash,
+        weather=weather_path,
         observations=envelopes,
         derived={
             "arrival_time": f"derived/arrival_time.{alg}.cog.tif",
@@ -190,7 +212,7 @@ def assemble_historic(
     slug: str, store_root: str | Path = "store", *,
     buffer_km: float = 3.0, resolution_m: float = 30.0,
     bake_world: bool = True, world_resolution_m: float = 30.0,
-    enrich: bool = True,
+    enrich: bool = True, weather: bool = False, weather_hours: int = 24,
 ) -> BundleManifest:
     """Assemble a historic fire (by slug like 'jolly-mountain-2017') into a bundle.
 
@@ -224,7 +246,7 @@ def assemble_historic(
         store, incident_id, record, series, now, perimeter_source=f"geomac-{year}",
         store_root=store_root, buffer_km=buffer_km, resolution_m=resolution_m,
         bake_world=bake_world, world_resolution_m=world_resolution_m,
-        enrich=enrich, hotspots_days=None,
+        enrich=enrich, hotspots_days=None, weather=weather, weather_hours=weather_hours,
     )
 
 
@@ -232,7 +254,7 @@ def assemble_live(
     irwin: str, store_root: str | Path = "store", *,
     buffer_km: float = 5.0, resolution_m: float = 30.0,
     bake_world: bool = True, world_resolution_m: float = 30.0,
-    enrich: bool = True, firms_days: int = 10,
+    enrich: bool = True, firms_days: int = 10, weather: bool = False, weather_hours: int = 24,
 ) -> BundleManifest:
     """Assemble a live fire by IRWIN id (B1 + B2 via WFIGS) into a bundle.
 
@@ -266,5 +288,5 @@ def assemble_live(
         store, incident_id, record, series, now, perimeter_source="wfigs",
         store_root=store_root, buffer_km=buffer_km, resolution_m=resolution_m,
         bake_world=bake_world, world_resolution_m=world_resolution_m,
-        enrich=enrich, hotspots_days=firms_days,
+        enrich=enrich, hotspots_days=firms_days, weather=weather, weather_hours=weather_hours,
     )

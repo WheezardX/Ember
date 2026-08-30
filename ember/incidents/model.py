@@ -107,6 +107,10 @@ class IncidentStore:
     def observations_dir(self, kind: str) -> Path:
         return self.dir / "observations" / kind
 
+    @property
+    def weather_dir(self) -> Path:
+        return self.dir / "weather"
+
     def derived(self, name: str) -> Path:
         return self.dir / "derived" / name
 

@@ -46,6 +46,14 @@ then run the same two `pip install -e` commands into it.
 `pyproject.toml` declares `terrain` as a git dependency for reproducible external
 builds; an editable install already present in the environment satisfies it.
 
+### API keys
+
+Some feeds need free API keys (FIRMS hotspots, Synoptic RAWS). Copy
+`.secrets.toml.example` to `.secrets.toml` (git-ignored) and fill them in — see
+**`docs/CREDENTIALS.md`** for where each key is generated and how to rotate it. A
+missing key just skips that feed; the rest of the bundle still builds. WFIGS, NIROPS,
+and HRRR need no key.
+
 ## Tests
 
 ```
