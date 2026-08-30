@@ -111,6 +111,25 @@ def test_arrival_raster_deterministic(tmp_path):
     assert burned.min() == 0.0 and burned.max() > 0.0
 
 
+@pytest.mark.geo
+def test_arrival_hotspot_assist(tmp_path):
+    """A satellite detection inside the extent marks cells confidence-3 and pulls timing."""
+    from ember.incidents.arrival import build_arrival_raster, build_incident_grid
+    from ember.incidents.firms import Hotspot
+
+    per = _growing_perimeters()
+    grid = build_incident_grid(per, buffer_km=1.0, resolution_m=90.0)
+    base = build_arrival_raster(per, grid, tmp_path / "base", resolution_m=90.0)
+    assert base["hotspot_assist"] is False and base["hotspot_cells"] == 0
+
+    # a detection near the centre, early (day 1) -> informs timing there
+    hs = [Hotspot(acq_at=datetime(2017, 8, 13, tzinfo=UTC), lon=-121.0, lat=47.3,
+                  frp=20.0, confidence="h", satellite="N", daynight="N")]
+    withhs = build_arrival_raster(per, grid, tmp_path / "hs", resolution_m=90.0, hotspots=hs)
+    assert withhs["hotspot_assist"] is True and withhs["hotspot_cells"] > 0
+    assert withhs["observed_frac"] >= base["observed_frac"]  # class-3 cells count as observed
+
+
 def test_bake_builds_custom_coarse_settings(monkeypatch):
     """The ember->terrain seam passes a custom-resolution, Copernicus-only bake."""
     import terrain.runner as runner

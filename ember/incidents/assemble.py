@@ -87,23 +87,25 @@ def _perimeters_from_envelopes(
 
 def _enrich_hotspots(
     store: IncidentStore, aoi_geom, days: int, now: datetime
-) -> ObservationEnvelope | None:
-    """B3 — attach FIRMS hotspots over the AOI as an immutable observation (best-effort)."""
+) -> tuple[ObservationEnvelope | None, list]:
+    """B3 — attach FIRMS hotspots over the AOI (best-effort). Returns (envelope, list);
+    the list also feeds hotspot-assist in the arrival raster."""
     minx, miny, maxx, maxy = aoi_geom.bounds
     hs = fetch_hotspots([minx, miny, maxx, maxy], days=days)
     if not hs:
-        return None
+        return None, []
     hdir = store.observations_dir("hotspots")
     hdir.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(hotspots_geojson(hs))
     gh = hashlib.sha256(payload.encode("utf-8")).hexdigest()
     fp = hdir / f"firms_{now.strftime('%Y%m%dT%H%M')}_{gh[:12]}.geojson"
     fp.write_text(payload, encoding="utf-8")
-    return ObservationEnvelope(
+    env = ObservationEnvelope(
         kind="hotspots", source="firms", observed_at=max(h.acq_at for h in hs),
         fetched_at=now, geometry_hash=gh, path=str(fp.relative_to(store.dir)),
         attributes={"count": len(hs), "days": days},
     )
+    return env, hs
 
 
 def _enrich_nirops(
@@ -200,10 +202,11 @@ def _finalize_incident(
             return True
         return False
 
+    hotspots_list: list = []
     if enrich:
         if hotspots_days and get_secret("FIRMS_MAP_KEY"):
             try:
-                env = _enrich_hotspots(store, aoi_geom, hotspots_days, now)
+                env, hotspots_list = _enrich_hotspots(store, aoi_geom, hotspots_days, now)
                 if _append(env):
                     log.info("firms: +%d hotspots (%d-day window)",
                              env.attributes["count"], hotspots_days)
@@ -216,9 +219,11 @@ def _finalize_incident(
         except Exception as ex:  # noqa: BLE001
             log.warning("nirops enrichment skipped: %s", ex)
 
-    # derived: arrival-time raster (the keystone) — rebuilt from the FULL perimeter set
+    # derived: arrival-time raster (the keystone) — rebuilt from the FULL perimeter set,
+    # with hotspot-assist when FIRMS detections are available (D1 confidence class 3).
     grid = build_incident_grid(full, buffer_km, resolution_m)
-    arr_stats = build_arrival_raster(full, grid, store.derived(""), resolution_m=resolution_m)
+    arr_stats = build_arrival_raster(full, grid, store.derived(""), resolution_m=resolution_m,
+                                     hotspots=hotspots_list or None)
     alg = arr_stats["algorithm"]
 
     # world bake (A2): DEM + LANDFIRE fuels for the fire AOI, via the terrain engine.

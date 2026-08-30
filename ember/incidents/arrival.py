@@ -69,10 +69,39 @@ def _rasterize(geom_lonlat, grid: GridSpec):
                      transform=grid.transform, fill=0, dtype="uint8").astype(bool)
 
 
+def _hotspot_hours(hotspots, grid: GridSpec, t0: datetime, shape):
+    """Earliest hotspot acquisition time (hours since t0) per grid cell; NaN elsewhere."""
+    import numpy as np
+    from pyproj import Transformer
+    from rasterio.transform import rowcol
+
+    to_utm = Transformer.from_crs("EPSG:4326", grid.crs, always_xy=True)
+    hh = np.full(shape, np.nan)
+    for hs in hotspots:
+        at = getattr(hs, "acq_at", None)
+        if at is None:
+            continue
+        h = (at - t0).total_seconds() / 3600.0
+        if h < 0:
+            continue
+        x, y = to_utm.transform(hs.lon, hs.lat)
+        r, c = rowcol(grid.transform, x, y)
+        if 0 <= r < shape[0] and 0 <= c < shape[1] and (np.isnan(hh[r, c]) or h < hh[r, c]):
+            hh[r, c] = h
+    return hh
+
+
 def build_arrival_raster(
-    perimeters, grid: GridSpec, out_dir: str | Path, *, resolution_m: float
+    perimeters, grid: GridSpec, out_dir: str | Path, *, resolution_m: float, hotspots=None
 ) -> dict:
-    """Write arrival_time + confidence COGs. Returns stats incl. t0."""
+    """Write arrival_time + confidence COGs. Returns stats incl. t0.
+
+    ``hotspots`` (optional list of objects with ``.lon``/``.lat``/``.acq_at``) enables
+    hotspot-assist: within the mapped burned extent, a satellite detection means the cell
+    was burning by its acquisition time, so where the interpolated arrival is *later* than
+    a detection it is pulled earlier, and such cells are marked confidence class 3
+    (hotspot-inferred). Detections outside the perimeters don't change the extent.
+    """
     import numpy as np
     import rasterio
     from scipy.ndimage import distance_transform_edt
@@ -103,6 +132,14 @@ def build_arrival_raster(
         prev_cum = cum
 
     burned = arrival != NODATA
+    hotspot_cells = 0
+    if hotspots:
+        hh = _hotspot_hours(hotspots, grid, t0, shape)  # earliest detection hours/cell
+        has = np.isfinite(hh) & burned
+        pull = has & (arrival > hh.astype("float32"))  # detection precedes interpolation
+        arrival[pull] = hh[pull].astype("float32")
+        conf[has] = 3  # timing is satellite-observed
+        hotspot_cells = int(has.sum())
     profile = dict(driver="GTiff", height=grid.height, width=grid.width, count=1,
                    crs=grid.crs, transform=grid.transform)
     a_tmp = out_dir / f"arrival_time.{ALGORITHM}.raw.tif"
@@ -125,7 +162,10 @@ def build_arrival_raster(
         "duration_h": round(max(hours), 1),
         "burned_cells": int(burned.sum()),
         "burned_km2": round(int(burned.sum()) * resolution_m * resolution_m / 1e6, 1),
-        "observed_frac": round(float((conf == 1).sum()) / max(1, int(burned.sum())), 3),
+        "observed_frac": round(
+            float(((conf == 1) | (conf == 3)).sum()) / max(1, int(burned.sum())), 3),
+        "hotspot_assist": bool(hotspots),
+        "hotspot_cells": hotspot_cells,
         "arrival_h_range": [
             round(float(burned_hours.min()), 1), round(float(burned_hours.max()), 1)
         ],
