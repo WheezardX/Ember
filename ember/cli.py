@@ -171,5 +171,29 @@ def tiles(
                 fg=typer.colors.GREEN)
 
 
+@app.command()
+def weather(
+    irwin: str = typer.Option(None, "--irwin", help="IRWIN incident id."),
+    historic: str = typer.Option(
+        None, "--historic", help="Historic fire id, e.g. jolly-mountain-2017."),
+    start: str = typer.Option(
+        ..., "--start", help="Window start, ISO-8601 UTC (e.g. 2017-08-30T12:00Z)."),
+    hours: int = typer.Option(72, "--hours", help="Window length in hours."),
+    store_root: str = typer.Option("store", "--store", help="Store root."),
+) -> None:
+    """Attach a weather timeline (HRRR grid + RAWS) for an explicit window to an existing bundle."""
+    from datetime import datetime
+
+    from ember.incidents.assemble import attach_weather
+
+    incident_id = _resolve_incident_id(irwin, historic)
+    t0 = datetime.fromisoformat(start.replace("Z", "+00:00"))
+    if t0.tzinfo is None:
+        raise typer.BadParameter("--start must carry a timezone (use ...Z)")
+    bundle = attach_weather(incident_id, store_root, start=t0, hours=hours)
+    typer.secho(f"weather        : {bundle.weather}  ({hours} h from {start})",
+                fg=typer.colors.GREEN)
+
+
 if __name__ == "__main__":
     app()

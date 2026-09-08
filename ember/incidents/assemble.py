@@ -372,3 +372,40 @@ def assemble_live(
         enrich=enrich, hotspots_days=firms_days, weather=weather, weather_hours=weather_hours,
         dry_run=dry_run,
     )
+
+
+def attach_weather(
+    incident_id: str, store_root: str | Path = "store", *,
+    start: datetime, hours: int, step_minutes: int = 60,
+) -> BundleManifest:
+    """Attach (or replace) a weather timeline on an already-assembled bundle for an explicit
+    window — the Epic 4 CP5 need (a bounded window over a historic fire's run days), which the
+    refresh path cannot express because it anchors the window on the latest perimeter.
+    Everything else in the bundle is untouched; observations stay immutable."""
+    store = IncidentStore.create(store_root, incident_id)
+    prior = _load_prior_bundle(store)
+    if prior is None:
+        raise RuntimeError(f"no bundle for {incident_id} under {store_root} — assemble it first")
+    from shapely.geometry import shape
+
+    aoi_geom = shape(json.loads(store.aoi_geojson.read_text(encoding="utf-8")))
+    minx, miny, maxx, maxy = aoi_geom.bounds
+    w_t0 = start.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+    mani = build_weather_timeline(
+        incident_id, [minx, miny, maxx, maxy], w_t0, hours, step_minutes,
+        weather_dir=store.weather_dir, save_dir=store.weather_dir / "raw",
+    )
+    if mani is None:
+        raise RuntimeError("weather timeline came back empty (no HRRR grid and no stations)")
+    bundle = prior.model_copy(update={"weather": "weather/timeline.v0.json"})
+    bundle.provenance = dict(bundle.provenance)
+    bundle.provenance["weather"] = {
+        "t0": w_t0.isoformat(), "hours": hours, "step_minutes": step_minutes,
+        "grid": mani.grid is not None, "stations": len(mani.stations),
+        "gaps": list(mani.gaps), "attached_utc": datetime.now(UTC).isoformat(),
+    }
+    store.bundle_json.write_text(bundle.model_dump_json(indent=2), encoding="utf-8")
+    log.info("weather attached to %s: %d-h window from %s (grid=%s, %d station(s), %d gap(s))",
+             incident_id, hours, w_t0.isoformat(), mani.grid is not None,
+             len(mani.stations), len(mani.gaps))
+    return bundle

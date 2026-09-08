@@ -1,0 +1,69 @@
+name: sim
+
+# embersim C++ core: build + tests on Linux (GCC) and Windows (MSVC), then the cross-platform
+# determinism check (plan F3): the same golden scenarios must produce byte-identical state
+# hashes on both runners. A seeded intentional divergence test lives in the test suite.
+on:
+  push:
+    branches: [main]
+    paths: ['sim/**', '.github/workflows/sim.yml']
+  pull_request:
+    paths: ['sim/**', '.github/workflows/sim.yml']
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-gcc
+          - os: windows-latest
+            name: windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: Configure
+        run: cmake -S sim -B sim/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build sim/build --parallel
+      - name: Tests
+        run: sim/build/embersim_tests
+      - name: Golden hashes (determinism matrix input)
+        shell: bash
+        run: |
+          mkdir -p golden
+          for s in sim/scenarios/golden/*.scenario.toml; do
+            n=$(basename "$s" .scenario.toml)
+            sim/build/embersim run "$s" --out "golden/$n" --no-stream --quiet
+            python3 -c "import json,sys; r=json.load(open(sys.argv[1])); print(r['result']['final_state_hash'], *(c['hash'] for c in r['result']['checkpoints']))" "golden/$n/$n.replay.json" > "golden/$n.hashes"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: golden-${{ matrix.name }}
+          path: golden/*.hashes
+
+  determinism:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: hashes
+      - name: Compare Linux vs Windows hashes and committed goldens
+        shell: bash
+        run: |
+          set -e
+          for f in hashes/golden-linux-gcc/*.hashes; do
+            n=$(basename "$f")
+            echo "== $n"
+            diff "$f" "hashes/golden-windows-msvc/$n" && echo "linux == windows"
+            if [ -f "sim/scenarios/golden/$n" ]; then
+              diff "$f" "sim/scenarios/golden/$n" && echo "matches committed golden"
+            else
+              echo "no committed golden for $n (add sim/scenarios/golden/$n)"; exit 1
+            fi
+          done
