@@ -18,15 +18,16 @@ no precipitation), spotting and crowning on at pack defaults, no suppression.
 | artifact | what to look for |
 |---|---|
 | `cp3-jolly-point.mp4` | orange burning rim advancing outward, black interior; the front follows terrain (uphill lobes) and fuel (skips rock/barren, slows in litter) |
-| `frames/00012.png` | 18 h: 41 ha, elongated along the slope, not the wind |
-| `frames/00024.png` | 36 h: 148 ha, 324 burning cells |
+| `frames/00012.png` | 18 h: 32 ha, elongated along the slope, not the wind |
+| `frames/00024.png` | 36 h: 121 ha |
 
-Growth series (from `ember sim curves`): 9 h → 15 ha (radius 315 m); 18 h → 41 ha (979 m);
-27 h → 88 ha (1.3 km); 36 h → 148 ha (1.5 km).
+Growth series (from `ember sim curves`): 9 h → 14 ha (radius 309 m); 18 h → 32 ha (498 m);
+27 h → 69 ha (1.0 km); 36 h → 121 ha (1.3 km). Frames are rendered cropped to cells
+(250–450, 150–330) at 3× so the front reads; `frames/render.json` records the window.
 
 ## Checks
 - **Outward, plausible:** the burned set grows monotonically with a continuous front; roughly
-  linear radius growth after the first hours; ~150 ha in a day and a half from a point in mixed
+  linear radius growth after the first hours; ~120 ha in a day and a half from a point in mixed
   timber-grass under light wind is a believable slow day, and the shape is terrain-driven (the
   slope-equivalent wind dominates a 1.5 m/s breeze), which is the legible behaviour CP4 wants.
 - **Unburnable respected:** no NB / DEM-nodata cell ever burns (property tests + the stream: the
@@ -34,7 +35,7 @@ Growth series (from `ember sim curves`): 9 h → 15 ha (radius 315 m); 18 h → 
   patches visible in `fbfm40.png`.
 - **Never un-burns:** phase monotone under the conformance suite for `ember-ca`; arrival set once.
 - **Bit-identical re-run:** `embersim replay` matches all 37 checkpoint hashes; final
-  `0x9ec508ab359b0652`.
+  `0x20327b58ceda16a0` (after the fuel-break rules landed; earlier `0x9ec508ab359b0652`).
 - Runner throughput on the 0.5 M-cell world: 271 ticks/s (the O(n) metrics observer per tick
   dominates; the model alone runs ~20k ticks/s on a 512² world). Within the §6 budget with
   ~2× margin; H2 will hash/observe at checkpoints only if more is needed.

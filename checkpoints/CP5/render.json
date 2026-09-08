@@ -1,0 +1,26 @@
+{
+  "crop": [
+    0,
+    0,
+    800,
+    627
+  ],
+  "scale": 1,
+  "downsample": 2,
+  "grid": {
+    "nx": 800,
+    "ny": 627
+  },
+  "image": [
+    400,
+    314
+  ],
+  "cell_px": 1,
+  "every": 60,
+  "cols": 2,
+  "runs": [
+    "observed",
+    "ember-ca"
+  ],
+  "frames": 121
+}

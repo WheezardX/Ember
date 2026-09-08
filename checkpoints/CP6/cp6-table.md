@@ -1,4 +1,4 @@
 | run | final burned (ha) | max extent (m) | max radius (m) | mean head rate (m/h) | duration (h) |
 |---|---|---|---|---|---|
-| observed | 9,382.0 | 9,367 | 10,651 | 89 | 120.00 |
-| ember-ca | 12,280.5 | 8,702 | 8,854 | 74 | 119.00 |
+| no-action | 149.6 | 1,740 | 2,042 | 86 | 23.83 |
+| campaign | 165.3 | 1,560 | 2,067 | 87 | 23.83 |

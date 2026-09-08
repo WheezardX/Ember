@@ -1,0 +1,26 @@
+{
+  "crop": [
+    290,
+    170,
+    400,
+    290
+  ],
+  "scale": 4,
+  "downsample": 1,
+  "grid": {
+    "nx": 800,
+    "ny": 627
+  },
+  "image": [
+    440,
+    480
+  ],
+  "cell_px": 4,
+  "every": 30,
+  "cols": 2,
+  "runs": [
+    "no-action",
+    "campaign"
+  ],
+  "frames": 49
+}

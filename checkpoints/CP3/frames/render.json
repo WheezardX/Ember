@@ -1,0 +1,22 @@
+{
+  "crop": [
+    250,
+    150,
+    450,
+    330
+  ],
+  "scale": 3,
+  "downsample": 1,
+  "grid": {
+    "nx": 800,
+    "ny": 627
+  },
+  "image": [
+    600,
+    540
+  ],
+  "cell_px": 3,
+  "every": 90,
+  "stream": "C:\\Projects\\Ember\\runs\\cp3\\cp3-jolly-point.ess",
+  "frames": 25
+}

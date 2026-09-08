@@ -36,15 +36,15 @@ Artifacts: `cp5-jolly-shadow-split.mp4` (split-screen, one frame per hour), keyf
 | | observed (raster) | ember-ca |
 |---|---|---|
 | burned at start (08-30 12Z) | 3,091 ha | 3,091 ha (same set) |
-| burned at end (09-04 12Z) | 9,382 ha (+6,290) | 15,380 ha (+12,290) |
-| growth on Aug 30–31 (windy) | +1,650 ha | +2,000 ha |
-| growth Sep 1–3 (hot, dry, lighter wind) | +4,600 ha | +10,300 ha |
+| burned at end (09-04 12Z) | 9,382 ha (+6,290) | 12,280 ha (+9,190) |
+| growth on Aug 30–31 (windy) | +1,650 ha | +1,900 ha (to 4,987 ha by 09-01 12Z) |
+| growth Sep 1–3 (hot, dry, lighter wind) | +4,600 ha | +7,300 ha |
 | shape | lobes W/SW toward Cle Elum Lake and S; N and E edges held | expands on all sides; the SW lobe and S run appear, but so do N and E runs that never happened |
 
 Reading it honestly:
-- **Order of magnitude: yes.** Twice the observed growth over five days, with the same start.
+- **Order of magnitude: yes.** About 1.5× the observed growth over five days, with the same start.
   A free-burning cartoon with no line, no retardant and no night-time RH recovery beyond what
-  3 km HRRR gives it, landing within 2× of a fire that had a Type 1 team on it, is the right
+  3 km HRRR gives it, landing within 1.5× of a fire that had a Type 1 team on it, is the right
   ballpark for this checkpoint.
 - **Direction: partly.** The model finds the SW/S runs (fuel + slope + the NW wind push them
   there), which is the important qualitative check. It also runs N and E, where the real
@@ -60,6 +60,10 @@ Reading it honestly:
 - **Playback artefacts:** the observed `burning` count saw-tooths with the perimeter cadence
   (whole interpolation intervals ignite together) and its containment reads ~90 % because a
   replayed perimeter is mostly cold — both are properties of the raster, not of the fire.
+
+Numbers above are from the run after the fuel-break rules landed (final hash
+`0xba801ae02e3f4ca8`); the first run, before roads and rock edges were impassable to diagonal
+moves, over-burned by 2× instead of 1.5× — the rules matter on real terrain.
 
 ## Verdict
 The whole stack runs end to end on real terrain with real weather and produces a fire of the

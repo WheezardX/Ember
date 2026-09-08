@@ -4,7 +4,8 @@
 # (A first draft used a Type 1 dozer for the indirect line; it stalled on the Teanaway slopes
 #  per the NWCG table - > 55 % slope classes - which is recorded in the memo. Hand crews it is.)
 #   1 h   hc-a / hc-b / hc-c (Type 1 hand crews) each cut a third of an indirect E-W line at y = 195
-#   1 h   hc-1 / hc-2 (Type 1 hand crews) anchor the west and east flanks from the heel northward
+#   1 h   hc-1 / hc-2 (Type 1) cut the west and east flanks from the indirect line back to the heel;
+#         hc-4 (Type 2) ties the heel
 #   5 h / 9 h  at-1 (large airtanker) lays retardant along the indirect line
 #   10 h  hc-a fires a burnout strip on the fire side of the indirect line
 #   14 h  hc-3 (Type 2 crew) mops up the heel
@@ -57,6 +58,9 @@ type = "airtanker_large"
 [[resources]]
 id = "hc-3"
 type = "hand_t2"
+[[resources]]
+id = "hc-4"
+type = "hand_t2"
 
 [[commands]]
 t_s = 3600
@@ -83,14 +87,21 @@ method = "hand"
 t_s = 3600
 kind = "cut_line"
 resource_id = "hc-1"
-path = [[316, 268], [316, 196]]                  # west flank, tied in behind the heel, north to the indirect line
+path = [[316, 196], [316, 268]]                  # west flank, cut from the indirect line south to the heel (the north end is needed first)
 method = "hand"
 
 [[commands]]
 t_s = 3600
 kind = "cut_line"
 resource_id = "hc-2"
-path = [[316, 268], [352, 268], [376, 240], [376, 196]]   # heel + east flank, north to the indirect line
+path = [[376, 196], [376, 240], [352, 268]]      # east flank, cut from the indirect line south toward the heel
+method = "hand"
+
+[[commands]]
+t_s = 3600
+kind = "cut_line"
+resource_id = "hc-4"
+path = [[316, 268], [352, 268]]                  # the heel, tying the two flank lines together
 method = "hand"
 
 [[commands]]
@@ -113,7 +124,7 @@ volume_class = 3
 t_s = 36000
 kind = "burnout"
 resource_id = "hc-a"
-anchor_path = [[310, 197], [380, 197]]           # fire side of the indirect line
+anchor_path = [[318, 197], [374, 197]]           # fire side of the indirect line, inside the flank lines
 firing_pattern = "strip"
 
 [[commands]]
