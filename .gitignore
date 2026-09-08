@@ -28,3 +28,6 @@ Thumbs.db
 
 # C++ sim build trees
 /sim/build/
+
+# Claude Code agent worktrees
+/.claude/worktrees/

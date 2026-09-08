@@ -207,7 +207,7 @@ be spot-ignited that tick).
 Weather grid cell of sim cell `(x, y)` = `((x × cell_mm + cell_mm/2 + ox_mm) / wdx_mm, …)`
 where `ox_mm` is the offset between the two grids' origins recorded in the world pack
 (nearest, no bilinear). In time: step `s = (t − wt0_s) / wstep_s`, `frac_q16 = ((t − wt0_s) −
-s·wstep_s) × 65536 / wstep_s`, value = `a + ((b − a) × frac_q16 + 32768) >> 16` between steps
+s·wstep_s) × 65536 / wstep_s`, value = `lerp_q16(a, b, frac_q16)` = `a + round_half_away((b − a) × frac_q16 / 65536)` between steps
 `s` and `s+1` (last step held past the end; missing steps held from the previous valid step,
 counted in `diag.held_steps`). Constant weather (`[weather] constant`) is a 1×1 grid with one
 step.

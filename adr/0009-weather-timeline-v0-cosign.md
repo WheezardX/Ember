@@ -30,7 +30,7 @@ Loader-side review of v0 against sim needs:
    weather grid in the world pack (`weather.json` + `weather.bin`, int16-quantised:
    wind cm/s, t2 0.1 K, rh2 0.1 %, precip 0.01 mm) — the *only* form the C++ core reads.
 2. **Amendment A — interpolation rule (normative for consumers).** Between steps, the sim
-   interpolates **linearly in time** on the quantised integers (fixed-point, half-up rounding)
+   interpolates **linearly in time** on the quantised integers (Q16 fraction, rounded half away from zero — `lerp_q16` in `sim/src/fixed.h`)
    for wind/t2/rh2, and treats `precip` as a **per-step accumulation applied at the step's
    start**. Spatially, a cell takes the weather cell containing its centre (**nearest, no
    bilinear**) in v1. Rationale: keeps per-tick math integer; bilinear can come with a minor

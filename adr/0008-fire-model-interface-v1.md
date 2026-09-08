@@ -79,8 +79,9 @@ spotting no, deterministic, **rewind yes**, `max_dt_s` unbounded.
 
 ### 5. Determinism contract (binding on the default model and the runner)
 - **State is integer/fixed-point.** Floats may appear only in *init-time precomputation*
-  whose results are quantized into integer lookup tables; those tables are part of the
-  state hash. No float enters the per-tick path.
+  (e.g. the world→weather cell map) whose results are quantized into integer tables; trig
+  tables are generated once and committed as constants (`sim/src/tables.h`), so no libm call
+  runs in the sim. No float enters the per-tick path.
 - **Iteration order is canonical**: cells in ascending index; neighbours in the fixed
   16-direction order of the model spec; active lists are kept sorted before iteration.
 - **Randomness** is `hash64(run_seed, SYSTEM, entity, tick, draw)` using Terrain's

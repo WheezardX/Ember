@@ -12,6 +12,10 @@ from ember import __version__
 
 app = typer.Typer(add_completion=False, help="Ember — wildfire product on the terrain engine.")
 
+from ember.sim.cli import sim_app  # noqa: E402 — sub-app mounted below
+
+app.add_typer(sim_app, name="sim")
+
 
 @app.command()
 def version() -> None:

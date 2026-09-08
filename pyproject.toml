@@ -26,6 +26,8 @@ dependencies = [
   "typer>=0.12",
   "shapely>=2",
   "pyproj>=3.6",
+  "numpy",
+  "Pillow>=10",
 ]
 
 [project.optional-dependencies]

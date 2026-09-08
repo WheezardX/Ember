@@ -36,6 +36,8 @@ dependencies:
   - xarray             # gridded fields
   - pandas             # station series / timeline tables
   - pyarrow            # parquet sidecars
+  # --- sim tooling (Epic 4): debug frame renderer ---
+  - pillow
   # --- app runtime ---
   - pydantic>=2
   - typer
