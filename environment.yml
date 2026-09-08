@@ -38,6 +38,7 @@ dependencies:
   - pyarrow            # parquet sidecars
   # --- sim tooling (Epic 4): debug frame renderer ---
   - pillow
+  - matplotlib-base  # response-curve plots (not in the frame path)
   # --- app runtime ---
   - pydantic>=2
   - typer

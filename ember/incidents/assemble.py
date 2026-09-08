@@ -388,7 +388,10 @@ def attach_weather(
         raise RuntimeError(f"no bundle for {incident_id} under {store_root} — assemble it first")
     from shapely.geometry import shape
 
-    aoi_geom = shape(json.loads(store.aoi_geojson.read_text(encoding="utf-8")))
+    gj = json.loads(store.aoi_geojson.read_text(encoding="utf-8"))
+    if gj.get("type") == "FeatureCollection":
+        gj = gj["features"][0]
+    aoi_geom = shape(gj["geometry"] if gj.get("type") == "Feature" else gj)
     minx, miny, maxx, maxy = aoi_geom.bounds
     w_t0 = start.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
     mani = build_weather_timeline(

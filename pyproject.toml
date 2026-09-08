@@ -28,6 +28,7 @@ dependencies = [
   "pyproj>=3.6",
   "numpy",
   "Pillow>=10",
+  "matplotlib>=3.8",
 ]
 
 [project.optional-dependencies]
@@ -55,6 +56,7 @@ select = ["E", "F", "I", "UP", "B"]
 # Typer's API *requires* `typer.Option(...)` as a parameter default — B008 is a
 # false positive for this idiom.
 "ember/cli.py" = ["B008"]
+"ember/sim/cli.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

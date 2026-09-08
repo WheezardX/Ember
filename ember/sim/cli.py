@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from pathlib import Path
 
@@ -123,3 +124,76 @@ def static(
         typer.echo(f"  {p}")
     typer.secho(f"static renders : {len(outs)} layer(s) + stats.md -> {out}  "
                 f"({time.perf_counter() - t:.1f}s)", fg=typer.colors.GREEN)
+
+
+_DRIVE_SAFE_COLON = re.compile(r":(?![\\/])")  # a ':' followed by \ or / is a drive letter
+
+
+def _parse_run(spec: str) -> tuple[str, Path, Path | None]:
+    """`LABEL=stream-or-replay[:worldpack]` -> (label, stream_path, worldpack or None)."""
+    if "=" not in spec:
+        raise typer.BadParameter(f"--run needs LABEL=path[:worldpack], got {spec!r}")
+    label, rest = spec.split("=", 1)
+    parts = rest.split("::") if "::" in rest else _DRIVE_SAFE_COLON.split(rest)
+    if len(parts) > 2:
+        raise typer.BadParameter(f"--run {spec!r}: too many ':' (use '::' to separate)")
+    run_path = Path(parts[0])
+    world = Path(parts[1]) if len(parts) == 2 else None
+    if run_path.suffix == ".json":
+        from ember.sim.stream import read_replay
+
+        rp = read_replay(run_path)
+        if not rp.get("stream"):
+            raise typer.BadParameter(f"{run_path}: replay has no baked stream")
+        if world is None:
+            world = (run_path.parent / rp["world"]["pack"]).resolve()
+        run_path = (run_path.parent / rp["stream"]).resolve()
+    if world is None:
+        raise typer.BadParameter(f"--run {spec!r}: a bare .ess needs :worldpack")
+    return label.strip(), run_path, world
+
+
+@sim_app.command()
+def compare(
+    run: list[str] = typer.Option(..., "--run", help="LABEL=stream-or-replay:worldpack "
+                                                     "(repeat; use '::' if paths have ':')."),
+    out: str = typer.Option(..., "--out", help="Output dir for frames."),
+    every: int = typer.Option(1, "--every"),
+    cols: int = typer.Option(None, "--cols"),
+    mp4: bool = typer.Option(False, "--mp4/--no-mp4"),
+    fps: int = typer.Option(12, "--fps"),
+) -> None:
+    """Side-by-side frames of N runs on a shared clock (+ optional MP4)."""
+    from ember.sim.compare import render_side_by_side
+    from ember.sim.render import encode_mp4
+
+    streams = [_parse_run(r) for r in run]
+    out_dir = Path(out)
+    t = time.perf_counter()
+    frames = render_side_by_side(streams, out_dir, every=every, cols=cols)
+    typer.secho(f"frames         : {len(frames)} -> {out_dir}  "
+                f"({time.perf_counter() - t:.1f}s)", fg=typer.colors.GREEN)
+    if mp4:
+        p = encode_mp4(out_dir, out_dir.parent / f"{out_dir.name}.mp4", fps=fps)
+        typer.secho(f"mp4            : {p}", fg=typer.colors.GREEN)
+
+
+@sim_app.command()
+def curves(
+    run: list[str] = typer.Option(..., "--run", help="LABEL=stream-or-replay:worldpack (repeat)."),
+    out: str = typer.Option(..., "--out", help="Output PNG."),
+    table: str = typer.Option(None, "--table", help="Also write a markdown response table."),
+    metric: list[str] = typer.Option(None, "--metric", help="Metrics to plot (repeat)."),
+    every: int = typer.Option(1, "--every"),
+    title: str = typer.Option(None, "--title"),
+) -> None:
+    """Response-curve plots (+ summary table) for one or more runs."""
+    from ember.sim.curves import DEFAULT_METRICS, extract_series, plot_curves, response_table
+
+    series = {label: extract_series(path, every=every) for label, path, _ in map(_parse_run, run)}
+    p = plot_curves(series, out, metrics=metric or DEFAULT_METRICS, title=title)
+    typer.secho(f"curves         : {p}", fg=typer.colors.GREEN)
+    if table:
+        Path(table).parent.mkdir(parents=True, exist_ok=True)
+        Path(table).write_text(response_table(series), encoding="utf-8")
+        typer.secho(f"table          : {table}", fg=typer.colors.GREEN)
