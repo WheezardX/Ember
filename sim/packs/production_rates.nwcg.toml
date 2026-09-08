@@ -1,0 +1,158 @@
+# Fireline production-rate pack v1 (Epic 4 E1; Epic 7 pack shape).
+#
+# SOURCE: NWCG "Fire Line Production Rate Tables" (Fuels Management Committee, 2021),
+#   https://www.frames.gov/documents/behaveplus/publications/NWCG_2021_FireLineProductionRates.pdf
+#   originally Wildland Fire Incident Management Field Guide, PMS 210 (2014, discontinued 2021).
+#   Crew tables: San Dimas T&DC Tech Tip 1151-1805P, Fireline Production Rates (2011); FM 7,
+#   11-13 "various sources pre-1980". Dozer tables: single pass, by slope class and direction.
+# Values are chains per hour (1 chain = 20.1168 m). `mid` is what the sim uses; `range` is kept
+# for Epic 6 (crew-quality variance). Fuel models are Anderson's 13 (FM1..FM13).
+schema_version = 1
+units = "chains_per_hour"
+
+# Editorial mapping from our FBFM40 classes onto the Anderson 13 the tables are indexed by.
+# NB (non-burnable) has no line production entry: line through NB is instantaneous (nothing to cut).
+[fm13_from_fbfm40]
+GR = 1     # short/tall grass -> FM1 (FM3 for tall grass has the same crew rates)
+GS = 2     # timber-grass understory
+SH = 5     # brush 2 ft+ (chaparral FM4 is far slower; SH7/SH8/SH9 override below)
+TU = 10    # timber understory
+TL = 8     # closed timber litter (FM9 identical crew rates)
+SB = 11    # light logging slash (SB3/SB4 override to FM12/13 below)
+
+[fm13_overrides_by_fbfm40]      # code -> FM13, where a single class mapping is too coarse
+147 = 4    # SH7 very high load, dry climate shrub -> chaparral
+148 = 4    # SH8
+149 = 4    # SH9
+203 = 12   # SB3 high load blowdown -> medium slash
+204 = 13   # SB4 very high load blowdown -> heavy slash
+104 = 3    # GR4 moderate load tall grass -> FM3 (same crew rate as FM1, different dozer group)
+105 = 3
+106 = 3
+107 = 3
+108 = 3
+109 = 3
+
+# ---- Sustained line production, 20-person crews, DIRECT attack -------------------------
+# Type I (hotshot) and Type II / Type II IA. Indirect rates from the source are lower and
+# unused in v1 (all v1 line is treated as direct).
+[hand_t1]
+label = "Type 1 hand crew (20 persons), direct attack"
+FM1  = { mid = 17.0, range = [12.0, 21.0] }
+FM2  = { mid = 17.0, range = [12.0, 21.0] }
+FM3  = { mid = 17.0, range = [12.0, 21.0] }
+FM4  = { mid = 6.6,  range = [5.0, 8.0] }
+FM5  = { mid = 16.5, range = [14.0, 19.0] }
+FM6  = { mid = 16.5, range = [14.0, 19.0] }
+FM7  = { mid = 4.0,  range = [4.0, 4.0] }
+FM8  = { mid = 10.5, range = [9.0, 12.0] }
+FM9  = { mid = 10.5, range = [9.0, 12.0] }
+FM10 = { mid = 10.5, range = [9.0, 12.0] }
+FM11 = { mid = 15.0, range = [15.0, 15.0] }
+FM12 = { mid = 7.0,  range = [7.0, 7.0] }
+FM13 = { mid = 5.0,  range = [5.0, 5.0] }
+cost_per_hour_usd = 2200   # PLACEHOLDER (Epic 6 owns real rates)
+
+[hand_t2]
+label = "Type 2 / Type 2 IA hand crew (20 persons), direct attack"
+FM1  = { mid = 10.0, range = [5.0, 15.0] }
+FM2  = { mid = 10.0, range = [5.0, 15.0] }
+FM3  = { mid = 10.0, range = [5.0, 15.0] }
+FM4  = { mid = 7.0,  range = [6.2, 7.9] }
+FM5  = { mid = 7.0,  range = [6.2, 7.9] }
+FM6  = { mid = 7.0,  range = [6.2, 7.9] }
+FM7  = { mid = 2.0,  range = [2.0, 2.0] }
+FM8  = { mid = 7.0,  range = [6.2, 7.9] }
+FM9  = { mid = 7.0,  range = [6.2, 7.9] }
+FM10 = { mid = 7.0,  range = [6.2, 7.9] }
+FM11 = { mid = 9.0,  range = [9.0, 9.0] }
+FM12 = { mid = 4.0,  range = [4.0, 4.0] }
+FM13 = { mid = 3.0,  range = [3.0, 3.0] }
+cost_per_hour_usd = 1600   # PLACEHOLDER
+
+# ---- Dozer single-pass construction rates ----------------------------------------------
+# Indexed by fuel-model GROUP, slope class (1: 0-25 %, 2: 26-40 %, 3: 41-55 %, 4: 56-74 %),
+# and direction (up / down). A range of [0, 0] means impassable. > 74 % slope: impassable.
+# Groups: "1,2" "3,5,8" "4" "6,7,9" "11,12" "10,13".
+[dozer_groups]
+FM1 = "g12"
+FM2 = "g12"
+FM3 = "g358"
+FM5 = "g358"
+FM8 = "g358"
+FM4 = "g4"
+FM6 = "g679"
+FM7 = "g679"
+FM9 = "g679"
+FM11 = "g1112"
+FM12 = "g1112"
+FM10 = "g1013"
+FM13 = "g1013"
+
+[dozer_t3]
+label = "Type 3 dozer (light, 50+ HP: JD-450/550, D-3, D-4)"
+cost_per_hour_usd = 400    # PLACEHOLDER
+g12   = { up = [[55,90],[30,55],[8,30],[0,8]],     down = [[90,110],[90,110],[20,90],[0,20]] }
+g358  = { up = [[45,70],[25,45],[2,25],[0,2]],     down = [[70,80],[65,80],[0,65],[0,0]] }
+g4    = { up = [[20,35],[10,20],[0,10],[0,0]],     down = [[35,40],[25,40],[0,25],[0,0]] }
+g679  = { up = [[35,55],[15,35],[0,15],[0,0]],     down = [[55,60],[40,60],[0,40],[0,0]] }
+g1112 = { up = [[15,25],[7,15],[0,7],[0,0]],       down = [[25,30],[10,30],[0,10],[0,0]] }
+g1013 = { up = [[8,15],[3,8],[0,3],[0,0]],         down = [[10,15],[5,10],[0,5],[0,0]] }
+
+[dozer_t2]
+label = "Type 2 dozer (medium, 100+ HP: D-5N, D-6N, JD-750)"
+cost_per_hour_usd = 550    # PLACEHOLDER
+g12   = { up = [[85,125],[60,85],[30,60],[0,30]],  down = [[125,145],[130,145],[75,130],[0,75]] }
+g358  = { up = [[70,105],[45,70],[15,45],[0,15]],  down = [[105,120],[105,120],[55,105],[0,55]] }
+g4    = { up = [[35,60],[20,35],[2,20],[0,2]],     down = [[60,75],[65,76],[20,65],[0,20]] }
+g679  = { up = [[50,85],[30,50],[7,30],[0,7]],     down = [[85,100],[85,100],[40,85],[0,40]] }
+g1112 = { up = [[25,40],[15,25],[1,15],[0,1]],     down = [[40,55],[45,55],[0,45],[0,0]] }
+g1013 = { up = [[10,20],[7,10],[0,7],[0,0]],       down = [[20,25],[20,25],[0,20],[0,0]] }
+
+[dozer_t1]
+label = "Type 1 dozer (heavy, 200+ HP: D-7, D-8, JD-950)"
+cost_per_hour_usd = 700    # PLACEHOLDER
+g12   = { up = [[100,140],[70,100],[35,70],[0,35]], down = [[140,155],[140,155],[85,140],[0,85]] }
+g358  = { up = [[75,110],[50,75],[20,50],[0,20]],   down = [[110,130],[110,130],[55,110],[0,55]] }
+g4    = { up = [[45,70],[30,45],[8,30],[0,8]],      down = [[70,80],[75,85],[25,75],[0,25]] }
+g679  = { up = [[65,95],[40,65],[15,40],[0,15]],    down = [[95,110],[90,110],[50,90],[0,50]] }
+g1112 = { up = [[35,55],[20,35],[3,20],[0,3]],      down = [[55,65],[55,65],[6,55],[0,6]] }
+g1013 = { up = [[20,35],[9,20],[0,9],[0,0]],        down = [[35,40],[30,40],[0,30],[0,0]] }
+
+# ---- Air resources (v1 cartoon; NOT from the NWCG tables) ------------------------------
+# Footprint half-width in cells (30 m cells): a large airtanker drop is ~ 60-100 m wide and
+# several hundred m long; SEAT narrower; bucket ~ one cell. Loads are per-cell coverage
+# permille; decay classes index `retardant_decay_permille_per_hour` in the CA params pack.
+[airtanker_large]
+label = "Large airtanker (retardant), ~3000 gal"
+sortie_delay_s = 1800
+turnaround_s = 2700
+footprint_half_width_cells = { 1 = 1, 2 = 1, 3 = 2 }
+retardant_load_permille    = { 1 = 600, 2 = 850, 3 = 1000 }
+decay_class = 1
+cost_per_drop_usd = 15000  # PLACEHOLDER
+
+[airtanker_seat]
+label = "Single-engine airtanker (retardant), ~800 gal"
+sortie_delay_s = 900
+turnaround_s = 1500
+footprint_half_width_cells = { 1 = 0, 2 = 0, 3 = 1 }
+retardant_load_permille    = { 1 = 400, 2 = 600, 3 = 800 }
+decay_class = 1
+cost_per_drop_usd = 4000   # PLACEHOLDER
+
+[helicopter_bucket]
+label = "Type 2 helicopter, bucket (water)"
+sortie_delay_s = 600
+turnaround_s = 600
+footprint_half_width_cells = { 1 = 0, 2 = 0, 3 = 1 }
+water_bump_m10             = { 1 = 60, 2 = 100, 3 = 150 }   # tenths of a percent moisture
+water_ttl_s                = { 1 = 1200, 2 = 1800, 3 = 2700 }
+cost_per_drop_usd = 2500   # PLACEHOLDER
+
+# ---- Burnout / mop-up rates (v1 cartoon) -------------------------------------------------
+[burnout]
+firing_rate_chains_per_hour = 20     # strip firing walk along the anchor path
+
+[mop_up]
+cells_per_hour = { hand_t1 = 12, hand_t2 = 8, dozer_t1 = 0, dozer_t2 = 0, dozer_t3 = 0 }

@@ -1,0 +1,167 @@
+# ember-ca v1 coefficient pack (docs/sim/default-model-spec.md names every key).
+# Starting points are Rothermel/Scott&Burgan-shaped relative behaviour; values get tuned for
+# LEGIBILITY at CP4 (the tuning memo records every change). Not a validation claim.
+schema_version = 1
+model = "ember-ca"
+params_version = "1.0.0"
+
+[global]
+default_greenness = 64            # 0 = fully cured .. 255 = fully green (used when the pack lacks a layer)
+lb_per_ms_q8 = 128                # length:breadth grows 0.5 per m/s of effective wind
+lb_max_q8 = 2048                  # cap LB at 8
+head_cap_q8 = 4096                # head rate never exceeds 16x the base rate
+slope_equiv_cms_per_q8unit = 700  # 30 % slope -> ~210 cm/s equivalent wind, uphill
+slope_equiv_cap_cms = 800
+rain_m10_per_mm = 40              # 1 mm of rain adds 4 % dead fuel moisture
+dry_m10_per_hour = 15             # ...which dries off at 1.5 %/h
+f_moist_floor_q8 = 24             # below extinction, spread never drops under ~9 % of base
+retardant_eff_q8 = 230            # full coverage cuts the rate to (256-230)/256 = ~10 %
+retardant_decay_permille_per_hour = [0, 30, 80]   # by decay_class (0 unused, 1 long-term, 2 short-term)
+retardant_wash_permille_per_mm = 150
+retardant_secure_permille = 500   # containment observer: this much coverage counts as protected
+
+[crowning]
+enabled = true
+crown_cbh_max_dm = 30             # canopy base height <= 3 m
+crown_cbd_min_gm3 = 80            # canopy bulk density >= 0.08 kg/m3
+crown_cc_min_pct = 40
+crown_wind_min_cms = 150          # effective wind >= 1.5 m/s
+crown_mult_q8 = 640               # crown fire spreads 2.5x its surface rate
+
+[spotting]
+enabled = true
+deterministic_test_mode = false
+spot_rate_ppm_per_s = 120         # per source cell: ~0.72 % chance per minute
+spot_wind_min_cms = 200
+spot_wind_ref_cms = 500
+spot_dist_min_m = 60
+spot_dist_max_m = 600
+spot_dist_wind_cap = 3
+spot_jitter_deg = 20
+spot_flight_mms = 5000            # embers travel 5 m/s -> a 500 m spot lands ~100 s later
+
+# Per-class defaults. Keys: base_rate_mms (no-wind, flat, dry-reference spread), mx10 (moisture
+# of extinction, tenths %), residence_s, wind_reduction_q8 (10 m -> mid-flame), k_wind_q8
+# (head-rate gain per m/s of effective wind, i.e. R_head = R0 * (1 + k*V)), intensity_t1/t2 (mm/s),
+# green_min_q8 (fully green herbaceous fuel spreads at this fraction), herbaceous, spot_ignite_permille.
+[class.NB]
+base_rate_mms = 0
+mx10 = 0
+residence_s = 0
+wind_reduction_q8 = 0
+k_wind_q8 = 0
+intensity_t1_mms = 0
+intensity_t2_mms = 0
+green_min_q8 = 256
+herbaceous = false
+spot_ignite_permille = 0
+
+[class.GR]
+base_rate_mms = 25                # ~1.5 m/min no-wind; runs hard with wind
+mx10 = 150
+residence_s = 180
+wind_reduction_q8 = 110           # 0.43: open grass sees most of the 10 m wind
+k_wind_q8 = 180                   # 0.7 per m/s: 5 m/s mid-flame -> 4.5x
+intensity_t1_mms = 40
+intensity_t2_mms = 120
+green_min_q8 = 26                 # fully green grass: 10 % of cured rate
+herbaceous = true
+spot_ignite_permille = 700
+
+[class.GS]
+base_rate_mms = 18
+mx10 = 200
+residence_s = 300
+wind_reduction_q8 = 90
+k_wind_q8 = 150
+intensity_t1_mms = 30
+intensity_t2_mms = 90
+green_min_q8 = 64
+herbaceous = true
+spot_ignite_permille = 600
+
+[class.SH]
+base_rate_mms = 14
+mx10 = 250
+residence_s = 600
+wind_reduction_q8 = 77            # 0.3
+k_wind_q8 = 140
+intensity_t1_mms = 20
+intensity_t2_mms = 60
+green_min_q8 = 96
+herbaceous = true
+spot_ignite_permille = 500
+
+[class.TU]
+base_rate_mms = 8
+mx10 = 250
+residence_s = 1500
+wind_reduction_q8 = 46            # 0.18 under canopy
+k_wind_q8 = 120
+intensity_t1_mms = 12
+intensity_t2_mms = 35
+green_min_q8 = 256
+herbaceous = false
+spot_ignite_permille = 450
+
+[class.TL]
+base_rate_mms = 4                 # timber litter smolders
+mx10 = 300
+residence_s = 2400
+wind_reduction_q8 = 38            # 0.15
+k_wind_q8 = 100
+intensity_t1_mms = 8
+intensity_t2_mms = 25
+green_min_q8 = 256
+herbaceous = false
+spot_ignite_permille = 400
+
+[class.SB]
+base_rate_mms = 6
+mx10 = 250
+residence_s = 3600
+wind_reduction_q8 = 64            # 0.25
+k_wind_q8 = 120
+intensity_t1_mms = 10
+intensity_t2_mms = 30
+green_min_q8 = 256
+herbaceous = false
+spot_ignite_permille = 500
+
+# Per-code overrides (Scott & Burgan relative ordering within a class).
+[fuel.101]
+base_rate_mms = 12    # GR1 short sparse dry grass
+[fuel.102]
+base_rate_mms = 22    # GR2 low load dry climate grass
+[fuel.104]
+base_rate_mms = 45    # GR4 moderate load tall grass
+[fuel.107]
+base_rate_mms = 60    # GR7 high load dry grass
+[fuel.121]
+base_rate_mms = 12    # GS1
+[fuel.122]
+base_rate_mms = 20    # GS2
+[fuel.141]
+base_rate_mms = 6     # SH1 low load dry shrub
+[fuel.142]
+base_rate_mms = 10    # SH2
+[fuel.145]
+base_rate_mms = 22    # SH5 high load dry shrub
+[fuel.147]
+base_rate_mms = 20    # SH7
+[fuel.161]
+base_rate_mms = 6     # TU1
+[fuel.165]
+base_rate_mms = 12    # TU5 very high load conifer understory
+[fuel.181]
+base_rate_mms = 2     # TL1 low load compact conifer litter
+[fuel.183]
+base_rate_mms = 3     # TL3
+[fuel.188]
+base_rate_mms = 6     # TL8 long-needle litter
+[fuel.189]
+base_rate_mms = 7     # TL9 very high load broadleaf litter
+[fuel.201]
+base_rate_mms = 4     # SB1
+[fuel.204]
+base_rate_mms = 10    # SB4 very high load blowdown
