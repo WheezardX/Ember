@@ -63,8 +63,7 @@ TickOutput advance(int32 dt_s, span<const Delta> deltas)
   the conformance suite): unburnable never changes phase except via `FuelRemoved` (which only
   makes cells unburnable) and `IgnitionForced` is refused on unburnable; **cells never un-burn**
   (phase is monotone 1→2→3, except playback under `rewind`); `arrival_s` is set exactly once,
-  when phase first becomes 2 (or 3 directly on forced extinguish of an unburned cell? no —
-  extinguish only acts on burning cells).
+  when phase first becomes 2; `ExtinguishForced` acts only on burning cells (2→3).
 - `state_hash()` — FNV-1a-64 over `phase`, `intensity`, `arrival_s` bytes in index order.
   Two runs are "identical" iff every ticked hash matches. This is the golden-vector currency.
 
