@@ -65,6 +65,7 @@ scenario_version = 1
 name = "cp3-point-ignition"
 world = "../store/sim/hist-jolly-mountain-2017.ewp"   # relative to this file
 t_start_s = 0            # seconds after the pack's t0 (playback: where to begin)
+ignite_from_arrival = false   # true: every cell with 0 <= arrival_s <= t_start_s is force-ignited at t_start_s (shadow runs, CP5)
 duration_s = 86400
 dt_s = 60
 seed = 20260907          # run_seed (u64)

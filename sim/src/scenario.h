@@ -44,6 +44,7 @@ struct Scenario {
     std::string name;
     std::filesystem::path world_path;
     int32_t t_start_s = 0;
+    bool ignite_from_arrival = false;  // ignite every cell with 0 <= arrival_s <= t_start_s at t_start_s (shadow runs)
     int32_t duration_s = 0;
     int32_t dt_s = 60;
     uint64_t seed = 0;

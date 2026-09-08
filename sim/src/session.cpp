@@ -93,6 +93,20 @@ Session::Session(const Scenario& scenario) : scen_(scenario) {
     }
 
     ignitions_ = scen_.ignitions;
+    if (scen_.ignite_from_arrival) {
+        // Shadow-run start: the observed fire state at t_start becomes a forced ignition set.
+        if (!world_.has_arrival())
+            throw std::runtime_error("scenario " + scen_.file.string() + ": ignite_from_arrival needs a world pack with an arrival_s layer");
+        Ignition ig;
+        ig.t_s = scen_.t_start_s;
+        ig.cause = IgnitionCause::Playback;
+        for (uint32_t y = 0; y < world_.grid.ny; ++y)
+            for (uint32_t x = 0; x < world_.grid.nx; ++x) {
+                int32_t a = world_.arrival_s[static_cast<size_t>(y) * world_.grid.nx + x];
+                if (a >= 0 && a <= scen_.t_start_s) ig.cells.emplace_back(static_cast<int32_t>(x), static_cast<int32_t>(y));
+            }
+        ignitions_.push_back(std::move(ig));
+    }
     std::stable_sort(ignitions_.begin(), ignitions_.end(), [](const Ignition& a, const Ignition& b) { return a.t_s < b.t_s; });
     t_ = scen_.t_start_s;
     t_end_ = scen_.t_start_s + scen_.duration_s;

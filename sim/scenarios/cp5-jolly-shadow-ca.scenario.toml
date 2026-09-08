@@ -1,0 +1,26 @@
+# CP5 - "Shadow of a real fire": ember-ca restarted from the observed Jolly Mountain fire state
+# at 2017-08-30T12:00Z (18.5 days after t0) and driven by the attached 120-h HRRR weather window
+# over the Labor Day run days (Aug 30 - Sep 4). Paired with cp5-jolly-shadow-playback (same
+# clock). Order-of-magnitude sanity only - NOT validation (see checkpoints/CP5/memo.md).
+scenario_version = 1
+
+[scenario]
+name = "cp5-jolly-shadow-ca"
+world = "../../store/sim/hist-jolly-mountain-2017.ewp"
+t_start_s = 1598400            # 2017-08-30T12:00Z - the weather window start
+ignite_from_arrival = true     # observed burned set at t_start becomes the ignition set
+duration_s = 432000            # 120 h
+dt_s = 60
+seed = 20170830
+
+[model]
+id = "ember-ca"
+params = "../packs/ca_params.v1.toml"
+
+[weather]
+mode = "pack"
+
+[output]
+dir = "../../runs/cp5"
+keyframe_every = 60
+stream = true

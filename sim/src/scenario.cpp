@@ -119,6 +119,7 @@ Scenario scenario_from_text(const std::string& text, const fs::path& as_if_file)
     if (world.empty()) fail(s, "[scenario].world is required");
     s.world_path = resolve_rel(s, world);
     s.t_start_s = static_cast<int32_t>((*sc)["t_start_s"].value_or<int64_t>(0));
+    s.ignite_from_arrival = (*sc)["ignite_from_arrival"].value_or<bool>(false);
     if (!(*sc)["duration_s"].is_integer()) fail(s, "[scenario].duration_s (integer seconds) is required");
     s.duration_s = static_cast<int32_t>((*sc)["duration_s"].value_or<int64_t>(0));
     s.dt_s = static_cast<int32_t>((*sc)["dt_s"].value_or<int64_t>(60));

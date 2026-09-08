@@ -1,0 +1,24 @@
+# CP5 - the observed progression over the same 120-h window, via the playback driver, for the
+# split-screen against cp5-jolly-shadow-ca. Same t_start, duration, dt, and world pack.
+scenario_version = 1
+
+[scenario]
+name = "cp5-jolly-shadow-playback"
+world = "../../store/sim/hist-jolly-mountain-2017.ewp"
+t_start_s = 1598400
+duration_s = 432000
+dt_s = 60
+seed = 1
+
+[model]
+id = "arrival-playback"
+[model.overrides]
+"playback.residence_s" = 21600
+
+[weather]
+mode = "pack"
+
+[output]
+dir = "../../runs/cp5"
+keyframe_every = 60
+stream = true
