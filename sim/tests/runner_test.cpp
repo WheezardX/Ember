@@ -110,8 +110,9 @@ TEST_CASE("runner: errors are actionable") {
     fs::path f = write_scenario("badmodel", "no-such-model", 600, 60);
     CHECK_THROWS_WITH_AS(Session(load_scenario(f)), doctest::Contains("unknown model id"), std::runtime_error);
     fs::path f2 = write_scenario("ca", "ember-ca", 600, 60);
-    // In this worktree the CA factory is stubbed to null; either way the error names the model.
-    CHECK_THROWS_WITH_AS(Session(load_scenario(f2)), doctest::Contains("ember-ca"), std::runtime_error);
+    CHECK_NOTHROW(Session(load_scenario(f2)));  // the default model is available in this build
+    fs::path f3 = write_scenario("ca-bigdt", "ember-ca", 1200, 1200);  // dt > max_dt_s (600)
+    CHECK_THROWS_WITH_AS(Session(load_scenario(f3)), doctest::Contains("max_dt_s"), std::runtime_error);
     CHECK_THROWS(resolve_pack("C:/no/such/pack.toml", "x"));
     CHECK(fs::exists(resolve_pack({}, "ca_params.v1.toml")));
 }
