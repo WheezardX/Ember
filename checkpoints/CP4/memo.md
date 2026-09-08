@@ -48,5 +48,5 @@ radius, containment, burning cells vs time) and the summary table.
 
 ## Verdict
 The default model's responses are legible and correctly ordered, and the tuning that made
-them so is recorded key by key. CP3 was regenerated with the v1.1.0 pack (452 ha in 24 h
-from a point in timber-grass, terrain-shaped) and passes its own gate.
+them so is recorded key by key. CP3 was regenerated with the v1.1.0 pack (148 ha in 36 h
+from a point in timber-grass under a 1.5 m/s breeze, terrain-shaped) and passes its own gate.

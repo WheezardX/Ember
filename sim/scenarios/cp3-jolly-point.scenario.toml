@@ -1,4 +1,4 @@
-# CP3 — "First fire": ember-ca point ignition on real Teanaway terrain, uniform benign weather
+# CP3 --- "First fire": ember-ca point ignition on real Teanaway terrain, uniform benign weather
 # (light westerly, warm and dry). Growth rings should be visible; unburnable cells respected.
 scenario_version = 1
 
@@ -6,7 +6,7 @@ scenario_version = 1
 name = "cp3-jolly-point"
 world = "../../store/sim/hist-jolly-mountain-2017.ewp"
 t_start_s = 0
-duration_s = 86400          # 24 h
+duration_s = 129600         # 36 h
 dt_s = 60
 seed = 20260907
 
@@ -17,9 +17,9 @@ params = "../packs/ca_params.v1.toml"
 [weather]
 mode = "constant"
 [weather.constant]
-wind10_u_cms = 250          # 2.5 m/s from the west
+wind10_u_cms = 150          # 1.5 m/s from the west --- benign, so rings read
 wind10_v_cms = 0
-t2_dk = 3011                # 28 °C
+t2_dk = 3011                # 28 C
 rh2_dpct = 200              # 20 %
 precip_cmm = 0
 
