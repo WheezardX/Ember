@@ -244,3 +244,46 @@ Findings at kickoff that reshape tasks (details in `checkpoints/CP1/memo.md` onc
 - **Epic 7:** model params + production-rate packs are already 7.2-shaped; the interface ADR + conformance suite are the "community model" on-ramp.
 - **Research surface (design doc §Vision):** H3's implementor guide + conformance suite + replay format are the entire external-model story; 4.8 bindings become a demand-driven follow-up.
 - **Epic 9:** replay world-pinning exercised here end-to-end; state streams are 9.4's payload candidate.
+
+---
+
+## 11. Follow-ups (tracked here; tick when done)
+
+Status after execution (2026-09-08). The definition of done in §1 is met except for the
+Linux leg of the determinism matrix, which only runs in CI.
+
+**Closes the definition of done**
+- [ ] F3a — Push, run `.github/workflows/sim.yml` for the first time, fix first-run breakage
+      (Ninja install on both runners is not guaranteed), confirm Linux == Windows == committed
+      goldens (`sim/scenarios/golden/*.hashes`).
+
+**Plan items left open**
+- [ ] H3b — The implementor-guide acceptance test: an agent with only `docs/sim/` writes a toy
+      constant-rate model and passes `conformance_test`. Guide exists; test not run.
+- [ ] H2b — Perf regression as a CI gate (>15 % on the `ca_test` perf probe / bench scenario
+      fails without a waiver). Needs a recorded baseline first (CP7 memo has day-one numbers).
+- [ ] F1b — `SuppressionSim::issue(const Command&)` for late commands so the C API's
+      `es_sim_issue_command` works (Epic 6 needs it; returns "not supported" today).
+- [ ] D6 Tier 2 — local static web viewer (stretch; not attempted).
+- [ ] 4.8 — Python bindings (parked by design; C API exists).
+
+**Upstream tickets from CP1 (file in Terrain / Ember trackers)**
+- [ ] U1 (Epic 3, arrival.py) — derive arrival/confidence rasters on the baked world grid.
+- [ ] U2 (Epic 1, DEM) — Copernicus east-edge strip (1–300 m over 700 m+ terrain) → nodata/fill.
+- [ ] U3 (Epic 2, fuels) — canopy nodata vs non-forest zero conflated (17k timber cells, cc = 0).
+- [ ] U4 (Epic 3, weather) — done as `ember weather --start/--hours`; consider making the
+      refresh path accept a window too.
+- [ ] U5 (Epic 1, story 1.2) — structures layer (observer reports `-1` until it exists).
+
+**Model-quality candidates noted, deliberately not tuned (would be fitting one fire)**
+- [ ] CP5: RH/T→moisture response too strong relative to wind for timber (model grows fastest
+      on the hot dry days, the real fire on the windy ones).
+- [ ] CP5: flanks too fast — burned-set LB ≈ 60 % of the wavelet LB; consider a flank-rate term.
+- [ ] Head-speed cap `cell/dt` (spec §11.8): document `dt ≤ 30` guidance in the scenario
+      authoring section of `formats.md`, or make the CA advance sub-tick ignitions.
+- [ ] Air-drop footprints/loads are pack guesses (`suppression.md` §4); source real numbers.
+
+**Housekeeping**
+- [ ] `git push` (23 Epic 4 commits are local only).
+- [ ] CRLF normalisation: several generated `.md/.json/.hashes` files were written with CRLF;
+      add a `.gitattributes` (`* text=auto eol=lf`) so CI diffs of goldens stay clean.
