@@ -10,15 +10,18 @@ namespace embersim {
 // floor(sqrt(n)) for u64 by Newton iteration — platform independent.
 inline uint64_t isqrt64(uint64_t n) noexcept {
     if (n < 2) return n;
-    uint64_t x = n;
-    uint64_t y = (x + 1) / 2;
+    // Start from an estimate >= sqrt(n) that cannot overflow (n/2 + 1 >= sqrt(n) for n >= 2).
+    uint64_t x = n / 2 + 1;
+    uint64_t y = (x + n / x) / 2;
     while (y < x) {
         x = y;
         y = (x + n / x) / 2;
     }
-    // x = floor(sqrt(n)) except possibly one too high; correct it.
+    // x = floor(sqrt(n)) except possibly off by one; correct it without overflowing
+    // (sqrt(UINT64_MAX) = 4294967295, so x never legitimately exceeds 0xFFFFFFFF).
+    if (x > 0xFFFFFFFFull) x = 0xFFFFFFFFull;
     while (x * x > n) --x;
-    while ((x + 1) * (x + 1) <= n) ++x;
+    while (x < 0xFFFFFFFFull && (x + 1) * (x + 1) <= n) ++x;
     return x;
 }
 
