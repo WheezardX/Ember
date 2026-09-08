@@ -1,0 +1,17 @@
+# Golden: arrival-playback on the hand-written tiny fixture (format + playback path).
+scenario_version = 1
+[scenario]
+name = "playback-tiny"
+world = "../../tests/data/tiny.ewp"
+t_start_s = 0
+duration_s = 3600
+dt_s = 300
+seed = 1
+[model]
+id = "arrival-playback"
+[weather]
+mode = "pack"
+[output]
+dir = "../../../runs/golden"
+keyframe_every = 4
+stream = false

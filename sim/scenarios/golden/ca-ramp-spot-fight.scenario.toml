@@ -1,0 +1,49 @@
+# Golden: ember-ca on a 30 % ramp (checker-free), wind up-slope, spotting on, plus a hand crew
+# line and a retardant drop — exercises the suppression path and every RNG stream. 3 h.
+scenario_version = 1
+[scenario]
+name = "ca-ramp-spot-fight"
+world = "worlds/golden-ramp.ewp"
+t_start_s = 0
+duration_s = 10800
+dt_s = 60
+seed = 7
+[model]
+id = "ember-ca"
+params = "../../packs/ca_params.v1.toml"
+[model.overrides]
+"spotting.enabled" = true
+[weather]
+mode = "constant"
+[weather.constant]
+wind10_u_cms = 600
+wind10_v_cms = 0
+t2_dk = 3031
+rh2_dpct = 150
+precip_cmm = 0
+[[ignitions]]
+t_s = 0
+cells = [[8, 32]]
+[[resources]]
+id = "hc-1"
+type = "hand_t1"
+[[resources]]
+id = "at-1"
+type = "airtanker_large"
+[[commands]]
+t_s = 600
+kind = "cut_line"
+resource_id = "hc-1"
+path = [[30, 10], [30, 54]]
+method = "hand"
+[[commands]]
+t_s = 1200
+kind = "air_drop"
+resource_id = "at-1"
+target = [[36, 20], [36, 44]]
+agent = "retardant"
+volume_class = 2
+[output]
+dir = "../../../runs/golden"
+keyframe_every = 30
+stream = false

@@ -1,0 +1,27 @@
+# Golden: ember-ca on a flat 64x64 GR2 world, steady SW wind, 3 h. Cross-platform hash target.
+scenario_version = 1
+[scenario]
+name = "ca-flat-wind"
+world = "worlds/golden-flat.ewp"
+t_start_s = 0
+duration_s = 10800
+dt_s = 60
+seed = 42
+[model]
+id = "ember-ca"
+params = "../../packs/ca_params.v1.toml"
+[weather]
+mode = "constant"
+[weather.constant]
+wind10_u_cms = 300
+wind10_v_cms = 300
+t2_dk = 3001
+rh2_dpct = 220
+precip_cmm = 0
+[[ignitions]]
+t_s = 0
+cells = [[20, 44]]
+[output]
+dir = "../../../runs/golden"
+keyframe_every = 30
+stream = false

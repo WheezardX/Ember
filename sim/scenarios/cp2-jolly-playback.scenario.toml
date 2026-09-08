@@ -1,0 +1,26 @@
+# CP2 — "History replays": the Epic 3 arrival raster for Jolly Mountain 2017 replayed through
+# the interface by the arrival-playback driver. Zero model risk; proves bundle → pack → stream
+# → renderer. World pack from `ember sim export --historic jolly-mountain-2017`.
+scenario_version = 1
+
+[scenario]
+name = "cp2-jolly-playback"
+world = "../../store/sim/hist-jolly-mountain-2017.ewp"
+t_start_s = 0
+duration_s = 3031200        # 842 h — the whole 35-day progression
+dt_s = 3600                 # hourly ticks are plenty for playback
+seed = 1
+
+[model]
+id = "arrival-playback"
+
+[model.overrides]
+"playback.residence_s" = 21600   # cells glow 6 h after arrival so the front reads in hourly frames
+
+[weather]
+mode = "constant"
+
+[output]
+dir = "../../runs/cp2"
+keyframe_every = 24
+stream = true
