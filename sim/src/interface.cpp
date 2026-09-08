@@ -16,12 +16,15 @@ const char* delta_kind_name(DeltaKind k) {
     return "?";
 }
 
+uint64_t cell_hash(uint32_t index, uint8_t phase, uint8_t intensity, int32_t arrival_s) {
+    return hash64(static_cast<uint64_t>(index), static_cast<uint64_t>(phase), static_cast<uint64_t>(intensity),
+                  static_cast<uint64_t>(static_cast<uint32_t>(arrival_s)));
+}
+
 uint64_t hash_state(const FireStateView& v) {
     size_t n = v.ncells();
-    uint64_t h = FNV_OFFSET;
-    h = fnv1a_array(v.phase, n, h);
-    h = fnv1a_array(v.intensity, n, h);
-    h = fnv1a_array(v.arrival_s, n, h);
+    uint64_t h = 0;
+    for (size_t i = 0; i < n; ++i) h ^= cell_hash(static_cast<uint32_t>(i), v.phase[i], v.intensity[i], v.arrival_s[i]);
     return h;
 }
 

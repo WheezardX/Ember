@@ -16,9 +16,16 @@ physical-print product) and ember owns everything wildfire-specific. Ember calls
 
 ## Status
 
-Epic 3 (fire data) is essentially complete: historic **and** live incidents assemble into
-scenario bundles with terrain/fuels, an arrival-time raster, FIRMS hotspots, NIROPS IR,
-and a HRRR + RAWS weather timeline; idempotent refresh, fire-state tiles, and a QA report.
+Epic 3 (fire data) is complete: historic **and** live incidents assemble into scenario
+bundles with terrain/fuels, an arrival-time raster, FIRMS hotspots, NIROPS IR, and a HRRR +
+RAWS weather timeline; idempotent refresh, fire-state tiles, and a QA report.
+
+Epic 4 (sim core) has passed all seven checkpoints: an engine-free C++20 core (`sim/`,
+`embersim`) with a versioned fire-model interface (ADR 0008), a playback driver for Epic 3
+progressions, the legibility-tuned `ember-ca` cellular model, a suppression sim driven by NWCG
+production rates, read-only observers, a state-stream + replay format that re-simulates
+bit-identically, and Python tooling (`ember sim ...`) for world packs and debug renders.
+See `docs/sim/README.md` and `checkpoints/CP*/memo.md`.
 
 ## Commands
 
@@ -40,7 +47,8 @@ refresh (observations are append-only). Outputs live under `store/` (git-ignored
 - `docs/bundle-format.md` — scenario bundle + store layout reference
 - `docs/CREDENTIALS.md` — API keys (FIRMS, Synoptic): where to generate + rotate
 - `docs/flagships/jolly-mountain-2017.md` — flagship QA memo
-- `EPIC_3_PLAN.md` (plan) · `WILDFIRE_DESIGN.md` (product design) · `adr/` (decisions)
+- `docs/sim/README.md` — sim core + tooling index (formats, specs, checkpoints)
+- `EPIC_3_PLAN.md` · `EPIC_4_PLAN.md` (plans) · `WILDFIRE_DESIGN.md` (product design) · `adr/` (decisions)
 
 ## Setup
 

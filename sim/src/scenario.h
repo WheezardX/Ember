@@ -63,6 +63,7 @@ struct Scenario {
 
     std::filesystem::path output_dir;
     uint32_t keyframe_every = 60;
+    uint32_t metrics_every = 1;  // observer cadence in ticks (HUD values carry between)
     bool stream = true;
 
     std::string raw_toml;  // verbatim file text (recorded in the replay)

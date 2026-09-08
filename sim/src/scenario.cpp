@@ -202,6 +202,7 @@ Scenario scenario_from_text(const std::string& text, const fs::path& as_if_file)
     if (const toml::table* out = tbl["output"].as_table()) {
         if (auto d = (*out)["dir"].value<std::string>()) outdir = *d;
         s.keyframe_every = static_cast<uint32_t>((*out)["keyframe_every"].value_or<int64_t>(60));
+        s.metrics_every = static_cast<uint32_t>((*out)["metrics_every"].value_or<int64_t>(1));
         s.stream = (*out)["stream"].value_or<bool>(true);
     }
     s.output_dir = resolve_rel(s, outdir);

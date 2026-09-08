@@ -35,7 +35,7 @@ Growth series (from `ember sim curves`): 9 h → 14 ha (radius 309 m); 18 h → 
   patches visible in `fbfm40.png`.
 - **Never un-burns:** phase monotone under the conformance suite for `ember-ca`; arrival set once.
 - **Bit-identical re-run:** `embersim replay` matches all 37 checkpoint hashes; final
-  `0x20327b58ceda16a0` (after the fuel-break rules landed; earlier `0x9ec508ab359b0652`).
+  `0x631afd562e1b17e1` (state hash = XOR of per-cell hashes since the CP7 perf pass; earlier FNV values differ).
 - Runner throughput on the 0.5 M-cell world: 271 ticks/s (the O(n) metrics observer per tick
   dominates; the model alone runs ~20k ticks/s on a 512² world). Within the §6 budget with
   ~2× margin; H2 will hash/observe at checkpoints only if more is needed.

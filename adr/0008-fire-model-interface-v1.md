@@ -64,8 +64,13 @@ TickOutput advance(int32 dt_s, span<const Delta> deltas)
   makes cells unburnable) and `IgnitionForced` is refused on unburnable; **cells never un-burn**
   (phase is monotone 1→2→3, except playback under `rewind`); `arrival_s` is set exactly once,
   when phase first becomes 2; `ExtinguishForced` acts only on burning cells (2→3).
-- `state_hash()` — FNV-1a-64 over `phase`, `intensity`, `arrival_s` bytes in index order.
-  Two runs are "identical" iff every ticked hash matches. This is the golden-vector currency.
+- `state_hash()` — the XOR over all cells of `hash64(index, phase, intensity, arrival_s)`
+  (`cell_hash` in `interface.h`). XOR makes it *incremental*: the runner keeps a shadow of the
+  visible state and updates the hash in O(dirty) per tick, verifying against a full recompute
+  at every keyframe (a mismatch means the model broke the dirty-region contract). Two runs are
+  "identical" iff every ticked hash matches. This is the golden-vector currency. (v1.0 used
+  FNV-1a over the whole state; replaced 2026-09-07 because a full pass over 1 M cells per tick
+  dominated the reference benchmark.)
 
 ### 4. Capability flags (`Caps`)
 `interface_version` (semver string), `model_id`, `model_version`, `accepts` (bitmask over the

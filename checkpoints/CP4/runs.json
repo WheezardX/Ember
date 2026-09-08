@@ -1,72 +1,72 @@
 {
  "slope-flat": {
-  "final_hash": "0xec5403776520ea38",
+  "final_hash": "0xd0c9051ea05fccbf",
   "ticks": 120,
-  "ticks_per_s": 4758.053004710472
+  "ticks_per_s": 44062.568847763825
  },
  "slope-ramp30": {
-  "final_hash": "0xce0a698ae3bb4fca",
+  "final_hash": "0xc9f3a1a980dd102c",
   "ticks": 120,
-  "ticks_per_s": 4711.684191514257
+  "ticks_per_s": 32066.6987333654
  },
  "wind-0": {
-  "final_hash": "0xf7395222bcd29a98",
+  "final_hash": "0x6b515b40947d9b7a",
   "ticks": 120,
-  "ticks_per_s": 4861.173001045152
+  "ticks_per_s": 42896.97576320869
  },
  "wind-2": {
-  "final_hash": "0x26c4c05355399923",
+  "final_hash": "0x5eafa80cd0b7a1f5",
   "ticks": 120,
-  "ticks_per_s": 4829.887342877727
+  "ticks_per_s": 35803.79520229145
  },
  "wind-5": {
-  "final_hash": "0x0418389c039b17c0",
+  "final_hash": "0xedaa4447f83eb81d",
   "ticks": 120,
-  "ticks_per_s": 4692.742673455501
+  "ticks_per_s": 29019.85441706367
  },
  "wind-8": {
-  "final_hash": "0x002349e47efcbfbd",
+  "final_hash": "0xe0ae613cb3b43813",
   "ticks": 120,
-  "ticks_per_s": 4706.233013440217
+  "ticks_per_s": 30456.07979492906
  },
  "fuel-gr2": {
-  "final_hash": "0x5fc6a1445848a3d3",
+  "final_hash": "0xda5725527508ac8b",
   "ticks": 120,
-  "ticks_per_s": 4930.014338125034
+  "ticks_per_s": 32656.615686061068
  },
  "fuel-sh5": {
-  "final_hash": "0x1e5a170ec99f5dd8",
+  "final_hash": "0x71fed4e9acbd03d2",
   "ticks": 120,
-  "ticks_per_s": 4713.497886781781
+  "ticks_per_s": 38651.077398782494
  },
  "fuel-tu5": {
-  "final_hash": "0x07b4691a242349c6",
+  "final_hash": "0xc631d66f587cab5d",
   "ticks": 120,
-  "ticks_per_s": 5151.121012710391
+  "ticks_per_s": 48768.5930260912
  },
  "fuel-tl3": {
-  "final_hash": "0xcb05c5687d7c8a73",
+  "final_hash": "0x603f5ff861c2d85a",
   "ticks": 120,
-  "ticks_per_s": 5094.762584063583
+  "ticks_per_s": 54922.42207881368
  },
  "green-cured": {
-  "final_hash": "0xf87b002d66d887dd",
+  "final_hash": "0x21737e5403422d78",
   "ticks": 120,
-  "ticks_per_s": 4679.603169651214
+  "ticks_per_s": 30252.60928755105
  },
  "green-green": {
-  "final_hash": "0x9d816e14c4b62430",
+  "final_hash": "0xd9fbee47d8c32a51",
   "ticks": 120,
-  "ticks_per_s": 5009.078955607039
+  "ticks_per_s": 51808.99749589846
  },
  "moist-dry": {
-  "final_hash": "0x76bc3210910254ad",
+  "final_hash": "0x4e2ac3b2218a074f",
   "ticks": 120,
-  "ticks_per_s": 4455.8481149905865
+  "ticks_per_s": 30457.625828066703
  },
  "moist-humid": {
-  "final_hash": "0x1ebf97005678ca56",
+  "final_hash": "0xa9cf7238e3539fde",
   "ticks": 120,
-  "ticks_per_s": 5168.448345665825
+  "ticks_per_s": 54458.81552076242
  }
 }

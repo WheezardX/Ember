@@ -1,7 +1,7 @@
 # Epic 4 — Sim Core & Fire Model Interface — Execution Plan
 
 **Parent:** WILDFIRE_DESIGN.md → Epic 4 (stories 4.1–4.8)
-**Status:** Plan v1.0 — ⚑ decisions confirmed 2026-09-07 (see §9); in execution
+**Status:** Plan v1.0 — ⚑ decisions confirmed 2026-09-07 (see §9); **executed 2026-09-07: CP1–CP7 passed** (`checkpoints/CP*/memo.md`; CP7's Linux determinism leg runs in CI on push)
 **Scope owner:** Brad / BNE Games LLC
 **Predecessors:** Epic 1 (done), Epic 2 (complete, lightly verified), Epic 3 (planned/in flight — CP1/CP2 below are its real verification)
 

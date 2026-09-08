@@ -44,7 +44,7 @@ public:
     int32_t t_s() const { return t_; }  // time at the start of the next tick
     const TickResult& step();
     const TickResult& last() const { return last_; }
-    uint64_t state_hash() const { return model_->state_hash(); }
+    uint64_t state_hash() const { return run_hash_; }  // maintained incrementally from dirty lists
     FireStateView state() const { return model_->state(); }
 
     const Scenario& scenario() const { return scen_; }
@@ -74,6 +74,13 @@ private:
     TickResult last_;
     std::map<std::string, uint64_t> rejected_;
     double load_ms_ = 0;
+    // Shadow copy of the visible state so the state hash is O(dirty) per tick; verified against
+    // a full recompute at every keyframe (a mismatch means a model broke the dirty contract).
+    std::vector<uint8_t> sh_phase_, sh_intensity_;
+    std::vector<int32_t> sh_arrival_;
+    uint64_t run_hash_ = 0;
+    void reset_shadow();
+    void apply_dirty(const std::vector<uint32_t>& dirty);
 };
 
 }  // namespace embersim

@@ -1,0 +1,39 @@
+# H2 reference task (plan section 6): 1M-cell AOI (1000x1000 @ 30 m = 30x30 km), 14 sim-days at
+# dt = 60 (20,160 ticks), spotting on. World: `ember sim synth checker --nx 1000 --ny 1000
+# --fuel 102 --fuel-b 165 --block 50 --name bench-1m --out store/sim/bench` (grass/timber
+# checkerboard, flat). Weather is constant here (the synthetic kit writes no timeline); the
+# per-tick sampler cost is identical for a pack, only the per-step lerp differs.
+# Budget: >= 500x realtime single-threaded => 14 days in <= 40 min... i.e. <= 3 wall-minutes for
+# the full task at the plan's 2.4 sim-h per wall-second reading; memory <= 512 MB resident.
+scenario_version = 1
+
+[scenario]
+name = "bench-reference-1m"
+world = "../../../store/sim/bench/bench-1m.ewp"
+t_start_s = 0
+duration_s = 1209600          # 14 days
+dt_s = 60
+seed = 1000000
+
+[model]
+id = "ember-ca"
+params = "../../packs/ca_params.v1.toml"
+
+[weather]
+mode = "constant"
+[weather.constant]
+wind10_u_cms = 200
+wind10_v_cms = 100
+t2_dk = 3001
+rh2_dpct = 300
+precip_cmm = 0
+
+[[ignitions]]
+t_s = 0
+cells = [[500, 500]]
+
+[output]
+dir = "../../../runs/bench"
+keyframe_every = 1440
+metrics_every = 10
+stream = true

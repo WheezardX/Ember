@@ -92,6 +92,7 @@ Session::Session(const Scenario& scenario) : scen_(scenario) {
         has_supp_ = true;
     }
 
+    reset_shadow();
     ignitions_ = scen_.ignitions;
     if (scen_.ignite_from_arrival) {
         // Shadow-run start: the observed fire state at t_start becomes a forced ignition set.
@@ -134,7 +135,9 @@ const TickResult& Session::step() {
     for (const RejectedDelta& r : last_.out.rejected) rejected_[delta_kind_name(r.kind)] += r.count;
     last_.overlay = std::move(overlay);
     FireStateView view = model_->state();
-    last_.metrics = compute_metrics(view, world_, secure_permille_);
+    apply_dirty(last_.out.dirty);
+    if (scen_.metrics_every <= 1 || (tick_ + 1) % scen_.metrics_every == 0 || tick_ + 1 == total_ticks_)
+        last_.metrics = compute_metrics(view, world_, secure_permille_);
     if (has_supp_) {
         last_.metrics.cost_cents = supp_.cost_cents();
         last_.metrics.busy_resources = supp_.busy_count();
@@ -147,8 +150,34 @@ const TickResult& Session::step() {
     ++tick_;
     last_.tick = tick_;
     last_.t_s = t_;
-    last_.hash = model_->state_hash();
+    last_.hash = run_hash_;
+    if (tick_ % scen_.keyframe_every == 0 || done()) {
+        uint64_t full = model_->state_hash();
+        if (full != run_hash_)
+            throw std::runtime_error("model " + caps_.model_id + " violated the dirty-region contract at tick " +
+                                     std::to_string(tick_) + ": incremental hash != full hash");
+    }
     return last_;
+}
+
+void Session::reset_shadow() {
+    FireStateView v = model_->state();
+    sh_phase_.assign(v.phase, v.phase + v.ncells());
+    sh_intensity_.assign(v.intensity, v.intensity + v.ncells());
+    sh_arrival_.assign(v.arrival_s, v.arrival_s + v.ncells());
+    run_hash_ = hash_state(v);
+}
+
+void Session::apply_dirty(const std::vector<uint32_t>& dirty) {
+    FireStateView v = model_->state();
+    for (uint32_t i : dirty) {
+        if (i >= sh_phase_.size()) continue;
+        run_hash_ ^= cell_hash(i, sh_phase_[i], sh_intensity_[i], sh_arrival_[i]);
+        sh_phase_[i] = v.phase[i];
+        sh_intensity_[i] = v.intensity[i];
+        sh_arrival_[i] = v.arrival_s[i];
+        run_hash_ ^= cell_hash(i, sh_phase_[i], sh_intensity_[i], sh_arrival_[i]);
+    }
 }
 
 StreamHeader Session::stream_header() const {

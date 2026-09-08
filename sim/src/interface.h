@@ -101,7 +101,8 @@ public:
     virtual int32_t now_s() const = 0;
     // Jump to an absolute time; only legal when caps().supports_rewind. Returns false otherwise.
     virtual bool rewind(int32_t /*t_s*/) { return false; }
-    // FNV-1a over phase, intensity, arrival_s in index order (ADR 0008 §3).
+    // XOR over all cells of cell_hash(i, phase, intensity, arrival_s) (ADR 0008 §3). Models may
+    // override with a cheaper equivalent; the runner maintains it incrementally from dirty lists.
     virtual uint64_t state_hash() const;
 };
 
@@ -109,7 +110,9 @@ public:
 std::unique_ptr<IFireModel> make_model(const std::string& id);
 std::vector<std::string> model_ids();
 
-// Helper for implementors: the canonical state hash over a view.
+// The canonical state hash: XOR over cells of cell_hash(...). Incrementally updatable — a cell
+// change contributes cell_hash(old) ^ cell_hash(new) — so the runner keeps it in O(dirty).
+uint64_t cell_hash(uint32_t index, uint8_t phase, uint8_t intensity, int32_t arrival_s);
 uint64_t hash_state(const FireStateView& v);
 
 }  // namespace embersim

@@ -104,6 +104,7 @@ method = "hand"
 [output]
 dir = "runs/cp3-point-ignition"   # relative to this file; <name>.ess + <name>.replay.json
 keyframe_every = 60               # ticks
+metrics_every = 1                 # observer cadence in ticks (1 = every tick; the HUD carries values between)
 stream = true
 ```
 

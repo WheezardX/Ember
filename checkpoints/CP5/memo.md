@@ -62,7 +62,7 @@ Reading it honestly:
   replayed perimeter is mostly cold — both are properties of the raster, not of the fire.
 
 Numbers above are from the run after the fuel-break rules landed (final hash
-`0xba801ae02e3f4ca8`); the first run, before roads and rock edges were impassable to diagonal
+`0x3571e54b70f9c1e2`); the first run, before roads and rock edges were impassable to diagonal
 moves, over-burned by 2× instead of 1.5× — the rules matter on real terrain.
 
 ## Verdict
