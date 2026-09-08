@@ -3,14 +3,14 @@
 # LEGIBILITY at CP4 (the tuning memo records every change). Not a validation claim.
 schema_version = 1
 model = "ember-ca"
-params_version = "1.0.0"
+params_version = "1.1.0"
 
 [global]
 default_greenness = 64            # 0 = fully cured .. 255 = fully green (used when the pack lacks a layer)
-lb_per_ms_q8 = 128                # length:breadth grows 0.5 per m/s of effective wind
+lb_per_ms_q8 = 384    # wavelet LB grows 1.5 per m/s of effective wind; the burned set comes out ~60 % of that (CP4 tune)
 lb_max_q8 = 2048                  # cap LB at 8
 head_cap_q8 = 4096                # head rate never exceeds 16x the base rate
-slope_equiv_cms_per_q8unit = 700  # 30 % slope -> ~210 cm/s equivalent wind, uphill
+slope_equiv_cms_per_q8unit = 400    # 30 % slope -> ~120 cm/s equivalent wind, uphill (CP4 tune)
 slope_equiv_cap_cms = 800
 rain_m10_per_mm = 40              # 1 mm of rain adds 4 % dead fuel moisture
 dry_m10_per_hour = 15             # ...which dries off at 1.5 %/h
@@ -57,11 +57,11 @@ herbaceous = false
 spot_ignite_permille = 0
 
 [class.GR]
-base_rate_mms = 25                # ~1.5 m/min no-wind; runs hard with wind
+base_rate_mms = 190    # CP4 tune (see docs/sim/tuning-memo.md)
 mx10 = 150
 residence_s = 180
 wind_reduction_q8 = 110           # 0.43: open grass sees most of the 10 m wind
-k_wind_q8 = 180                   # 0.7 per m/s: 5 m/s mid-flame -> 4.5x
+k_wind_q8 = 512    # CP4 tune
 intensity_t1_mms = 40
 intensity_t2_mms = 120
 green_min_q8 = 26                 # fully green grass: 10 % of cured rate
@@ -69,11 +69,11 @@ herbaceous = true
 spot_ignite_permille = 700
 
 [class.GS]
-base_rate_mms = 18
+base_rate_mms = 100    # CP4 tune (see docs/sim/tuning-memo.md)
 mx10 = 200
 residence_s = 300
 wind_reduction_q8 = 90
-k_wind_q8 = 150
+k_wind_q8 = 400    # CP4 tune
 intensity_t1_mms = 30
 intensity_t2_mms = 90
 green_min_q8 = 64
@@ -81,11 +81,11 @@ herbaceous = true
 spot_ignite_permille = 600
 
 [class.SH]
-base_rate_mms = 14
+base_rate_mms = 65    # CP4 tune (see docs/sim/tuning-memo.md)
 mx10 = 250
 residence_s = 600
 wind_reduction_q8 = 77            # 0.3
-k_wind_q8 = 140
+k_wind_q8 = 380    # CP4 tune
 intensity_t1_mms = 20
 intensity_t2_mms = 60
 green_min_q8 = 96
@@ -93,11 +93,11 @@ herbaceous = true
 spot_ignite_permille = 500
 
 [class.TU]
-base_rate_mms = 8
+base_rate_mms = 35    # CP4 tune (see docs/sim/tuning-memo.md)
 mx10 = 250
 residence_s = 1500
 wind_reduction_q8 = 46            # 0.18 under canopy
-k_wind_q8 = 120
+k_wind_q8 = 300    # CP4 tune
 intensity_t1_mms = 12
 intensity_t2_mms = 35
 green_min_q8 = 256
@@ -105,11 +105,11 @@ herbaceous = false
 spot_ignite_permille = 450
 
 [class.TL]
-base_rate_mms = 4                 # timber litter smolders
+base_rate_mms = 12    # CP4 tune (see docs/sim/tuning-memo.md)
 mx10 = 300
 residence_s = 2400
 wind_reduction_q8 = 38            # 0.15
-k_wind_q8 = 100
+k_wind_q8 = 256    # CP4 tune
 intensity_t1_mms = 8
 intensity_t2_mms = 25
 green_min_q8 = 256
@@ -117,11 +117,11 @@ herbaceous = false
 spot_ignite_permille = 400
 
 [class.SB]
-base_rate_mms = 6
+base_rate_mms = 26    # CP4 tune (see docs/sim/tuning-memo.md)
 mx10 = 250
 residence_s = 3600
 wind_reduction_q8 = 64            # 0.25
-k_wind_q8 = 120
+k_wind_q8 = 300    # CP4 tune
 intensity_t1_mms = 10
 intensity_t2_mms = 30
 green_min_q8 = 256
@@ -130,38 +130,38 @@ spot_ignite_permille = 500
 
 # Per-code overrides (Scott & Burgan relative ordering within a class).
 [fuel.101]
-base_rate_mms = 12    # GR1 short sparse dry grass
+base_rate_mms = 100
 [fuel.102]
-base_rate_mms = 22    # GR2 low load dry climate grass
+base_rate_mms = 170
 [fuel.104]
-base_rate_mms = 45    # GR4 moderate load tall grass
+base_rate_mms = 260
 [fuel.107]
-base_rate_mms = 60    # GR7 high load dry grass
+base_rate_mms = 350
 [fuel.121]
-base_rate_mms = 12    # GS1
+base_rate_mms = 70
 [fuel.122]
-base_rate_mms = 20    # GS2
+base_rate_mms = 100
 [fuel.141]
-base_rate_mms = 6     # SH1 low load dry shrub
+base_rate_mms = 30
 [fuel.142]
-base_rate_mms = 10    # SH2
+base_rate_mms = 50
 [fuel.145]
-base_rate_mms = 22    # SH5 high load dry shrub
+base_rate_mms = 100
 [fuel.147]
-base_rate_mms = 20    # SH7
+base_rate_mms = 90
 [fuel.161]
-base_rate_mms = 6     # TU1
+base_rate_mms = 25
 [fuel.165]
-base_rate_mms = 12    # TU5 very high load conifer understory
+base_rate_mms = 50
 [fuel.181]
-base_rate_mms = 2     # TL1 low load compact conifer litter
+base_rate_mms = 6
 [fuel.183]
-base_rate_mms = 3     # TL3
+base_rate_mms = 10
 [fuel.188]
-base_rate_mms = 6     # TL8 long-needle litter
+base_rate_mms = 18
 [fuel.189]
-base_rate_mms = 7     # TL9 very high load broadleaf litter
+base_rate_mms = 22
 [fuel.201]
-base_rate_mms = 4     # SB1
+base_rate_mms = 18
 [fuel.204]
-base_rate_mms = 10    # SB4 very high load blowdown
+base_rate_mms = 40

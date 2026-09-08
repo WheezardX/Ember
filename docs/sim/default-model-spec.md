@@ -33,6 +33,11 @@ Sixteen directions in this fixed order (dx, dy; dy positive = south):
 | dx | 1 | 1 | 0 | -1 | -1 | -1 | 0 | 1 | 2 | 1 | -1 | -2 | -2 | -1 | 1 | 2 |
 | dy | 0 | -1 | -1 | -1 | 0 | 1 | 1 | 1 | -1 | -2 | -2 | -1 | 1 | 2 | 2 | 1 |
 
+**Knight-move rule:** a ring-3 step `(±2, ±1)` / `(±1, ±2)` is skipped when **both** cells the
+ray passes through — the long-axis half step `(±1, 0)` / `(0, ±1)` and that cell plus the short
+axis — are unburnable. Without it, direct spread hops a one-cell (30 m) fuel break, which only
+spotting may do.
+
 Distances `d_k` (mm) = `round(cell_mm × {1, √2, √5})` per ring, computed once at init from
 `cell_size_m` (e.g. 30 000, 42 426, 67 082). Unit vectors `u_k` (Q16 pair) are compile-time
 constants (`(65536,0)`, `(46341,-46341)`, …, knight moves `(58617, -29309)` etc. =
@@ -98,7 +103,8 @@ reproducible).
 ### 4.1 Effective wind–slope vector `V` (cm/s, grid axes)
 - Mid-flame wind from the 10 m field: `W = (u, −v) × wind_reduction_q8(fuel) >> 8` — note
   the sign flip: `v` is northward, grid `y` is southward.
-- Slope-equivalent wind, pointing **uphill**: `S = (−gx, −gy) × slope_equiv_cms_per_q8unit`
+- Slope-equivalent wind, pointing **uphill**: `S = (+gx, +gy) × slope_equiv_cms_per_q8unit`
+  (`gx > 0` means the ground rises toward +x, so +gradient *is* uphill)
   (`gx, gy` Q8 rise/run; params value is cm/s per Q8 unit of tan-slope, so at 30 % slope with
   the default 700 the magnitude is `0.3·256·700/256 ≈ 210` cm/s). Magnitude is capped at
   `slope_equiv_cap_cms`.
@@ -228,3 +234,33 @@ step.
 - Barrier of `FuelRemoved` cells stops spread with spotting off; with
   `deterministic_test_mode` a spot crosses it.
 - Same scenario twice: identical per-tick state hashes; perturbing one seed changes them.
+
+## 11. Implementation notes — v1 as built (2026-09-07)
+Where the reference implementation had to interpret or amend the text above, the code wins and
+this section records it (each item was validated by a property test in `sim/tests/ca_test.cpp`):
+1. **§3.7 burnout.** A pure residence clock kills a grass cell (180 s) long before it can push a
+   neighbour across 30 m, so nothing ever spread. As built: a burning cell goes cold when
+   `elapsed ≥ residence_s` **and** no unburned neighbour is still accumulating progress from it
+   (per-row `waiting` flag computed in the spread pass; extinction ⇒ not waiting), with a hard
+   cap of 24 h burning. `residence_s` is therefore a *minimum* burning time. Cells whose fuel is
+   removed while burning burn out at plain residence.
+2. **§7 `FuelRemoved` on a burning cell** keeps phase 2 and releases its row (never spreads
+   again), then still transitions to 3 at residence — the spec left it burning forever.
+3. **§3.8 `dirty`** lists only view-visible changes (phase / intensity / arrival / retardant);
+   `MoistureBumped` and no-op deltas do not mark cells dirty (ADR 0008 §6: "no unchanged cell is
+   listed").
+4. **§6.5 spot events** are emitted in the **landing** tick (when `landed` / `ignited` are
+   known); off-grid launches are emitted at launch with `landed = false`.
+5. **§4.3 / §7 sub-tick decay.** `dry_m10_per_hour × dt / 3600` and
+   `decay_permille_per_hour × dt / 3600` truncate to zero at `dt = 60`; internal accumulators
+   are kept in ×3600 units (`wet_acc`, `ret_acc`) and the view is `acc / 3600`. Visible
+   consequence: retardant reads 998, not 1000, in the tick it is applied (decay runs after
+   deltas in the same tick, per §3 order).
+6. **§5.3 / §5.4.** Intensity uses the *igniting* cell's `R_head` against the *target* cell's
+   thresholds; crowning uses the target cell's own effective wind at ignition.
+7. **§6 bearing frame:** grid axes, 0° = +x (east), 90° = +y (south); `iatan2_deg(Wy, Wx)` on
+   `W = (u, −v) × reduction` is the downwind bearing directly.
+8. **Head-speed cap.** Because a newly ignited cell does not spread until the next tick, the
+   head cannot advance more than one axis cell per tick: `cell_size / dt_s` (1.8 km/h at 30 m
+   and 60 s). Extreme-wind grass runs need `dt_s ≤ 30` to show their true head rate; CP4's
+   wind-8 case is capped by this, not by the coefficients.

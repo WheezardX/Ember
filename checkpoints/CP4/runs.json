@@ -1,0 +1,72 @@
+{
+ "slope-flat": {
+  "final_hash": "0xec5403776520ea38",
+  "ticks": 120,
+  "ticks_per_s": 4889.676670130188
+ },
+ "slope-ramp30": {
+  "final_hash": "0xce0a698ae3bb4fca",
+  "ticks": 120,
+  "ticks_per_s": 4626.969836012478
+ },
+ "wind-0": {
+  "final_hash": "0xf7395222bcd29a98",
+  "ticks": 120,
+  "ticks_per_s": 4880.131763557616
+ },
+ "wind-2": {
+  "final_hash": "0x26c4c05355399923",
+  "ticks": 120,
+  "ticks_per_s": 4854.742071599354
+ },
+ "wind-5": {
+  "final_hash": "0x0418389c039b17c0",
+  "ticks": 120,
+  "ticks_per_s": 4678.43553115838
+ },
+ "wind-8": {
+  "final_hash": "0x002349e47efcbfbd",
+  "ticks": 120,
+  "ticks_per_s": 4824.39212659205
+ },
+ "fuel-gr2": {
+  "final_hash": "0x5fc6a1445848a3d3",
+  "ticks": 120,
+  "ticks_per_s": 4898.259077086353
+ },
+ "fuel-sh5": {
+  "final_hash": "0x1e5a170ec99f5dd8",
+  "ticks": 120,
+  "ticks_per_s": 5006.111627945784
+ },
+ "fuel-tu5": {
+  "final_hash": "0x07b4691a242349c6",
+  "ticks": 120,
+  "ticks_per_s": 4923.945557575285
+ },
+ "fuel-tl3": {
+  "final_hash": "0xcb05c5687d7c8a73",
+  "ticks": 120,
+  "ticks_per_s": 5066.134159676106
+ },
+ "green-cured": {
+  "final_hash": "0xf87b002d66d887dd",
+  "ticks": 120,
+  "ticks_per_s": 4744.602026735833
+ },
+ "green-green": {
+  "final_hash": "0x9d816e14c4b62430",
+  "ticks": 120,
+  "ticks_per_s": 4900.399382549678
+ },
+ "moist-dry": {
+  "final_hash": "0x76bc3210910254ad",
+  "ticks": 120,
+  "ticks_per_s": 4780.267057586284
+ },
+ "moist-humid": {
+  "final_hash": "0x1ebf97005678ca56",
+  "ticks": 120,
+  "ticks_per_s": 5194.332982715857
+ }
+}
