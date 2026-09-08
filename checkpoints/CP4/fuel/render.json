@@ -1,0 +1,28 @@
+{
+  "crop": [
+    0,
+    0,
+    200,
+    200
+  ],
+  "scale": 1,
+  "downsample": 1,
+  "grid": {
+    "nx": 200,
+    "ny": 200
+  },
+  "image": [
+    200,
+    200
+  ],
+  "cell_px": 1,
+  "every": 5,
+  "cols": 2,
+  "runs": [
+    "fuel-gr2",
+    "fuel-sh5",
+    "fuel-tu5",
+    "fuel-tl3"
+  ],
+  "frames": 25
+}

@@ -80,6 +80,8 @@ def render(
     mp4: bool = typer.Option(False, "--mp4/--no-mp4", help="Encode frames to MP4 (ffmpeg)."),
     gif: bool = typer.Option(False, "--gif/--no-gif"),
     fps: int = typer.Option(12, "--fps"),
+    crop: str = typer.Option(None, "--crop", help="Cell window x0,y0,x1,y1 (excl.)."),
+    scale: int = typer.Option(1, "--scale", help="Integer upscale after cropping."),
 ) -> None:
     """Render a run's state stream to PNG frames (+ optional MP4/GIF). Disposable 2D viz."""
     from ember.sim.render import encode_gif, encode_mp4, render_run
@@ -99,7 +101,8 @@ def render(
         raise typer.BadParameter("--world is required for a bare .ess")
     out_dir = Path(out) if out else stream.with_suffix("") / "frames"
     t = time.perf_counter()
-    frames = render_run(stream, world, out_dir, every=every)
+    frames = render_run(stream, world, out_dir, every=every, crop=_parse_crop(crop),
+                        scale=scale)
     typer.secho(f"frames         : {len(frames)} -> {out_dir}  "
                 f"({time.perf_counter() - t:.1f}s)", fg=typer.colors.GREEN)
     if mp4:
@@ -162,6 +165,8 @@ def compare(
     cols: int = typer.Option(None, "--cols"),
     mp4: bool = typer.Option(False, "--mp4/--no-mp4"),
     fps: int = typer.Option(12, "--fps"),
+    crop: str = typer.Option(None, "--crop", help="Cell window x0,y0,x1,y1 (excl.)."),
+    scale: int = typer.Option(1, "--scale", help="Integer upscale after cropping."),
 ) -> None:
     """Side-by-side frames of N runs on a shared clock (+ optional MP4)."""
     from ember.sim.compare import render_side_by_side
@@ -170,7 +175,8 @@ def compare(
     streams = [_parse_run(r) for r in run]
     out_dir = Path(out)
     t = time.perf_counter()
-    frames = render_side_by_side(streams, out_dir, every=every, cols=cols)
+    frames = render_side_by_side(streams, out_dir, every=every, cols=cols,
+                                 crop=_parse_crop(crop), scale=scale)
     typer.secho(f"frames         : {len(frames)} -> {out_dir}  "
                 f"({time.perf_counter() - t:.1f}s)", fg=typer.colors.GREEN)
     if mp4:
@@ -197,3 +203,31 @@ def curves(
         Path(table).parent.mkdir(parents=True, exist_ok=True)
         Path(table).write_text(response_table(series), encoding="utf-8")
         typer.secho(f"table          : {table}", fg=typer.colors.GREEN)
+
+
+def _parse_crop(crop: str | None) -> tuple[int, int, int, int] | None:
+    if not crop:
+        return None
+    parts = [int(v) for v in crop.replace(";", ",").split(",")]
+    if len(parts) != 4:
+        raise typer.BadParameter(f"--crop needs x0,y0,x1,y1, got {crop!r}")
+    return (parts[0], parts[1], parts[2], parts[3])
+
+
+@sim_app.command()
+def probe(
+    run: str = typer.Argument(..., help="A .ess stream or .replay.json."),
+    every: int = typer.Option(1, "--every"),
+) -> None:
+    """Per-tick numbers (burned/burning, fire bbox, spots, overlays) as a plain-text table."""
+    from ember.sim.probe import format_probe, probe_stream
+
+    stream = Path(run)
+    if stream.suffix == ".json":
+        from ember.sim.stream import replay_stream_path
+
+        resolved = replay_stream_path(stream)
+        if resolved is None:
+            raise typer.BadParameter(f"{stream}: replay has no baked stream")
+        stream = resolved
+    typer.echo(format_probe(probe_stream(stream, every=every)))

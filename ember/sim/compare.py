@@ -14,7 +14,15 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageOps
 
-from ember.sim.render import MAX_WIDTH, RunRenderer, _font, encode_mp4, save_png
+from ember.sim.render import (
+    MAX_WIDTH,
+    Crop,
+    RunRenderer,
+    _font,
+    encode_mp4,
+    save_png,
+    write_render_meta,
+)
 from ember.sim.stream import Frame, StreamHeader, iter_frames
 from ember.sim.worldpack import WorldPack, load_worldpack
 
@@ -45,11 +53,14 @@ class _Run:
             return
         if self.renderer is None:
             self.header = header
-            self.renderer = RunRenderer(self.wp, header, max_width=self.panel_width)
+            self.renderer = RunRenderer(self.wp, header, max_width=self.panel_width,
+                                        crop=self.crop, scale=self.scale)
         self.last = self.renderer.compose(frame)
         self.last_t = frame.t_s
 
     panel_width: int = MAX_WIDTH
+    crop: Crop | None = None
+    scale: int = 1
 
 
 def _grey_ended(img: Image.Image) -> Image.Image:
@@ -68,7 +79,8 @@ def _clock_text(t_s: int) -> str:
 
 def render_side_by_side(streams: list[tuple[str, str | Path, str | Path | WorldPack]],
                         out_dir: str | Path, *, every: int = 1, cols: int | None = None,
-                        max_width: int = MAX_WIDTH) -> list[Path]:
+                        max_width: int = MAX_WIDTH, crop: Crop | None = None,
+                        scale: int = 1) -> list[Path]:
     """`streams` = [(label, stream_path, worldpack_path_or_pack), ...] -> numbered PNGs."""
     if not streams:
         raise ValueError("no streams to compare")
@@ -80,7 +92,7 @@ def render_side_by_side(streams: list[tuple[str, str | Path, str | Path | WorldP
     for label, path, wp in streams:
         pack = wp if isinstance(wp, WorldPack) else load_worldpack(wp)
         r = _Run(label, iter_frames(path, every=every), pack)
-        r.panel_width = panel_w
+        r.panel_width, r.crop, r.scale = panel_w, crop, scale
         runs.append(r)
 
     out_dir = Path(out_dir)
@@ -115,6 +127,10 @@ def render_side_by_side(streams: list[tuple[str, str | Path, str | Path | WorldP
             panel = _grey_ended(r.last) if r.ended else r.last
             canvas.paste(panel, (x0, y0 + LABEL_H))
         frames.append(save_png(canvas, out_dir / f"{len(frames):05d}.png"))
+    first = next((r for r in runs if r.renderer is not None), None)
+    if first is not None:
+        write_render_meta(out_dir, first.renderer.view, every=every, cols=cols,
+                          runs=[r.label for r in runs], frames=len(frames))
     return frames
 
 

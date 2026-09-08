@@ -1,0 +1,35 @@
+# CP6 - "The fight", control arm: the same fire as cp6-campaign with nobody fighting it.
+# Point ignition NW of the Jolly Mountain footprint, steady 4 m/s SW wind (fire runs NE),
+# hot and dry, spotting + crowning on. 12 h.
+scenario_version = 1
+
+[scenario]
+name = "cp6-noaction"
+world = "../../store/sim/hist-jolly-mountain-2017.ewp"
+t_start_s = 0
+duration_s = 86400
+dt_s = 60
+seed = 606
+
+[model]
+id = "ember-ca"
+params = "../packs/ca_params.v1.toml"
+
+[weather]
+mode = "constant"
+[weather.constant]
+wind10_u_cms = 420            # 6 m/s from the SW
+wind10_v_cms = 420
+t2_dk = 3041                  # 31 C
+rh2_dpct = 150                # 15 %
+precip_cmm = 0
+
+[[ignitions]]
+t_s = 0
+cells = [[330, 250]]
+cause = "scenario"
+
+[output]
+dir = "../../runs/cp6"
+keyframe_every = 60
+stream = true

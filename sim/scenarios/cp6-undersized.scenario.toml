@@ -1,0 +1,47 @@
+# CP6 - the deliberately undersized line: a single-pass dozer line (one cell wide) across the
+# head's path in shrub, completed before ignition, spotting on, stiff wind. Expected outcome: the line holds
+# direct spread (knight-move rule) but embers cross it - the "breached by spotting" gate.
+scenario_version = 1
+
+[scenario]
+name = "cp6-undersized"
+world = "../../store/sim/synth/synth-flat-145.ewp"    # SH5, 200x200, flat: a spot source fuel
+t_start_s = 0
+duration_s = 21600
+dt_s = 60
+seed = 61
+
+[model]
+id = "ember-ca"
+params = "../packs/ca_params.v1.toml"
+[model.overrides]
+"spotting.enabled" = true
+
+[weather]
+mode = "constant"
+[weather.constant]
+wind10_u_cms = 900            # 9 m/s from the west
+wind10_v_cms = 0
+t2_dk = 3061
+rh2_dpct = 120
+precip_cmm = 0
+
+[[ignitions]]
+t_s = 7200                    # the line is complete before the fire starts
+cells = [[30, 100]]
+
+[[resources]]
+id = "dz-1"
+type = "dozer_t1"
+
+[[commands]]
+t_s = 0
+kind = "cut_line"
+resource_id = "dz-1"
+path = [[90, 40], [90, 160]]      # 120-cell single-pass dozer line across the run, ~1.8 km downwind
+method = "dozer"
+
+[output]
+dir = "../../runs/cp6"
+keyframe_every = 60
+stream = true

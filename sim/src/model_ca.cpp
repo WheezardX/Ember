@@ -667,13 +667,19 @@ void CaModel::spread(int32_t dt_s) {
             uint32_t j = static_cast<uint32_t>(yy * NX + xx);
             if (phase_[j] != PH_UNBURNED) continue;
             if (RING[k] == 2) {
-                // §1 knight-move rule: a (2,1) step may not hop a one-cell fuel break. The two
-                // cells the ray passes through must not both be unburnable.
+                // §1 fuel-break rule: a (2,1) step may not hop a one-cell fuel break. Both cells
+                // the ray passes through must be passable (an 8-connected line must be impassable).
                 int64_t ax = DX[k] / 2, ay = DY[k] / 2;  // (±1,0) or (0,±1): the long-axis half step
                 int64_t bx = ax + (ax == 0 ? DX[k] : 0), by = ay + (ay == 0 ? DY[k] : 0);
                 uint32_t ia = static_cast<uint32_t>((y + ay) * NX + (x + ax));
                 uint32_t ib = static_cast<uint32_t>((y + by) * NX + (x + bx));
-                if (phase_[ia] == PH_UNBURNABLE && phase_[ib] == PH_UNBURNABLE) continue;
+                if (phase_[ia] == PH_UNBURNABLE || phase_[ib] == PH_UNBURNABLE) continue;
+            } else if (RING[k] == 1) {
+                // §1 fuel-break rule: a (1,1) step needs both of its corner cells passable, so a
+                // one-cell staircase line is not porous at its corners.
+                uint32_t ia = static_cast<uint32_t>(y * NX + (x + DX[k]));
+                uint32_t ib = static_cast<uint32_t>((y + DY[k]) * NX + x);
+                if (phase_[ia] == PH_UNBURNABLE || phase_[ib] == PH_UNBURNABLE) continue;
             }
             int64_t r_k;
             if (c.vmag == 0 || c.e_q16 == 0) {

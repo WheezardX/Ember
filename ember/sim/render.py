@@ -9,6 +9,7 @@ timestamps in PNG metadata). Nothing here may grow into a renderer.
 
 from __future__ import annotations
 
+import json
 import math
 import shutil
 import subprocess
@@ -108,54 +109,142 @@ def base_image(wp: WorldPack, factor: int) -> np.ndarray:
     return np.clip(np.rint(img), 0, 255).astype(np.uint8)
 
 
+# ---- view: crop + integer upscale + max-width clamp ------------------------------- #
+Crop = tuple[int, int, int, int]  # (x0, y0, x1, y1) cells, inclusive-exclusive
+
+
+def _clamp_crop(crop: Crop | None, nx: int, ny: int) -> Crop:
+    if crop is None:
+        return (0, 0, nx, ny)
+    x0, y0, x1, y1 = (int(v) for v in crop)
+    x0, y0 = max(0, min(x0, nx - 1)), max(0, min(y0, ny - 1))
+    x1, y1 = max(x0 + 1, min(x1, nx)), max(y0 + 1, min(y1, ny))
+    return (x0, y0, x1, y1)
+
+
+class View:
+    """Cell grid -> image pixels: crop window, nearest upscale by `scale`, then the
+    max-width clamp (integer downsample by `f`). Cells map to `cell_px`-sized blocks."""
+
+    def __init__(self, nx: int, ny: int, crop: Crop | None = None, scale: int = 1,
+                 max_width: int = MAX_WIDTH):
+        self.nx, self.ny = nx, ny
+        self.x0, self.y0, self.x1, self.y1 = _clamp_crop(crop, nx, ny)
+        self.scale = max(1, int(scale))
+        self.f = downsample_factor((self.x1 - self.x0) * self.scale, max_width)
+        self.w = ((self.x1 - self.x0) * self.scale + self.f - 1) // self.f
+        self.h = ((self.y1 - self.y0) * self.scale + self.f - 1) // self.f
+        self.cell_px = max(1, self.scale // self.f)
+
+    @property
+    def crop(self) -> Crop:
+        return (self.x0, self.y0, self.x1, self.y1)
+
+    def arr(self, a: np.ndarray) -> np.ndarray:
+        """(ny, nx[, c]) array -> (h, w[, c]) image-resolution array."""
+        a = a[self.y0:self.y1, self.x0:self.x1]
+        if self.scale > 1:
+            a = np.repeat(np.repeat(a, self.scale, axis=0), self.scale, axis=1)
+        return a if self.f == 1 else a[::self.f, ::self.f]
+
+    def px(self, x: float, y: float) -> tuple[int, int]:
+        """Cell (x, y) top-left corner -> image pixel."""
+        return (int((x - self.x0) * self.scale) // self.f,
+                int((y - self.y0) * self.scale) // self.f)
+
+    def rect(self, x: int, y: int) -> tuple[int, int, int, int]:
+        px, py = self.px(x, y)
+        return (px, py, px + self.cell_px - 1, py + self.cell_px - 1)
+
+    def inside(self, x: int, y: int) -> bool:
+        return self.x0 <= x < self.x1 and self.y0 <= y < self.y1
+
+    def meta(self) -> dict[str, Any]:
+        return {"crop": list(self.crop), "scale": self.scale, "downsample": self.f,
+                "grid": {"nx": self.nx, "ny": self.ny}, "image": [self.w, self.h],
+                "cell_px": self.cell_px}
+
+
+def _outline(mask: np.ndarray) -> np.ndarray:
+    """Pixels of `mask` with at least one 4-neighbour outside it (1-px inner outline)."""
+    inner = mask.copy()
+    inner[1:] &= mask[:-1]
+    inner[:-1] &= mask[1:]
+    inner[:, 1:] &= mask[:, :-1]
+    inner[:, :-1] &= mask[:, 1:]
+    return mask & ~inner
+
+
+OUTLINE_RGB = (20, 10, 10)
+
+
 # ---- frames ------------------------------------------------------------------------- #
 class RunRenderer:
     """Stateful per-run frame composer (keeps persistent suppression overlays)."""
 
-    def __init__(self, wp: WorldPack, header: StreamHeader, *, max_width: int = MAX_WIDTH):
+    def __init__(self, wp: WorldPack, header: StreamHeader, *, max_width: int = MAX_WIDTH,
+                 crop: Crop | None = None, scale: int = 1):
         if (header.nx, header.ny) != (wp.nx, wp.ny):
             raise ValueError(f"stream grid {header.nx}x{header.ny} != pack {wp.nx}x{wp.ny}")
         self.wp, self.header = wp, header
-        self.f = downsample_factor(wp.nx, max_width)
-        self.base = base_image(wp, self.f)
-        self.persist = np.zeros(wp.ny * wp.nx, np.uint8)  # last persistent overlay kind
+        self.view = View(wp.nx, wp.ny, crop, scale, max_width)
+        self.base = self.view.arr(base_image(wp, 1))
+        self.persist = np.zeros((wp.ny, wp.nx), np.uint8)  # last persistent overlay kind
         self.font = _font(13)
         self.font_small = _font(11)
 
+    @property
+    def f(self) -> int:
+        return self.view.f
+
     def compose(self, frame: Frame) -> Image.Image:
-        f = self.f
+        v = self.view
         img = self.base.copy()
-        phase = _ds(frame.phase, f)
-        inten = _ds(frame.intensity, f)
+        phase = v.arr(frame.phase)
+        inten = v.arr(frame.intensity)
         img[phase == 3] = PHASE_BURNED
         burning = phase == 2
         img[burning] = INTENSITY_RGB[np.clip(inten[burning], 0, 3)]
+        if v.cell_px >= 3 and burning.any():
+            img[_outline(burning)] = OUTLINE_RGB
 
         ov = frame.overlay
         if ov.size:
             keep = np.isin(ov["kind"], PERSISTENT_OVERLAY)
-            self.persist[ov["idx"][keep]] = ov["kind"][keep]
-        pers = _ds(self.persist.reshape(self.wp.ny, self.wp.nx), f)
+            self.persist.ravel()[ov["idx"][keep]] = ov["kind"][keep]
+        pers = v.arr(self.persist)
         for k in PERSISTENT_OVERLAY:
             m = pers == k
             if m.any():
                 img[m] = OVERLAY_RGB[k]
-        if ov.size:
-            trans = ~np.isin(ov["kind"], PERSISTENT_OVERLAY)
-            for k, idx in zip(ov["kind"][trans], ov["idx"][trans], strict=True):
-                y, x = divmod(int(idx), self.wp.nx)
-                img[y // f, x // f] = OVERLAY_RGB.get(int(k), (255, 255, 255))
 
         h, w = img.shape[:2]
         pil = Image.new("RGB", (w, h + HUD_H), (18, 18, 22))
         pil.paste(Image.fromarray(img, "RGB"), (0, 0))
         draw = ImageDraw.Draw(pil)
+        if ov.size:
+            trans = ~np.isin(ov["kind"], PERSISTENT_OVERLAY)
+            for k, idx in zip(ov["kind"][trans], ov["idx"][trans], strict=True):
+                y, x = divmod(int(idx), self.wp.nx)
+                if not v.inside(x, y):
+                    continue
+                col = OVERLAY_RGB.get(int(k), (255, 255, 255))
+                r = v.rect(x, y)
+                if v.cell_px >= 3 and int(k) == 4:
+                    draw.rectangle(r, fill=col, outline=OUTLINE_RGB)
+                else:
+                    draw.rectangle(r, fill=col)
         for s in frame.spots:
             sy, sx = divmod(int(s["src"]), self.wp.nx)
             dy, dx = divmod(int(s["dst"]), self.wp.nx)
+            if not (v.inside(sx, sy) or v.inside(dx, dy)):
+                continue
             col = (255, 60, 60) if s["ignited"] else ((255, 230, 90) if s["landed"]
                                                        else (150, 150, 150))
-            draw.line([(sx // f, sy // f), (dx // f, dy // f)], fill=col, width=1)
+            half = v.cell_px // 2
+            a, b = v.px(sx, sy), v.px(dx, dy)
+            draw.line([(a[0] + half, a[1] + half), (b[0] + half, b[1] + half)], fill=col,
+                      width=1)
         self._hud(draw, frame, w, h)
         return pil
 
@@ -201,10 +290,17 @@ def save_png(img: Image.Image, path: str | Path) -> Path:
     return path
 
 
+def write_render_meta(out_dir: Path, view: View, **extra: Any) -> Path:
+    meta = dict(view.meta(), **extra)
+    p = Path(out_dir) / "render.json"
+    p.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    return p
+
+
 def render_run(stream_path: str | Path, worldpack: WorldPack | str | Path,
                out_dir: str | Path, *, every: int = 1, max_width: int = MAX_WIDTH,
-               ) -> list[Path]:
-    """State stream -> numbered PNG frames in out_dir. Returns frame paths."""
+               crop: Crop | None = None, scale: int = 1) -> list[Path]:
+    """State stream -> numbered PNG frames in out_dir (+ render.json). Returns frame paths."""
     wp = worldpack if isinstance(worldpack, WorldPack) else load_worldpack(worldpack)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -212,8 +308,11 @@ def render_run(stream_path: str | Path, worldpack: WorldPack | str | Path,
     rr: RunRenderer | None = None
     for header, frame in iter_frames(stream_path, every=every):
         if rr is None:
-            rr = RunRenderer(wp, header, max_width=max_width)
+            rr = RunRenderer(wp, header, max_width=max_width, crop=crop, scale=scale)
         frames.append(save_png(rr.compose(frame), out_dir / f"{len(frames):05d}.png"))
+    if rr is not None:
+        write_render_meta(out_dir, rr.view, every=every, stream=str(stream_path),
+                          frames=len(frames))
     return frames
 
 
@@ -292,19 +391,22 @@ def _colorize(values: np.ndarray, valid: np.ndarray, ramp: np.ndarray,
 
 
 def render_static(worldpack: WorldPack | str | Path, layer: str, out_png: str | Path,
-                  *, max_width: int = MAX_WIDTH) -> Path:
+                  *, max_width: int = MAX_WIDTH, crop: Crop | None = None,
+                  scale: int = 1) -> Path:
     """One world-pack layer -> PNG with legend + min/max (CP1 'the world loads')."""
     wp = worldpack if isinstance(worldpack, WorldPack) else load_worldpack(worldpack)
     if not wp.has(layer):
         raise KeyError(f"pack has no layer {layer!r}")
-    f = downsample_factor(wp.nx, max_width)
-    a = _ds(np.asarray(wp.layer(layer)), f)
+    view = View(wp.nx, wp.ny, crop, scale, max_width)
+    f = view.f
+    a = view.arr(np.asarray(wp.layer(layer)))
     meta = wp.manifest["layers"][layer]
     st = meta["stats"]
     unit = meta.get("unit", "")
-    sub = (f"{a.shape[1]}x{a.shape[0]} shown (x1/{f}) | dtype {meta['dtype']} {unit} | "
+    win = f" crop {list(view.crop)} x{view.scale}" if (crop or scale > 1) else ""
+    sub = (f"{a.shape[1]}x{a.shape[0]} shown (x1/{f}){win} | dtype {meta['dtype']} {unit} | "
            f"min {st['min']} max {st['max']} valid {st['valid']:,} nodata {st['nodata']:,}")
-    hs = _ds(hillshade_layer(wp), f).astype(np.uint8)
+    hs = view.arr(hillshade_layer(wp)).astype(np.uint8)
     grey = np.repeat(hs[..., None], 3, axis=2)
     swatches = None
     ramp: np.ndarray | None = RAMP
@@ -372,12 +474,15 @@ def _hsv_to_rgb(h_deg: np.ndarray, s: np.ndarray, v: np.ndarray) -> np.ndarray:
 
 
 def render_all_static(worldpack: WorldPack | str | Path, out_dir: str | Path,
-                      *, max_width: int = MAX_WIDTH) -> list[Path]:
+                      *, max_width: int = MAX_WIDTH, crop: Crop | None = None,
+                      scale: int = 1) -> list[Path]:
     wp = worldpack if isinstance(worldpack, WorldPack) else load_worldpack(worldpack)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    outs = [render_static(wp, layer, out_dir / f"{layer}.png", max_width=max_width)
+    outs = [render_static(wp, layer, out_dir / f"{layer}.png", max_width=max_width, crop=crop,
+                          scale=scale)
             for layer in STATIC_LAYERS if wp.has(layer)]
+    write_render_meta(out_dir, View(wp.nx, wp.ny, crop, scale, max_width))
     (out_dir / "stats.md").write_text(stats_markdown(wp), encoding="utf-8")
     return outs
 

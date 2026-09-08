@@ -33,10 +33,13 @@ Sixteen directions in this fixed order (dx, dy; dy positive = south):
 | dx | 1 | 1 | 0 | -1 | -1 | -1 | 0 | 1 | 2 | 1 | -1 | -2 | -2 | -1 | 1 | 2 |
 | dy | 0 | -1 | -1 | -1 | 0 | 1 | 1 | 1 | -1 | -2 | -2 | -1 | 1 | 2 | 2 | 1 |
 
-**Knight-move rule:** a ring-3 step `(±2, ±1)` / `(±1, ±2)` is skipped when **both** cells the
-ray passes through — the long-axis half step `(±1, 0)` / `(0, ±1)` and that cell plus the short
-axis — are unburnable. Without it, direct spread hops a one-cell (30 m) fuel break, which only
-spotting may do.
+**Fuel-break rules.** A ring-3 (knight) step `(±2, ±1)` / `(±1, ±2)` is skipped when **either**
+cell the ray passes through — the long-axis half step `(±1, 0)` / `(0, ±1)`, or that cell plus
+the short axis — is unburnable. A ring-2 (diagonal) step `(±1, ±1)` is skipped when **either**
+of its 4-adjacent corner cells `(±1, 0)` / `(0, ±1)` is unburnable. Together these make any
+8-connected curve of unburnable cells (a hand line, a road, a staircase dozer line) impassable
+to direct spread — only spotting may cross it. The cost is a little extra drag around isolated
+rocks, which the axis moves route around.
 
 Distances `d_k` (mm) = `round(cell_mm × {1, √2, √5})` per ring, computed once at init from
 `cell_size_m` (e.g. 30 000, 42 426, 67 082). Unit vectors `u_k` (Q16 pair) are compile-time

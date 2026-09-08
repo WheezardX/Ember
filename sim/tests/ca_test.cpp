@@ -261,6 +261,30 @@ TEST_CASE("moisture: wet weather slows spread; extinction stops it") {
     CHECK(wet.count(2) + wet.count(3) == 1);  // only the forced ignition
 }
 
+TEST_CASE("a one-cell diagonal (staircase) line is not porous to diagonal moves") {
+    WorldSpec s = grass(96);
+    WeatherSample wind{500, 0, 2981, 100, 0};  // 5 m/s from the west
+    Sim sim(s, params_with({{"spotting.enabled", "false"}}), wind);
+    // Staircase line on the main diagonal (i, i): a 45° hand line spanning the whole world, so
+    // the fire (started SW of it, wind pushing east) can only reach x > y by crossing it.
+    Delta d;
+    d.kind = DeltaKind::FuelRemoved;
+    for (uint32_t i = 0; i < 96; ++i) d.cells.push_back(i * 96 + i);
+    sim.model->advance(60, std::span<const Delta>(&d, 1));
+    sim.ignite(10, 60);
+    sim.run(4 * 3600);
+    const FireStateView v = sim.view();
+    size_t burned = 0, beyond = 0;
+    for (uint32_t y = 0; y < 96; ++y)
+        for (uint32_t x = 0; x < 96; ++x)
+            if (v.phase[y * 96 + x] >= 2) {
+                ++burned;
+                if (x > y) ++beyond;
+            }
+    CHECK(burned > 500);   // the fire ran and reached the line
+    CHECK(beyond == 0);    // nothing crossed it
+}
+
 TEST_CASE("barrier stops the fire; a deterministic spot crosses it") {
     WorldSpec s = grass(128);
     s.fuel = 145;  // SH5 — a spot source when intensity 3

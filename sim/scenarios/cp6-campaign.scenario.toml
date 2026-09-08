@@ -1,0 +1,129 @@
+# CP6 - "The fight", campaign arm: identical fire/weather/seed to cp6-noaction plus a scripted
+# suppression campaign. Geometry from the no-action run: the head runs north (y 250 -> ~197 by
+# 12 h, ~188 by 18 h) and east (x 330 -> ~370). Commands are in cell coordinates.
+# (A first draft used a Type 1 dozer for the indirect line; it stalled on the Teanaway slopes
+#  per the NWCG table - > 55 % slope classes - which is recorded in the memo. Hand crews it is.)
+#   1 h   hc-a / hc-b / hc-c (Type 1 hand crews) each cut a third of an indirect E-W line at y = 195
+#   1 h   hc-1 / hc-2 (Type 1 hand crews) anchor the west and east flanks from the heel northward
+#   5 h / 9 h  at-1 (large airtanker) lays retardant along the indirect line
+#   10 h  hc-a fires a burnout strip on the fire side of the indirect line
+#   14 h  hc-3 (Type 2 crew) mops up the heel
+scenario_version = 1
+
+[scenario]
+name = "cp6-campaign"
+world = "../../store/sim/hist-jolly-mountain-2017.ewp"
+t_start_s = 0
+duration_s = 86400
+dt_s = 60
+seed = 606
+
+[model]
+id = "ember-ca"
+params = "../packs/ca_params.v1.toml"
+
+[weather]
+mode = "constant"
+[weather.constant]
+wind10_u_cms = 420            # 6 m/s from the SW
+wind10_v_cms = 420
+t2_dk = 3041                  # 31 C
+rh2_dpct = 150                # 15 %
+precip_cmm = 0
+
+[[ignitions]]
+t_s = 0
+cells = [[330, 250]]
+cause = "scenario"
+
+[[resources]]
+id = "hc-a"
+type = "hand_t1"
+[[resources]]
+id = "hc-b"
+type = "hand_t1"
+[[resources]]
+id = "hc-c"
+type = "hand_t1"
+[[resources]]
+id = "hc-1"
+type = "hand_t1"
+[[resources]]
+id = "hc-2"
+type = "hand_t1"
+[[resources]]
+id = "at-1"
+type = "airtanker_large"
+[[resources]]
+id = "hc-3"
+type = "hand_t2"
+
+[[commands]]
+t_s = 3600
+kind = "cut_line"
+resource_id = "hc-a"
+path = [[306, 195], [332, 195]]
+method = "hand"
+
+[[commands]]
+t_s = 3600
+kind = "cut_line"
+resource_id = "hc-b"
+path = [[332, 195], [358, 195]]
+method = "hand"
+
+[[commands]]
+t_s = 3600
+kind = "cut_line"
+resource_id = "hc-c"
+path = [[358, 195], [384, 195]]
+method = "hand"
+
+[[commands]]
+t_s = 3600
+kind = "cut_line"
+resource_id = "hc-1"
+path = [[316, 268], [316, 196]]                  # west flank, tied in behind the heel, north to the indirect line
+method = "hand"
+
+[[commands]]
+t_s = 3600
+kind = "cut_line"
+resource_id = "hc-2"
+path = [[316, 268], [352, 268], [376, 240], [376, 196]]   # heel + east flank, north to the indirect line
+method = "hand"
+
+[[commands]]
+t_s = 18000
+kind = "air_drop"
+resource_id = "at-1"
+target = [[310, 194], [380, 194]]
+agent = "retardant"
+volume_class = 3
+
+[[commands]]
+t_s = 32400
+kind = "air_drop"
+resource_id = "at-1"
+target = [[310, 194], [380, 194]]
+agent = "retardant"
+volume_class = 3
+
+[[commands]]
+t_s = 36000
+kind = "burnout"
+resource_id = "hc-a"
+anchor_path = [[310, 197], [380, 197]]           # fire side of the indirect line
+firing_pattern = "strip"
+
+[[commands]]
+t_s = 50400
+kind = "mop_up"
+resource_id = "hc-3"
+region = [[314, 232], [354, 232], [354, 270], [314, 270]]
+depth_m = 60
+
+[output]
+dir = "../../runs/cp6"
+keyframe_every = 60
+stream = true

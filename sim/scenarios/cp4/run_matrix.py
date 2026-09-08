@@ -1,7 +1,7 @@
 """CP4 driver: run every scenario in this directory with embersim, then build the paired
 side-by-side MP4s and response-curve plots with `ember sim compare|curves` (G2).
 
-    python sim/scenarios/cp4/run_matrix.py [--embersim sim/build/Release/embersim.exe] [--out checkpoints/CP4]
+    python sim/scenarios/cp4/run_matrix.py [--embersim <path/to/embersim>] [--out checkpoints/CP4]
 
 Groups (a naive viewer should be able to call the winner before each plays):
   slope   : flat vs 30 % ramp, calm            -> upslope side runs ahead
@@ -58,7 +58,8 @@ def main() -> int:
                         "--every", str(args.every), "--mp4",
                         *sum((["--run", r] for r in runs), [])], check=True, cwd=ROOT)
         print(f"== curves {group}")
-        subprocess.run([py, "-m", "ember.cli", "sim", "curves", "--out", str(gdir / f"{group}-curves.png"),
+        subprocess.run([py, "-m", "ember.cli", "sim", "curves",
+                        "--out", str(gdir / f"{group}-curves.png"),
                         "--table", str(gdir / f"{group}-table.md"),
                         *sum((["--run", r] for r in runs), [])], check=True, cwd=ROOT)
     # summary of final hashes + ticks/s for the memo
