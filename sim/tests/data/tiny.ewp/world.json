@@ -1,0 +1,128 @@
+{
+ "format": "ember-world-pack",
+ "version": 1,
+ "name": "tiny",
+ "grid": {
+  "nx": 8,
+  "ny": 8,
+  "cell_size_m": 30.0,
+  "crs": "LOCAL",
+  "origin_x": 0.0,
+  "origin_y": 0.0
+ },
+ "t0_utc": "1970-01-01T00:00:00Z",
+ "t0_unix": 0,
+ "source": {
+  "synthetic": {
+   "kind": "tiny-handwritten"
+  },
+  "world_manifest_hash": ""
+ },
+ "layers": {
+  "elevation_cm": {
+   "file": "elevation_cm.bin",
+   "dtype": "i32",
+   "unit": "cm",
+   "stats": {
+    "min": 100000,
+    "max": 100000,
+    "valid": 64,
+    "nodata": 0
+   }
+  },
+  "fbfm40": {
+   "file": "fbfm40.bin",
+   "dtype": "u8",
+   "unit": "code",
+   "stats": {
+    "min": 99,
+    "max": 102,
+    "valid": 64,
+    "nodata": 0
+   }
+  },
+  "cc_pct": {
+   "file": "cc_pct.bin",
+   "dtype": "u8",
+   "unit": "%",
+   "stats": {
+    "min": 0,
+    "max": 0,
+    "valid": 64,
+    "nodata": 0
+   }
+  },
+  "ch_dm": {
+   "file": "ch_dm.bin",
+   "dtype": "u16",
+   "unit": "dm",
+   "stats": {
+    "min": 0,
+    "max": 0,
+    "valid": 64,
+    "nodata": 0
+   }
+  },
+  "cbh_dm": {
+   "file": "cbh_dm.bin",
+   "dtype": "u16",
+   "unit": "dm",
+   "stats": {
+    "min": 0,
+    "max": 0,
+    "valid": 64,
+    "nodata": 0
+   }
+  },
+  "cbd_gm3": {
+   "file": "cbd_gm3.bin",
+   "dtype": "u16",
+   "unit": "g/m3",
+   "stats": {
+    "min": 0,
+    "max": 0,
+    "valid": 64,
+    "nodata": 0
+   }
+  },
+  "evt": {
+   "file": "evt.bin",
+   "dtype": "u16",
+   "unit": "code",
+   "stats": {
+    "min": 7000,
+    "max": 7000,
+    "valid": 64,
+    "nodata": 0
+   }
+  },
+  "arrival_s": {
+   "file": "arrival_s.bin",
+   "dtype": "i32",
+   "unit": "s",
+   "stats": {
+    "min": -1,
+    "max": 1200,
+    "valid": 64,
+    "nodata": 0
+   }
+  },
+  "confidence": {
+   "file": "confidence.bin",
+   "dtype": "u8",
+   "unit": "class",
+   "stats": {
+    "min": 0,
+    "max": 1,
+    "valid": 64,
+    "nodata": 0
+   }
+  }
+ },
+ "arrival": {
+  "algorithm": "synthetic",
+  "method": "none"
+ },
+ "weather": "weather.json",
+ "pack_hash": "23e1a5309e57f1f2be175278c28e86cdde1978976fa4526418328d7ebf024ba6"
+}

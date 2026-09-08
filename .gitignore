@@ -25,3 +25,6 @@ dist/
 Thumbs.db
 .vscode/
 .idea/
+
+# C++ sim build trees
+/sim/build/
