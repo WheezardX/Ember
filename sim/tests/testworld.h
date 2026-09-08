@@ -44,8 +44,8 @@ inline World make_world(const WorldSpec& s) {
     for (uint32_t y = 0; y < s.ny; ++y)
         for (uint32_t x = 0; x < s.nx; ++x) {
             int64_t e = s.base_elev_cm;
-            e += static_cast<int64_t>(x) * s.cell_size_m * 100.0 * s.slope_pct_x / 100;
-            e += static_cast<int64_t>(y) * s.cell_size_m * 100.0 * s.slope_pct_y / 100;
+            e += static_cast<int64_t>(x * s.cell_size_m * 100.0) * s.slope_pct_x / 100;
+            e += static_cast<int64_t>(y * s.cell_size_m * 100.0) * s.slope_pct_y / 100;
             w.elevation_cm[y * s.nx + x] = static_cast<int32_t>(e);
             if (s.barrier_x >= 0 && static_cast<int32_t>(x) == s.barrier_x) w.fbfm40[y * s.nx + x] = 99;
         }

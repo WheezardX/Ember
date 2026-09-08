@@ -31,3 +31,6 @@ Thumbs.db
 
 # Claude Code agent worktrees
 /.claude/worktrees/
+
+# sim run outputs
+/runs/
