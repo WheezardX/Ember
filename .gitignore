@@ -34,3 +34,6 @@ Thumbs.db
 
 # sim run outputs
 /runs/
+
+# worldcore (engine-free render world core) build tree
+/worldcore/build/

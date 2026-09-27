@@ -1,0 +1,220 @@
+#include <cmath>
+#include <cstdlib>
+#include <filesystem>
+#include <string>
+
+#include "doctest.h"
+#include "emberworld/heightfield.h"
+#include "emberworld/region.h"
+#include "emberworld/tiff.h"
+#include "testutil.h"
+
+using namespace emberworld;
+namespace fs = std::filesystem;
+
+namespace {
+
+// Terrain's real Teanaway dev region, when the sibling checkout exists (never in CI).
+std::string teanaway_dir() {
+    if (const char* s = std::getenv("EMBER_TERRAIN_STORE")) return std::string(s) + "/teanaway_dev";
+    return std::string(EMBERWORLD_REPO_DIR) + "/../Terrain/store/teanaway_dev";
+}
+bool have_teanaway() { return fs::exists(teanaway_dir() + "/manifest.json"); }
+
+double hill(double x, double y) {
+    return 700.0 + 0.05 * (x - 500000.0) + 30.0 * std::sin((y - 5200000.0) / 25.0);
+}
+
+}  // namespace
+
+TEST_CASE("tiff: strips, tiles, sample formats, geo tags round-trip") {
+    const auto dir = testutil::temp_dir("tiff");
+    std::vector<double> v(7 * 5);
+    for (int i = 0; i < 35; ++i) v[i] = i * 1.5;
+    v[3] = -9999;
+    testutil::write_tiff(dir / "f32.tif", 7, 5, v, 3, 32, 1000.0, 2000.0, 2.5, "-9999", 2);
+    testutil::write_tiff(dir / "f32t.tif", 7, 5, v, 3, 32, 1000.0, 2000.0, 2.5, "-9999", 0, 16);
+    std::vector<double> u(7 * 5);
+    for (int i = 0; i < 35; ++i) u[i] = 60000 + i;
+    testutil::write_tiff(dir / "u16.tif", 7, 5, u, 1, 16, 0.0, 0.0, 1.0, "0", 5);
+
+    for (const char* name : {"f32.tif", "f32t.tif"}) {
+        auto r = read_tiff((dir / name).string());
+        REQUIRE_MESSAGE(r, r.error.message);
+        const Raster& R = *r.raster;
+        CHECK(R.width == 7);
+        CHECK(R.height == 5);
+        CHECK(R.type == SampleType::F32);
+        CHECK(R.at(6, 4) == doctest::Approx(34 * 1.5));
+        CHECK(R.at(2, 1) == doctest::Approx(9 * 1.5));
+        CHECK(R.is_nodata(R.at(3, 0)));
+        CHECK(R.geo.has_transform);
+        CHECK(R.geo.origin_x == 1000.0);
+        CHECK(R.geo.origin_y == 2000.0);
+        CHECK(R.geo.pixel_w == 2.5);
+        CHECK(*R.geo.nodata == -9999.0);
+    }
+    auto r = read_tiff((dir / "u16.tif").string());
+    REQUIRE_MESSAGE(r, r.error.message);
+    CHECK(r.raster->type == SampleType::U16);
+    CHECK(r.raster->at(4, 3) == 60000 + 25);
+}
+
+TEST_CASE("tiff: refuses what it does not support, never throws") {
+    const uint8_t mm[8] = {'M', 'M', 0, 42, 0, 0, 0, 8};
+    CHECK_FALSE(read_tiff_memory(mm, 8));
+    const uint8_t big[8] = {'I', 'I', 43, 0, 8, 0, 0, 0};
+    CHECK(read_tiff_memory(big, 8).error.message.find("BigTIFF") != std::string::npos);
+    const uint8_t junk[4] = {1, 2, 3, 4};
+    CHECK_FALSE(read_tiff_memory(junk, 4));
+    CHECK_FALSE(read_tiff("does/not/exist.tif"));
+}
+
+TEST_CASE("region: synthetic manifest loads, backslash paths normalised, extent from finest LOD") {
+    const auto root = testutil::write_synth_region("region", hill);
+    auto rr = load_region(root.string());
+    REQUIRE_MESSAGE(rr, rr.error);
+    const Region& R = *rr.region;
+    CHECK(R.tiles.size() == 5);
+    CHECK(R.finest_lod() == 5);
+    CHECK(R.coarsest_lod() == 4);
+    CHECK(R.tiles_at(5).size() == 4);
+    CHECK(R.find(5, 1, 1) != nullptr);
+    CHECK(R.find(5, 1, 1)->height_tif == "tiles/z5/x1/y1/height.tif");
+    const Bounds e = R.extent();
+    CHECK(e.min_x == doctest::Approx(500000.0));
+    CHECK(e.max_x == doctest::Approx(500160.0));
+    CHECK(e.max_y == doctest::Approx(5200160.0));
+}
+
+TEST_CASE("heightfield: same-LOD neighbours share edge vertices and normals bit-exactly") {
+    const auto root = testutil::write_synth_region("seams", hill);
+    auto rr = load_region(root.string());
+    REQUIRE(rr);
+    const Region& R = *rr.region;
+    const Frame fr = region_frame(R);
+    MeshOptions opt;
+    opt.skirts = false;
+    auto m00 = load_tile_mesh(R, *R.find(5, 0, 0), fr, opt);
+    auto m10 = load_tile_mesh(R, *R.find(5, 1, 0), fr, opt);  // east neighbour
+    auto m01 = load_tile_mesh(R, *R.find(5, 0, 1), fr, opt);  // north neighbour
+    REQUIRE_MESSAGE(m00.ok(), m00.error);
+    REQUIRE(m10.ok());
+    REQUIRE(m01.ok());
+    const int N = m00.mesh.grid_n;
+    CHECK(N == 9);
+    int checked = 0;
+    for (int j = 0; j < N; ++j) {
+        // east edge of (0,0) == west edge of (1,0)
+        const auto& a = m00.mesh.positions[j * N + (N - 1)];
+        const auto& b = m10.mesh.positions[j * N + 0];
+        CHECK(a.x == b.x);
+        CHECK(a.y == b.y);
+        CHECK(a.z == b.z);
+        const auto& na = m00.mesh.normals[j * N + (N - 1)];
+        const auto& nb = m10.mesh.normals[j * N + 0];
+        CHECK(na.x == nb.x);
+        CHECK(na.y == nb.y);
+        CHECK(na.z == nb.z);
+        ++checked;
+    }
+    for (int i = 0; i < N; ++i) {
+        // north edge of (0,0) (row 0) == south edge of (0,1) (row N-1): y grows north
+        const auto& a = m00.mesh.positions[0 * N + i];
+        const auto& b = m01.mesh.positions[(N - 1) * N + i];
+        CHECK(a.z == b.z);
+        CHECK(a.x == b.x);
+        CHECK(a.y == b.y);
+    }
+    CHECK(checked == N);
+}
+
+TEST_CASE("heightfield: frame, heights, and region-border nodata handling") {
+    const auto root = testutil::write_synth_region("frame", hill);
+    auto rr = load_region(root.string());
+    REQUIRE(rr);
+    const Region& R = *rr.region;
+    const Frame fr = region_frame(R);
+    CHECK(fr.anchor_x == doctest::Approx(500080.0));
+    auto m = load_tile_mesh(R, *R.find(5, 0, 0), fr);
+    REQUIRE(m.ok());
+    const TileMesh& M = m.mesh;
+    // Interior corner (4, 4) of tile (0,0): world (500040, 5200040) -> UE (-4000, +4000) cm
+    const auto& p = M.positions[4 * M.grid_n + 4];
+    CHECK(p.x == doctest::Approx(-4000.0f));
+    CHECK(p.y == doctest::Approx(4000.0f));
+    // Height: mean of the 4 pixel centres around the corner ~ the analytic value (smooth fn)
+    CHECK(p.z / 100.0 == doctest::Approx(hill(500040.0, 5200040.0)).epsilon(0.01));
+    // Normal points up and tilts west (height rises east): nx < 0
+    CHECK(M.normals[4 * M.grid_n + 4].z > 0.9f);
+    CHECK(M.normals[4 * M.grid_n + 4].x < 0.0f);
+    // Region-border corners of tile (0,0) average only the valid pixels: all corners valid
+    CHECK(M.nodata_corners == 0);
+    CHECK(M.surface_triangles == 8 * 8 * 2);
+    CHECK(M.skirt_triangles == 4 * 8 * 4);
+    CHECK(M.indices.size() == static_cast<size_t>(3 * (M.surface_triangles + M.skirt_triangles)));
+    // Coarse tile (lod 4) spans 160 m of which all is inside: valid, 8x8 quads of 20 m
+    auto c = load_tile_mesh(R, *R.find(4, 0, 0), fr);
+    REQUIRE(c.ok());
+    CHECK(c.mesh.surface_triangles == 128);
+}
+
+TEST_CASE("heightfield: wrong raster size is an error, not a crash") {
+    const auto root = testutil::write_synth_region("badsize", hill);
+    auto rr = load_region(root.string());
+    REQUIRE(rr);
+    Raster small;
+    small.width = small.height = 3;
+    small.data.assign(9 * 4, 0);
+    auto m = build_tile_mesh(*rr.region, rr.region->tiles[0], small, region_frame(*rr.region));
+    CHECK_FALSE(m.ok());
+}
+
+TEST_CASE("teanaway_dev (real Terrain store, skipped when absent)") {
+    if (!have_teanaway()) {
+        MESSAGE("teanaway_dev not found at " << teanaway_dir() << " - skipped");
+        return;
+    }
+    auto rr = load_region(teanaway_dir());
+    REQUIRE_MESSAGE(rr, rr.error);
+    const Region& R = *rr.region;
+    CHECK(R.tile_px == 64);
+    CHECK(R.overlap_px == 8);
+    CHECK(R.tiles.size() == 14);
+    CHECK(R.tiles_at(14).size() == 9);
+    CHECK(R.layers.size() == 9);
+    CHECK(R.layers.at("fuels_fbfm40").categorical);
+
+    // Reference values read with rasterio (see worldcore/README.md).
+    auto h = read_tiff(R.path(R.find(14, 0, 0)->height_tif));
+    REQUIRE_MESSAGE(h, h.error.message);
+    CHECK(h.raster->width == 80);
+    CHECK(h.raster->at(40, 40) == doctest::Approx(725.8921));
+    CHECK(h.raster->is_nodata(h.raster->at(0, 0)));
+    CHECK(h.raster->geo.origin_x == doctest::Approx(656714.6820252051));
+    CHECK(h.raster->geo.origin_y == doctest::Approx(5230601.004653024));
+    auto fb = read_tiff(R.path(R.layers.at("fuels_fbfm40").find(14, 1, 1)->path));
+    REQUIRE(fb);
+    CHECK(fb.raster->type == SampleType::U16);
+    CHECK(fb.raster->at(79, 79) == 188);
+
+    // Every finest-LOD tile builds; interior tile has no invalid corners; totals are sane.
+    const Frame fr = region_frame(R);
+    int tris = 0;
+    for (const TileEntry* t : R.tiles_at(14)) {
+        auto m = load_tile_mesh(R, *t, fr);
+        REQUIRE_MESSAGE(m.ok(), m.error);
+        CHECK(m.mesh.min_z >= R.heightmap.z_min - 1.0);
+        CHECK(m.mesh.max_z <= R.heightmap.z_max + 1.0);
+        tris += m.mesh.surface_triangles;
+        if (t->x == 1 && t->y == 1) CHECK(m.mesh.nodata_corners == 0);
+    }
+    // The AOI is 144x144 px (1.44 km @ 10 m) inside a 3x3 grid of 64 px tiles; the mesh covers
+    // exactly the valid pixels: 144*144 quads.
+    CHECK(tris == 144 * 144 * 2);
+    double z;
+    const Bounds e = R.extent();
+    CHECK(sample_height(R, 0.5 * (e.min_x + e.max_x), 0.5 * (e.min_y + e.max_y), z));
+    CHECK(z > R.heightmap.z_min);
+    CHECK(z < R.heightmap.z_max);
+}
