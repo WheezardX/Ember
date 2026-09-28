@@ -18,6 +18,7 @@ look = "viz/looks/terrain_default.toml"
 lod_refine_factor = 1.5
 vegetation = true
 veg_radius_m = 4000
+veg_near_radius_m = 500
 wind_strength = 6.0
 wind_from_deg = 250          # prevailing WSW
 exposure_bias = -2.0
@@ -76,6 +77,15 @@ pitch_deg = -10
 fov_deg = 50
 sun = "afternoon"
 
+[[bookmarks]]
+name = "wind_edge"           # locked-off camera on the clearing, looking at the stand edge;
+target_frac = [0.343, 0.840]  # sun behind the camera lights the stand face, crowns against sky
+distance_m = 200
+yaw_deg = 0
+pitch_deg = 9
+fov_deg = 45
+sun = "180,40"
+
 [[captures]]
 name = "forest_oblique"
 bookmark = "forest_oblique"
@@ -93,6 +103,13 @@ name = "density_flyover"
 bookmark = "fly_a"
 to_bookmark = "fly_b"
 frames = 450
+fps = 30
+
+[[orbits]]
+name = "wind_locked"         # HCP2 round 1: the camera doesn't move, only the wind does
+bookmark = "wind_edge"
+degrees = 0
+frames = 300
 fps = 30
 
 [[orbits]]

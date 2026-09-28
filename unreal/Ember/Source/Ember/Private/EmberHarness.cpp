@@ -64,6 +64,8 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetStringField(TEXT("look"), LookPath);
 	J->TryGetBoolField(TEXT("vegetation"), bVegetation);
 	J->TryGetNumberField(TEXT("veg_radius_m"), VegRadiusM);
+	J->TryGetNumberField(TEXT("veg_near_radius_m"), VegNearRadiusM);
+	J->TryGetNumberField(TEXT("veg_mid_min_height_m"), VegMidMinHeightM);
 	J->TryGetNumberField(TEXT("wind_strength"), WindStrength);
 	J->TryGetNumberField(TEXT("wind_from_deg"), WindFromDeg);
 	J->TryGetBoolField(TEXT("veg_lineup"), bVegLineup);
@@ -382,6 +384,8 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		{
 			Vegetation = GetWorld()->SpawnActor<AEmberVegetationActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
 			Vegetation->RadiusM = VegRadiusM;
+			Vegetation->NearRadiusM = VegNearRadiusM;
+			Vegetation->MidMinHeightM = VegMidMinHeightM;
 			if (!Vegetation->Init(Terrain, Err))
 			{
 				Finish(2, TEXT("vegetation: ") + Err);

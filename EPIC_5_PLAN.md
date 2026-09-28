@@ -282,8 +282,8 @@ Two-track note for agent teams: B (assets) and C (streaming) parallelize after H
   enforced in evaluate as systems land.
 - Order: Terrain species + stand structure -> B3 v2 trees -> vegetation tiers + budgets -> wind
   clip -> HCP2 re-bundle. D11 written alongside the tiers: `docs/viz/D11-lod-world-context.md`
-  (draft 2026-09-28, incl. Brad's modular-tree direction: trunk + 2-3 crown bands x 4-5 variants,
-  assembled per near-tier instance).
+  (draft 2026-09-28; tree source / variation strategy is OPEN: more generated variants, modular
+  crown sections (Brad's suggestion, not a decision), or SpeedTree / library trees via B4).
 
 ## 9. Notes for later epics
 

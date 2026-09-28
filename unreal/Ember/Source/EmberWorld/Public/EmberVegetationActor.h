@@ -41,6 +41,19 @@ public:
 	int32 UpdateStreaming(const FVector& CameraUE);
 
 	double RadiusM = 1500.0;
+	/**
+	 * Vegetation tiers (docs/viz/D11-lod-world-context.md section 2). Each streamed tile is split
+	 * into CellsPerSide^2 cells (320 m at 10 m / 128 px tiles); every cell picks its tier from its
+	 * distance to the camera (horizontal + height above ground): NEAR cells draw the full meshes
+	 * with wind (per instance within WindRadiusM) and live shadows; MID cells (to RadiusM) draw the
+	 * lite meshes (same trees, less foliage) with WPO off and cached shadows, and skip trees shorter
+	 * than MidMinHeightM (understory hidden under the canopy from afar). Past RadiusM the terrain's
+	 * canopy colouring carries the forest (far tier). A cell whose tier changes is rebuilt from the
+	 * tile's cached trees - no re-scatter.
+	 */
+	double NearRadiusM = 500.0;
+	double MidMinHeightM = 12.0;
+	double WindRadiusM = 250.0;    // near-tier trees sway only within this distance (per instance)
 
 	/** Wind sway (M_Veg WPO): crown-top sway in cm for a 10 m tree; compass dir wind comes FROM. */
 	void SetWind(double StrengthCm, double FromDeg);
@@ -60,6 +73,10 @@ public:
 	double ScatterMs = 0.0;       // cumulative CPU time in scatter + grounding
 	int64 UngroundedInstances = 0; // drawn at Terrain's z because the tile's surface failed (error)
 	int64 NoSurfaceInstances = 0;  // dropped: no rendered surface under them (outside the DEM mask)
+	int32 TilesNear = 0;           // tiles with at least one near cell
+	int32 CellsNear = 0;
+	int64 InstancesNear = 0;       // drawn with full meshes, wind and live shadows
+	int64 MidCulled = 0;           // understory skipped in mid-tier cells (currently loaded)
 	int32 GeneratedSpecies = 0;    // species drawn with a generated mesh (vs placeholder)
 	TMap<FString, int64> BySpecies;
 
@@ -71,13 +88,33 @@ public:
 	TArray<TObjectPtr<UStaticMeshComponent>> LineupParts;
 
 private:
-	struct FVegTile
+	static constexpr int32 CellsPerSide = 4;
+	enum class ETier : uint8 { None, Near, Mid };
+	struct FVegTree
 	{
+		FTransform Xf;
+		int32 Slot = 0;
+		int32 Variant = 0;
+		float HeightM = 0.f;
+	};
+	struct FVegCell
+	{
+		TArray<int32> Trees;                                // indices into FVegTile::Trees
 		TArray<UInstancedStaticMeshComponent*> Components;  // owned by this actor
 		TArray<int64> PerSpecies;
+		ETier Tier = ETier::None;
+		int64 Culled = 0;
+		double MinX = 0, MinY = 0, MaxX = 0, MaxY = 0;      // world metres
+	};
+	struct FVegTile
+	{
+		TArray<FVegTree> Trees;
+		FVegCell Cells[CellsPerSide * CellsPerSide];
 	};
 
 	bool LoadTile(const emberworld::TileEntry& Tile, FString& OutError);
+	void BuildCell(uint64 TileKey, int32 CellIndex, ETier Tier);
+	void ClearCell(FVegCell& Cell);
 	/** Instance transform for a tree drawn with SpeciesMesh[Mesh] at this height / crown radius / yaw. */
 	FTransform FitInstance(int32 Mesh, double HeightM, double CrownRadiusM, double YawRad, FVector Loc) const;
 	void UnloadTile(uint64 Key);
@@ -92,6 +129,7 @@ private:
 	TArray<int32> IndexToSlot;         // palette species index -> unique-key slot
 	TArray<int32> SlotFirstMesh;       // slot -> first of its variant meshes in SpeciesMesh
 	TArray<int32> SlotNumMeshes;       // slot -> number of variants
+	TArray<int32> SlotFirstLite;       // slot -> first mid-tier lite mesh, INDEX_NONE if none
 	TArray<double> SlotHeightLineupM;  // lineup: a mature tree of the species
 	TArray<double> SlotCrownRatio;
 	TMap<uint64, FVegTile> Tiles;

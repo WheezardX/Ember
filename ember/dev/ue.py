@@ -188,6 +188,8 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "look": _look_ref(s.scenario.look),
         "vegetation": s.scenario.vegetation,
         "veg_radius_m": s.scenario.veg_radius_m,
+        "veg_near_radius_m": s.scenario.veg_near_radius_m,
+        "veg_mid_min_height_m": s.scenario.veg_mid_min_height_m,
         "wind_strength": s.scenario.wind_strength,
         "wind_from_deg": s.scenario.wind_from_deg,
         "veg_lineup": s.scenario.veg_lineup,

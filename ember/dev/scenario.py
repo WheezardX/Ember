@@ -95,6 +95,8 @@ class ScenarioMeta(_Strict):
     look: str = "viz/looks/terrain_default.toml"  # repo-relative look file, or "clay"
     vegetation: bool = False    # C4: instance the Terrain-conformant scatter near the camera
     veg_radius_m: float = 1500.0
+    veg_near_radius_m: float = 500.0      # near tier: full trees, wind, live shadows (D11 s2)
+    veg_mid_min_height_m: float = 12.0    # mid tier skips understory shorter than this
     # Wind sway (M_Veg world-position offset). Strength = crown-top sway in cm for a 10 m tree
     # (grows with height^2); from = compass direction the wind blows FROM. Stills use a frozen
     # wind clock (t = 0) so goldens stay pixel-deterministic; orbits/flyovers run it at frame/fps.

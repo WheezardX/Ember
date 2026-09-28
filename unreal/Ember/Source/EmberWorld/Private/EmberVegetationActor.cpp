@@ -91,6 +91,7 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 	IndexToSlot.Reset();
 	SlotFirstMesh.Reset();
 	SlotNumMeshes.Reset();
+	SlotFirstLite.Reset();
 	SlotHeightLineupM.Reset();
 	SlotCrownRatio.Reset();
 	GeneratedSpecies = 0;
@@ -131,6 +132,19 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 				SlotFirstMesh.Add(SpeciesMesh.Num());
 				SlotNumMeshes.Add(Variants.Num());
 				for (UStaticMesh* M : Variants) SpeciesMesh.Add(M);
+				// Mid-tier lite meshes SM_<key>_v<N>_lite: the same trees with less foliage.
+				TArray<UStaticMesh*> Lite;
+				for (int32 V = 0; bGen && V < Variants.Num(); ++V)
+				{
+					UStaticMesh* L = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Ember/Generated/Veg/SM_%s_v%d_lite.SM_%s_v%d_lite"), *Key, V, *Key, V));
+					if (!L) break;
+					Lite.Add(L);
+				}
+				SlotFirstLite.Add(Lite.Num() == Variants.Num() ? SpeciesMesh.Num() : INDEX_NONE);
+				if (Lite.Num() == Variants.Num())
+				{
+					for (UStaticMesh* M : Lite) SpeciesMesh.Add(M);
+				}
 				UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, this);
 				if (!bGen)
 				{
@@ -159,10 +173,21 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 	emberworld::TiffResult H = emberworld::read_tiff(R.path(Tile.height_tif));
 	const bool bSurface = H && Surface.build(R, Tile, *H.raster);
 
-	const int32 NS = SpeciesKeys.Num();
-	const int32 NM = SpeciesMesh.Num();
-	TArray<TArray<FTransform>> PerMesh;
-	PerMesh.SetNum(NM);
+	FVegTile& VT = Tiles.Add(VegKey(Tile));
+	const double CW = Tile.content.width() / CellsPerSide;
+	const double CH = Tile.content.height() / CellsPerSide;
+	for (int32 Cy = 0; Cy < CellsPerSide; ++Cy)
+	{
+		for (int32 Cx = 0; Cx < CellsPerSide; ++Cx)
+		{
+			FVegCell& C = VT.Cells[Cy * CellsPerSide + Cx];
+			C.MinX = Tile.content.min_x + Cx * CW;
+			C.MaxX = C.MinX + CW;
+			C.MaxY = Tile.content.max_y - Cy * CH;
+			C.MinY = C.MaxY - CH;
+		}
+	}
+	VT.Trees.Reserve(TS.instances.size());
 	for (const emberworld::scatter::Instance& In : TS.instances)
 	{
 		if (In.species < 0 || In.species >= IndexToSlot.Num())
@@ -185,41 +210,102 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 		// Variant: a hash of the instance's position (render policy; Terrain's instance is untouched).
 		const uint64 VariantHash = emberworld::scatter::hash64({static_cast<uint64>(FMath::RoundToInt64(In.x * 100.0)),
 			static_cast<uint64>(FMath::RoundToInt64(In.y * 100.0)), 0x5EEDull});
-		const int32 Mesh = SlotFirstMesh[Slot] + static_cast<int32>(VariantHash % static_cast<uint64>(SlotNumMeshes[Slot]));
-		PerMesh[Mesh].Add(FitInstance(Mesh, In.height_m, In.radius_m, In.yaw_rad, Terrain->WorldToUE(In.x, In.y, Z)));
+		FVegTree T;
+		T.Slot = Slot;
+		T.Variant = static_cast<int32>(VariantHash % static_cast<uint64>(SlotNumMeshes[Slot]));
+		T.HeightM = static_cast<float>(In.height_m);
+		T.Xf = FitInstance(SlotFirstMesh[Slot] + T.Variant, In.height_m, In.radius_m, In.yaw_rad, Terrain->WorldToUE(In.x, In.y, Z));
+		const int32 Cx = FMath::Clamp(static_cast<int32>((In.x - Tile.content.min_x) / CW), 0, CellsPerSide - 1);
+		const int32 Cy = FMath::Clamp(static_cast<int32>((Tile.content.max_y - In.y) / CH), 0, CellsPerSide - 1);
+		VT.Cells[Cy * CellsPerSide + Cx].Trees.Add(VT.Trees.Add(MoveTemp(T)));
 	}
+	ScatterMs += (FPlatformTime::Seconds() - T0) * 1000.0;
+	return true;
+}
 
-	FVegTile& VT = Tiles.Add(VegKey(Tile));
-	VT.PerSpecies.Init(0, NS);
-	for (int32 Mi = 0; Mi < NM; ++Mi)
+void AEmberVegetationActor::ClearCell(FVegCell& Cell)
+{
+	for (UInstancedStaticMeshComponent* C : Cell.Components)
+	{
+		if (C)
+		{
+			C->DestroyComponent();
+		}
+	}
+	Cell.Components.Reset();
+	Cell.PerSpecies.Reset();
+	Cell.Culled = 0;
+	Cell.Tier = ETier::None;
+}
+
+void AEmberVegetationActor::BuildCell(uint64 TileKey, int32 CellIndex, ETier Tier)
+{
+	FVegTile& VT = Tiles[TileKey];
+	FVegCell& Cell = VT.Cells[CellIndex];
+	ClearCell(Cell);
+	Cell.Tier = Tier;
+	const int32 NS = SpeciesKeys.Num();
+	Cell.PerSpecies.Init(0, NS);
+	if (Tier == ETier::None)
+	{
+		return;
+	}
+	const bool bNear = Tier == ETier::Near;
+	TArray<TArray<FTransform>> PerMesh;
+	PerMesh.SetNum(SpeciesMesh.Num());
+	TArray<int32> MeshSlot;
+	MeshSlot.Init(0, SpeciesMesh.Num());
+	for (int32 Ti : Cell.Trees)
+	{
+		const FVegTree& T = VT.Trees[Ti];
+		if (!bNear && T.HeightM < MidMinHeightM)
+		{
+			++Cell.Culled;  // mid tier: understory under the canopy is invisible from this far
+			continue;
+		}
+		const int32 First = (!bNear && SlotFirstLite[T.Slot] != INDEX_NONE) ? SlotFirstLite[T.Slot] : SlotFirstMesh[T.Slot];
+		PerMesh[First + T.Variant].Add(T.Xf);
+		MeshSlot[First + T.Variant] = T.Slot;
+	}
+	for (int32 Mi = 0; Mi < PerMesh.Num(); ++Mi)
 	{
 		if (PerMesh[Mi].Num() == 0)
 		{
 			continue;
 		}
-		int32 S = 0;
-		while (S + 1 < NS && SlotFirstMesh[S + 1] <= Mi) ++S;
+		const int32 S = MeshSlot[Mi];
 		UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
 		C->SetStaticMesh(SpeciesMesh[Mi]);
 		C->SetMaterial(0, SpeciesMaterial[S]);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetCastShadow(true);
 		C->SetMobility(EComponentMobility::Movable);
-		C->InstancingRandomSeed = static_cast<int32>((VegKey(Tile) * 31 + Mi) & 0x7FFFFFFF) | 1;  // wind phase: deterministic
-		// Wind WPO moves the trees: without this the virtual shadow map cache keeps stale pages
-		// and crowns get saw-toothed self-shadows (seen in S_forest_teanaway ground_ridge).
-		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Always;
+		C->InstancingRandomSeed = static_cast<int32>((TileKey * 31 + CellIndex * 977 + Mi) & 0x7FFFFFFF) | 1;  // deterministic
+		if (bNear)
+		{
+			// Wind WPO moves the trees: without this the virtual shadow map cache keeps stale pages
+			// and crowns get saw-toothed self-shadows (seen in S_forest_teanaway ground_ridge).
+			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Always;
+			// Nanite evaluates WPO per instance only within this distance: swaying trees are the
+			// programmable (slow) raster path, and sway is invisible past a few hundred metres.
+			C->SetWorldPositionOffsetDisableDistance(static_cast<int32>(WindRadiusM * 100.0));
+		}
+		else
+		{
+			// Mid tier: no wind (sway is sub-pixel this far out), so shadows can stay cached - the
+			// per-frame VSM redraw of every tree was half the forest's GPU cost.
+			C->SetEvaluateWorldPositionOffset(false);
+			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+		}
 		// Trees stay out of the distance-field scene: ~1.4 M DF objects cost ~0.9 GB VRAM (4.23 -> 3.32 GB
 		// at the S_tq_forest perf pose, D8 budget 4 GB). Lumen still sees them via screen traces.
 		C->bAffectDistanceFieldLighting = false;
 		C->SetupAttachment(RootComponent);
 		C->RegisterComponent();
 		C->AddInstances(PerMesh[Mi], /*bShouldReturnIndices=*/false, /*bWorldSpace=*/true);
-		VT.Components.Add(C);
-		VT.PerSpecies[S] += PerMesh[Mi].Num();
+		Cell.Components.Add(C);
+		Cell.PerSpecies[S] += PerMesh[Mi].Num();
 	}
-	ScatterMs += (FPlatformTime::Seconds() - T0) * 1000.0;
-	return true;
 }
 
 FTransform AEmberVegetationActor::FitInstance(int32 Mesh, double HeightM, double CrownRadiusM, double YawRad, FVector Loc) const
@@ -259,11 +345,11 @@ void AEmberVegetationActor::SetWindTime(double Seconds)
 void AEmberVegetationActor::SpawnLineup(double WorldX, double WorldY, double RowDeg)
 {
 	bLineup = true;
-	for (const auto& KV : Tiles)
+	for (auto& KV : Tiles)
 	{
-		for (UInstancedStaticMeshComponent* C : KV.Value.Components)
+		for (FVegCell& C : KV.Value.Cells)
 		{
-			if (C) C->DestroyComponent();
+			ClearCell(C);
 		}
 	}
 	Tiles.Reset();
@@ -318,12 +404,9 @@ void AEmberVegetationActor::UnloadTile(uint64 Key)
 {
 	if (FVegTile* VT = Tiles.Find(Key))
 	{
-		for (UInstancedStaticMeshComponent* C : VT->Components)
+		for (FVegCell& C : VT->Cells)
 		{
-			if (C)
-			{
-				C->DestroyComponent();
-			}
+			ClearCell(C);
 		}
 		Tiles.Remove(Key);
 	}
@@ -333,14 +416,28 @@ void AEmberVegetationActor::RecomputeStats()
 {
 	InstancesTotal = 0;
 	TilesLoaded = Tiles.Num();
+	TilesNear = 0;
+	CellsNear = 0;
+	InstancesNear = 0;
+	MidCulled = 0;
 	BySpecies.Reset();
 	for (const auto& KV : Tiles)
 	{
-		for (int32 S = 0; S < KV.Value.PerSpecies.Num(); ++S)
+		bool bAnyNear = false;
+		for (const FVegCell& C : KV.Value.Cells)
 		{
-			InstancesTotal += KV.Value.PerSpecies[S];
-			BySpecies.FindOrAdd(SpeciesKeys[S]) += KV.Value.PerSpecies[S];
+			const bool bNear = C.Tier == ETier::Near;
+			bAnyNear |= bNear;
+			CellsNear += bNear ? 1 : 0;
+			MidCulled += C.Culled;
+			for (int32 S = 0; S < C.PerSpecies.Num(); ++S)
+			{
+				InstancesTotal += C.PerSpecies[S];
+				InstancesNear += bNear ? C.PerSpecies[S] : 0;
+				BySpecies.FindOrAdd(SpeciesKeys[S]) += C.PerSpecies[S];
+			}
 		}
+		TilesNear += bAnyNear ? 1 : 0;
 	}
 }
 
@@ -354,13 +451,22 @@ int32 AEmberVegetationActor::UpdateStreaming(const FVector& CameraUE)
 	const emberworld::Frame& F = Terrain->GetFrame();
 	const double Wx = F.anchor_x + CameraUE.X / 100.0;
 	const double Wy = F.anchor_y - CameraUE.Y / 100.0;
+	// Height above the ground under the camera: trees right below an aerial camera are not near.
+	double Gz = 0.0;
+	const double CamZ = Terrain->UEToWorldZ(CameraUE.Z);
+	const double Hag = Terrain->GroundHeightAt(Wx, Wy, Gz) ? FMath::Max(0.0, CamZ - Gz) : 0.0;
+	auto Dist = [&](double MinX, double MinY, double MaxX, double MaxY)
+	{
+		const double Dx = FMath::Max3(MinX - Wx, 0.0, Wx - MaxX);
+		const double Dy = FMath::Max3(MinY - Wy, 0.0, Wy - MaxY);
+		return FMath::Sqrt(Dx * Dx + Dy * Dy + Hag * Hag);
+	};
+
 	TSet<uint64> Want;
 	TArray<const emberworld::TileEntry*> WantTiles;
 	for (const emberworld::TileEntry* T : R.tiles_at(R.finest_lod()))
 	{
-		const double Dx = FMath::Max3(T->content.min_x - Wx, 0.0, Wx - T->content.max_x);
-		const double Dy = FMath::Max3(T->content.min_y - Wy, 0.0, Wy - T->content.max_y);
-		if (FMath::Sqrt(Dx * Dx + Dy * Dy) <= RadiusM)
+		if (Dist(T->content.min_x, T->content.min_y, T->content.max_x, T->content.max_y) <= RadiusM)
 		{
 			Want.Add(VegKey(*T));
 			WantTiles.Add(T);
@@ -382,7 +488,8 @@ int32 AEmberVegetationActor::UpdateStreaming(const FVector& CameraUE)
 	FString Err;
 	for (const emberworld::TileEntry* T : WantTiles)
 	{
-		if (!Tiles.Contains(VegKey(*T)))
+		const uint64 Key = VegKey(*T);
+		if (!Tiles.Contains(Key))
 		{
 			if (!LoadTile(*T, Err))
 			{
@@ -391,11 +498,24 @@ int32 AEmberVegetationActor::UpdateStreaming(const FVector& CameraUE)
 			}
 			++Changes;
 		}
+		FVegTile& VT = Tiles[Key];
+		for (int32 Ci = 0; Ci < CellsPerSide * CellsPerSide; ++Ci)
+		{
+			const FVegCell& C = VT.Cells[Ci];
+			const double D = Dist(C.MinX, C.MinY, C.MaxX, C.MaxY);
+			const ETier Tier = D <= NearRadiusM ? ETier::Near : (D <= RadiusM ? ETier::Mid : ETier::None);
+			if (Tier != C.Tier || (Tier != ETier::None && C.PerSpecies.Num() == 0))
+			{
+				BuildCell(Key, Ci, Tier);
+				++Changes;
+			}
+		}
 	}
 	if (Changes)
 	{
 		RecomputeStats();
-		UE_LOG(LogEmberVeg, Log, TEXT("vegetation: %d tiles, %lld instances (%.0f ms scatter total)"), TilesLoaded, InstancesTotal, ScatterMs);
+		UE_LOG(LogEmberVeg, Log, TEXT("vegetation: %d tiles, %d near cells, %lld instances (%lld near, %lld understory skipped in mid) (%.0f ms scatter total)"),
+			TilesLoaded, CellsNear, InstancesTotal, InstancesNear, MidCulled, ScatterMs);
 	}
 	return Changes;
 }

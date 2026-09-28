@@ -370,3 +370,23 @@ def test_manifest_lists_every_treegen_asset():
     veg = next(g for g in m["generator"] if g["script"] == "veg_species.py")
     assert veg["outputs"] == [f"/Game/Ember/Generated/{n}" for n in treegen.asset_names()]
     assert veg["depends"] == ["treegen.py"]
+
+
+def test_treegen_lite_keeps_the_tree_and_drops_foliage():
+    """Mid-tier lite meshes: same trunk and branches (so no pop at the tier boundary), fewer
+    foliage triangles, the same crown extent within 10 %."""
+    import sys
+    repo = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(repo / "assets" / "generators"))
+    import treegen
+
+    for key in treegen.SPECIES:
+        if not treegen.has_lite(key):
+            continue
+        full, lite = treegen.build(key, 1), treegen.build(key, 1, treegen.LITE_DETAIL)
+        wood = lambda m: [v for v, c in zip(m.verts, m.cols, strict=True) if c[3] == 0.0]  # noqa: E731
+        assert wood(full) == wood(lite), key                    # identical trunk + branches
+        assert len(lite.tris) < 0.7 * len(full.tris), key
+        (flo, fhi), (llo, lhi) = full.bounds(), lite.bounds()
+        for ax in (0, 1, 2):
+            assert abs((lhi[ax] - llo[ax]) - (fhi[ax] - flo[ax])) <= 0.1 * (fhi[ax] - flo[ax]), key

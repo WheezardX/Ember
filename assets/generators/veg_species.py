@@ -5,6 +5,8 @@
                                                       wind WPO (sway + per-tree lean + twig flutter)
     /Game/Ember/Generated/Veg/MI_Veg_<key>            per species: Color / TrunkColor (treegen.COLORS)
     /Game/Ember/Generated/Veg/SM_<key>_v<N>           per species x treegen.VARIANTS: Nanite mesh
+    /Game/Ember/Generated/Veg/SM_<key>_v<N>_lite      trees only: the same tree with ~45 % of the
+                                                      foliage, for the mid vegetation tier
 
 Geometry comes from treegen.py (pure Python growth-form models: trunk, branch whorls, droop,
 needle sprays / leaf clusters as opaque geometry) and is loaded with append_buffers_to_mesh.
@@ -202,11 +204,11 @@ def build_instance(key, master):
 
 
 # ------------------------------------------------------------------ meshes
-def build_mesh(key, variant, mi):
-    name = f"SM_{key}_v{variant}"
+def build_mesh(key, variant, mi, lite=False):
+    name = f"SM_{key}_v{variant}" + ("_lite" if lite else "")
     full = f"{VEG}/{name}"
     fresh(full)
-    tm = treegen.build(key, variant)
+    tm = treegen.build(key, variant, treegen.LITE_DETAIL if lite else 1.0)
     buf = unreal.GeometryScriptSimpleMeshBuffers()
     buf.set_editor_property("vertices", [unreal.Vector(*p) for p in tm.verts])
     buf.set_editor_property("triangles", [unreal.IntVector(*t) for t in tm.tris])
@@ -257,6 +259,8 @@ for k in treegen.SPECIES:
     mi = build_instance(k, master)
     for v in range(treegen.VARIANTS):
         build_mesh(k, v, mi)
+        if treegen.has_lite(k):  # mid tier (D11 section 2): same tree, less foliage
+            build_mesh(k, v, mi, lite=True)
 
 # Verify what the renderer depends on survived into the built assets.
 for k in treegen.SPECIES:

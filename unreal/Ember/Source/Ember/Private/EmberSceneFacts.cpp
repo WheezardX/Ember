@@ -203,6 +203,11 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		Inst->SetNumberField(TEXT("scatter_ms"), It->ScatterMs);
 		Inst->SetNumberField(TEXT("ungrounded"), static_cast<double>(It->UngroundedInstances));
 		Inst->SetNumberField(TEXT("no_surface"), static_cast<double>(It->NoSurfaceInstances));
+		Inst->SetNumberField(TEXT("tiles_near"), It->TilesNear);
+		Inst->SetNumberField(TEXT("cells_near"), It->CellsNear);
+		Inst->SetNumberField(TEXT("near"), static_cast<double>(It->InstancesNear));
+		Inst->SetNumberField(TEXT("near_radius_m"), It->NearRadiusM);
+		Inst->SetNumberField(TEXT("mid_culled"), static_cast<double>(It->MidCulled));
 		Inst->SetNumberField(TEXT("generated_species"), It->GeneratedSpecies);
 		for (const auto& KV : It->BySpecies)
 		{

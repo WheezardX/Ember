@@ -206,9 +206,16 @@ class Conifer:
     twig_order: int = 1        # 2 = secondary twigs off each branch (denser crowns)
 
 
-def conifer(p: Conifer) -> Mesh:
+def conifer(p: Conifer, detail: float = 1.0) -> Mesh:
+    """`detail` < 1 keeps every trunk and branch (same seeds, same silhouette) and scales only
+    the foliage count - the mid-tier "lite" mesh."""
     rng = random.Random(p.seed)
     m = Mesh()
+    fol_n = [0]
+
+    def frng() -> random.Random:  # foliage stream per branch: independent of foliage count
+        fol_n[0] += 1
+        return random.Random(p.seed * 7919 + fol_n[0])
     top = H
     # trunk: tapered, flared base, slightly wavy; hemlock leaders nod at the top
     pts, radii = [], []
@@ -250,7 +257,7 @@ def conifer(p: Conifer) -> Mesh:
             path = curve(base, d0, L, 4, p.droop * rng.uniform(0.7, 1.3), p.upturn)
             r0 = max(0.25, 0.018 * L)
             tube(m, path, [r0 * (1.0 - 0.8 * k / 4) for k in range(5)], 4, 0.75)
-            _foliage_along(m, rng, p, path, L, t)
+            _foliage_along(m, frng(), p, path, L, t, detail)
             if p.twig_order > 1 and L > 0.05 * H:
                 for j in range(2):
                     s = rng.uniform(0.3, 0.8)
@@ -260,17 +267,17 @@ def conifer(p: Conifer) -> Mesh:
                                   mul(perp(d0), 0.9 * (1 if j else -1))))
                     tp = curve(b0, bd, L * 0.4, 2, p.droop, p.upturn)
                     tube(m, tp, [r0 * 0.4, r0 * 0.25, r0 * 0.1], 3, 0.75)
-                    _foliage_along(m, rng, p, tp, L * 0.4, t)
+                    _foliage_along(m, frng(), p, tp, L * 0.4, t, detail)
     # the leader's own foliage
-    _foliage_along(m, rng, p, [trunk_at(top * 0.9), pts[-1]], 0.1 * H, 1.0)
+    _foliage_along(m, frng(), p, [trunk_at(top * 0.9), pts[-1]], 0.1 * H, 1.0, detail)
     return m
 
 
 def _foliage_along(m: Mesh, rng: random.Random, p: Conifer, path: list[Vec], length: float,
-                   t_crown: float) -> None:
+                   t_crown: float, detail: float = 1.0) -> None:
     shade = 0.72 + 0.28 * t_crown  # lower crown is shaded
     if p.tufts:  # pines: dense bottle-brush tufts of long needles on the outer branch
-        for _ in range(7):
+        for _ in range(max(4, round(7 * detail))):
             s = rng.uniform(0.55, 1.0)
             i = min(len(path) - 2, int(s * (len(path) - 1)))
             f = s * (len(path) - 1) - i
@@ -282,7 +289,7 @@ def _foliage_along(m: Mesh, rng: random.Random, p: Conifer, path: list[Vec], len
                 spray(m, rng, c, nd, p.spray_len * H * 0.8, p.spray_width * H * 0.5, 3,
                       shade, 0.05, 0.004 * H)
         return
-    n = max(1, int(1.25 * p.sprays_per_m * length / 100.0 * rng.uniform(0.8, 1.2)))
+    n = max(1, int(1.25 * detail * p.sprays_per_m * length / 100.0 * rng.uniform(0.8, 1.2)))
     for _ in range(n):
         if rng.random() > p.sparse:
             continue
@@ -293,9 +300,10 @@ def _foliage_along(m: Mesh, rng: random.Random, p: Conifer, path: list[Vec], len
         along = norm(sub(path[i + 1], path[i]))
         out = norm(add(along, mul(norm(cross(along, (0.0, 0.0, 1.0))),
                                   rng.choice((-1.0, 1.0)) * rng.uniform(0.3, 1.1))))
+        # lite sprays: fewer, wider side twigs so the crown keeps its coverage
         spray(m, rng, c, out, p.spray_len * H * rng.uniform(0.7, 1.2),
-              p.spray_width * H * rng.uniform(0.8, 1.2), 5, shade, p.spray_droop,
-              0.003 * H)
+              p.spray_width * H * rng.uniform(0.8, 1.2) * (1.0 + 0.4 * (1.0 - detail)),
+              5 if detail >= 0.99 else 3, shade, p.spray_droop, 0.003 * H * (2.0 - detail))
 
 
 # --------------------------------------------------------------------------- broadleaf
@@ -315,9 +323,12 @@ class Broadleaf:
     stem_lean_deg: float = 0.0
 
 
-def broadleaf(p: Broadleaf) -> Mesh:
+def broadleaf(p: Broadleaf, detail: float = 1.0) -> Mesh:
     rng = random.Random(p.seed)
+    lrng = random.Random(p.seed * 7919)  # leaves: independent of leaf count
     m = Mesh()
+    nleaf = max(4, round(p.leaves * detail))
+    lscale = 1.0 + 0.6 * (1.0 - detail)  # fewer, bigger leaves keep coverage
 
     def branch(start: Vec, d: Vec, length: float, radius: float, order: int) -> None:
         end = add(start, mul(d, length))
@@ -326,7 +337,7 @@ def broadleaf(p: Broadleaf) -> Mesh:
         tube(m, [start, mid, end], [radius, radius * 0.75, radius * 0.5], 5 if order == 0 else 4,
              0.8)
         if order >= p.orders:
-            leaf_cluster(m, rng, end, p.cluster_r * H, p.leaves, p.leaf_len * H,
+            leaf_cluster(m, lrng, end, p.cluster_r * H, nleaf, p.leaf_len * H * lscale,
                          0.7 + 0.3 * min(1.0, end[2] / H))
             return
         for _ in range(p.children):
@@ -334,8 +345,9 @@ def broadleaf(p: Broadleaf) -> Mesh:
             nd = norm(add(mul(d, 0.8), direction(az, math.radians(p.ascent_deg))))
             branch(end, nd, length * rng.uniform(0.55, 0.75), radius * 0.6, order + 1)
             if order >= 1 and rng.random() < 0.6:  # leaves along inner branches too
-                leaf_cluster(m, rng, add(start, mul(d, length * rng.uniform(0.4, 0.9))),
-                             p.cluster_r * H * 0.7, p.leaves // 2, p.leaf_len * H, 0.65)
+                leaf_cluster(m, lrng, add(start, mul(d, length * rng.uniform(0.4, 0.9))),
+                             p.cluster_r * H * 0.7, max(2, nleaf // 2), p.leaf_len * H * lscale,
+                             0.65)
 
     for s_i in range(p.stems):
         az = 2 * math.pi * s_i / p.stems + rng.uniform(-0.3, 0.3)
@@ -358,7 +370,8 @@ def broadleaf(p: Broadleaf) -> Mesh:
                 nd = norm(add(mul(d, 0.35), direction(az2, math.radians(p.ascent_deg))))
                 branch(at, nd, reach * rng.uniform(0.7, 1.0),
                        p.trunk_radius * H * 0.35 * (1.0 - 0.6 * t), 1)
-        leaf_cluster(m, rng, top, p.cluster_r * H * 1.5, p.leaves * 2, p.leaf_len * H, 1.0)
+        leaf_cluster(m, lrng, top, p.cluster_r * H * 1.5, nleaf * 2, p.leaf_len * H * lscale,
+                     1.0)
     return m
 
 
@@ -482,16 +495,19 @@ def _vary(value: float, rng: random.Random, spread: float) -> float:
     return value * (1.0 + rng.uniform(-spread, spread))
 
 
-def build(key: str, variant: int = 0) -> Mesh:
+LITE_DETAIL = 0.45  # mid-tier meshes: same trees, under half the foliage
+
+
+def build(key: str, variant: int = 0, detail: float = 1.0) -> Mesh:
     """Variant 0 is the species' reference form; others jitter it within natural ranges
     (crown width, whorl count, droop, crown base) and re-seed every random choice. Nothing
     goes below the ground plane (the renderer stands each mesh on its lowest point)."""
-    m = _build(key, variant)
+    m = _build(key, variant, detail)
     m.verts = [(x, y, max(0.0, z)) for (x, y, z) in m.verts]
     return m
 
 
-def _build(key: str, variant: int) -> Mesh:
+def _build(key: str, variant: int, detail: float) -> Mesh:
     rng = random.Random(1009 * (SPECIES.index(key) + 1) + 7919 * variant)
     if key in CONIFERS:
         p = CONIFERS[key]
@@ -502,17 +518,22 @@ def _build(key: str, variant: int) -> Mesh:
                         whorls=max(6, p.whorls + rng.randint(-2, 2)),
                         droop=_vary(p.droop, rng, 0.3), upturn=_vary(p.upturn, rng, 0.3),
                         bulge=max(0.0, p.bulge + rng.uniform(-0.1, 0.15)))
-        return conifer(p)
+        return conifer(p, detail)
     if key in BROADLEAF:
         p = BROADLEAF[key]
         if variant:
             p = replace(p, seed=p.seed + 101 * variant, bole=_vary(p.bole, rng, 0.2),
                         spread=_vary(p.spread, rng, 0.15),
                         ascent_deg=p.ascent_deg + rng.uniform(-8, 8))
-        return broadleaf(p)
+        return broadleaf(p, detail)
     if key in LOW_PLANTS:
         return LOW_PLANTS[key](41 + SPECIES.index(key) + 101 * variant)
     raise KeyError(f"no growth form for species {key!r}")
+
+
+def has_lite(key: str) -> bool:
+    """Trees get a mid-tier lite mesh; shrubs and grass are culled in the mid tier anyway."""
+    return key in CONIFERS or key in BROADLEAF
 
 
 def asset_names() -> list[str]:
@@ -521,4 +542,6 @@ def asset_names() -> list[str]:
     for k in SPECIES:
         out.append(f"Veg/MI_Veg_{k}")
         out += [f"Veg/SM_{k}_v{v}" for v in range(VARIANTS)]
+        if has_lite(k):
+            out += [f"Veg/SM_{k}_v{v}_lite" for v in range(VARIANTS)]
     return out

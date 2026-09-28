@@ -28,6 +28,8 @@ nor a VLM ever has to count from pixels.
   },
   "instances": { "total": 0, "enabled": true, "tiles": 0, "radius_m": 4000,
                  "scatter_ms": 0.0, "ungrounded": 0, "no_surface": 0,
+                 "near": 0, "near_radius_m": 500, "cells_near": 0, "tiles_near": 0,
+                 "mid_culled": 0,
                  "generated_species": 5, "by_species": {} },  // vegetation (world.md)
   "environment": { "sun": "noon", "sun_azimuth_deg": 180, "sun_elevation_deg": 58,
                    "exposure_bias": -2 },

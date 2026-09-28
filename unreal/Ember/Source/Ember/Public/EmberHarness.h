@@ -72,6 +72,8 @@ private:
 	FString LookPath = TEXT("clay");
 	bool bVegetation = false;
 	double VegRadiusM = 1500.0;
+	double VegNearRadiusM = 500.0;
+	double VegMidMinHeightM = 12.0;
 	double WindStrength = 6.0;
 	double WindFromDeg = 270.0;
 	bool bVegLineup = false;

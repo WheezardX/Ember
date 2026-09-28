@@ -46,6 +46,8 @@ public:
 
 	/** Region-CRS metres -> UE world location. */
 	FVector WorldToUE(double X, double Y, double Z) const;
+	/** Inverse of WorldToUE for heights: UE Z (cm) -> region-CRS metres. */
+	double UEToWorldZ(double UEZ) const { return Frame.anchor_z + UEZ / 100.0; }
 
 	/** Base colour for the clay material. */
 	void SetBaseColor(const FLinearColor& Color);

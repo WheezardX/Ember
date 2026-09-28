@@ -85,12 +85,13 @@ stair-step shorelines up close. U7 (hydro-flattening in Terrain) remains the dat
   stay deterministic), orbits/flyovers run t = frame / fps, the perf window runs real time.
   Tree components use `ShadowCacheInvalidationBehavior = Always` (moving WPO + cached shadow
   pages gave saw-toothed self-shadows).
-* **Streaming:** `AEmberVegetationActor` instances finest tiles within `veg_radius_m` of the
-  camera, one ISM per species key per tile (a key in several palette groups shares one slot; Nanite culls; HISM's CPU cluster tree cost 4× the load
-  time for nothing). Trees are kept out of the distance-field scene
-  (`bAffectDistanceFieldLighting = false`, ~0.9 GB VRAM at 1.45 M instances).
-  Facts: `instances.total`, `by_species`, `generated_species`, `ungrounded`, `no_surface`,
-  `scatter_ms`.
+* **Streaming and tiers:** `AEmberVegetationActor` scatters finest tiles within `veg_radius_m`
+  of the camera and caches their trees; each tile's 4 x 4 cells are near (full meshes, wind, live
+  shadows), mid (lite meshes, no wind, cached shadows, understory skipped) or unloaded, by
+  distance - see `D11-lod-world-context.md` §2. One ISM per mesh per cell; Nanite culls. Trees
+  are kept out of the distance-field scene (`bAffectDistanceFieldLighting = false`, ~0.9 GB VRAM
+  at 1.45 M instances). Facts: `instances.total`, `near`, `cells_near`, `tiles_near`,
+  `mid_culled`, `by_species`, `generated_species`, `ungrounded`, `no_surface`, `scatter_ms`.
 * **Silhouettes:** `veg_lineup = true` replaces the scatter with one tree per species at its
   palette mid height in a row across the first capture's view, plus a 1.8 m post
   (`S_veg_lineup`).

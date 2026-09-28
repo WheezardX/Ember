@@ -12,6 +12,7 @@ fixed_lod = 14
 look = "viz/looks/terrain_default.toml"
 vegetation = true
 veg_radius_m = 5000   # the whole 1.44 km region
+veg_near_radius_m = 5000   # all near: the render-time conformance check counts every tree
 exposure_bias = -2.0
 
 [[bookmarks]]
