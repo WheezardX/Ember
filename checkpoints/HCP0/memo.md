@@ -56,7 +56,9 @@ the renderer is deterministic on this runner, so any diff means something change
   Console: `Ember.DumpFacts`.
 - **A4:** `docs/viz/runner.md` plus `ember-dev doctor`. Provisioning required one addition:
   the .NET Framework 4.8 SDK, since UBT refuses to build the editor target without it (UAC
-  approved during the session).
+  approved during the session). Correction after sign-off: the numpy/BLAS "env crash" noted
+  during Phase 0 is not an env bug; the env's Python was being run without conda activation
+  (`Library\bin` missing from PATH). The harness stays BLAS-free regardless.
 - **C1/C2 minimal:** `worldcore/`, engine-free C++20 (tile-store manifest v2, uncompressed
   GeoTIFF reader, heightfield→mesh with vertices on pixel corners, so same-LOD seams are
   bit-exact by construction). It's compiled into the UE module, with 8 doctest cases / 326

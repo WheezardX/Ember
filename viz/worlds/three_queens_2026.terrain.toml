@@ -1,0 +1,64 @@
+# Render world for the Three Queens 2026 fire (EPIC_5_PLAN D10: Phase 1 terrain/forest dataset).
+# A Terrain pipeline config: run it with Terrain's CLI into Terrain's store, from the Ember repo root:
+#
+#   terrain run --config viz/worlds/three_queens_2026.terrain.toml --store ../Terrain/store
+#
+# The AOI is the incident's (fire perimeter 2026-09-08 + buffer), copied from
+# store/incidents/dfa477f2-.../aoi.geojson so the bake is reproducible without the ember store.
+
+[project]
+name = "three_queens_2026"
+crs  = "auto-utm"
+
+[aoi]
+type    = "geojson"
+geojson = "viz/worlds/three_queens_2026.aoi.geojson"
+crs     = "EPSG:4326"
+
+[dem]
+profile        = "game"              # 10 m
+sources        = ["3dep-ept", "copernicus-30m"]
+vertical_datum = "navd88"
+fill_voids     = true
+
+[dem.thinning]
+points_per_cell = 4
+
+[tiling]
+scheme     = "quadtree"
+tile_px    = 128                     # 1.28 km content tiles at 10 m; ~200 tiles at the finest LOD
+overlap_px = 8
+base_lod   = 14
+num_lods   = 4
+
+[outputs.heightmap]
+enabled = true
+format  = "png16"
+
+[outputs.gltf_tiles]
+enabled = false                      # the renderer builds meshes from height.tif (worldcore)
+
+[outputs.gltf]
+enabled = false
+
+[outputs.stl]
+enabled = false
+
+[fuels]
+enabled = true
+
+[canopy]
+enabled = true
+
+[season]
+enabled = true
+window  = ["2025-07-01", "2025-08-31"]   # the summer BEFORE the fire: pre-burn, snow-free vegetation
+
+[vegetation]
+enabled                = true
+palette                = "packs/palettes/pnw_conifer.toml"
+world_seed             = 1337
+layer_version          = 1
+candidates_per_cell    = 4
+max_instances_per_tile = 20000000     # the whole AOI is one scatter tile upstream; never truncate
+preview                = false

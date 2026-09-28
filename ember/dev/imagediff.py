@@ -34,8 +34,9 @@ def golden_image(capture: Path) -> Image.Image:
 
 def _luma(im: Image.Image) -> np.ndarray:
     rgb = np.asarray(im.convert("RGB"), dtype=np.float64)
-    # Elementwise, not `rgb @ w`: matmul goes through BLAS, whose DLL delay-load crashes the
-    # terrain env on this runner (0xc06d007f). Nothing here needs BLAS.
+    # Elementwise, not `rgb @ w`: matmul needs the BLAS DLL, which only loads when the conda
+    # env is activated (Library\bin on PATH); calling the env's python.exe bare crashes with
+    # 0xc06d007f. Nothing here needs BLAS, so stay robust to an unactivated env.
     return 0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]
 
 

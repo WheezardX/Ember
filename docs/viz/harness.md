@@ -119,7 +119,9 @@ deciding the change is intended; say why in the commit message. Goldens are comm
 
 * **Facts can pass while the picture is wrong.** The first HCP0 run had correct tile and
   triangle counts and rendered only skirts (inverted winding). Always look at the sheet.
-* The terrain env's numpy BLAS crashes on `@` (Windows delay-load 0xc06d007f). Harness code
-  avoids BLAS; keep it that way.
+* Run from an **activated** terrain env (`conda activate terrain`). Calling the env's
+  `python.exe`/`ember-dev.exe` bare leaves `<env>\Library\bin` off PATH and anything using BLAS
+  (numpy `@`, terrain's reprojection) dies silently with 0xc06d007f / exit 127. Agents: prefix
+  `PATH=<env>/Library/bin:<env>:<env>/Scripts:$PATH`.
 * Run-scenario needs the editor target built (`ember-dev build`); uncooked `-game` loads the
   editor-built project modules.
