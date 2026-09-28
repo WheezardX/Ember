@@ -1,0 +1,169 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_forest_teanaway",
+  "run_dir": "runs\\viz\\S_forest_teanaway\\20260928-092754",
+  "evaluated_utc": "2026-09-28T16:45:14Z",
+  "pass": true,
+  "summary": {
+    "captures": 2,
+    "match": 2,
+    "new": 0,
+    "mismatch": 0,
+    "missing": 0,
+    "checks": 8,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "oblique_nw",
+      "bookmark": "oblique_nw",
+      "image": "captures\\oblique_nw.png",
+      "golden": "viz\\goldens\\S_forest_teanaway\\oblique_nw.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\oblique_nw.png"
+    },
+    {
+      "name": "ground_ridge",
+      "bookmark": "ground_ridge",
+      "image": "captures\\ground_ridge.png",
+      "golden": "viz\\goldens\\S_forest_teanaway\\ground_ridge.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\ground_ridge.png"
+    }
+  ],
+  "orbits": [],
+  "checks": [
+    {
+      "kind": "assert",
+      "name": "instances.total",
+      "capture": "oblique_nw",
+      "ok": true,
+      "actual": 74595,
+      "expected": "== 74595"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.ungrounded",
+      "capture": "oblique_nw",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.generated_species",
+      "capture": "oblique_nw",
+      "ok": true,
+      "actual": 5,
+      "expected": "== 5"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.total",
+      "capture": "ground_ridge",
+      "ok": true,
+      "actual": 74595,
+      "expected": "== 74595"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.ungrounded",
+      "capture": "ground_ridge",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.generated_species",
+      "capture": "ground_ridge",
+      "ok": true,
+      "actual": 5,
+      "expected": "== 5"
+    },
+    {
+      "kind": "budget",
+      "name": "perf__frame_ms_p95_max",
+      "capture": "perf",
+      "ok": true,
+      "actual": 10.113801956176758,
+      "expected": "<= 16.7"
+    },
+    {
+      "kind": "budget",
+      "name": "render__vram_mb_max",
+      "capture": "perf",
+      "ok": true,
+      "actual": 2837.6953125,
+      "expected": "<= 4096"
+    }
+  ],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_forest_teanaway",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_forest_teanaway.toml",
+    "world": "C:\\Projects\\Terrain\\store\\teanaway_dev",
+    "started": "20260928-092754",
+    "seconds": 14.4,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "e68497f+dirty",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_forest_teanaway/20260928-092754/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_forest_teanaway\\20260928-092754\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ],
+    "orbits": []
+  }
+}

@@ -1,0 +1,149 @@
+{
+ "format": "ember-forest-report",
+ "version": 1,
+ "region": "three_queens_2026",
+ "palette": "pnw_conifer",
+ "instances": 5861933,
+ "aoi_ha": 28194.2,
+ "instances_per_ha": 207.9,
+ "outside_dem_mask": 24074,
+ "species": [
+  {
+   "key": "pseudotsuga_menziesii",
+   "group": "conifer_forest",
+   "count": 2663659,
+   "share_of_group": 0.4547,
+   "expected_share": 0.4545,
+   "height_m": {
+    "mean": 34.16,
+    "p10": 19.8,
+    "p90": 49.22
+   }
+  },
+  {
+   "key": "pinus_ponderosa",
+   "group": "conifer_forest",
+   "count": 2130101,
+   "share_of_group": 0.3637,
+   "expected_share": 0.3636,
+   "height_m": {
+    "mean": 32.97,
+    "p10": 19.75,
+    "p90": 45.0
+   }
+  },
+  {
+   "key": "abies_grandis",
+   "group": "conifer_forest",
+   "count": 1063703,
+   "share_of_group": 0.1816,
+   "expected_share": 0.1818,
+   "height_m": {
+    "mean": 33.74,
+    "p10": 19.75,
+    "p90": 48.22
+   }
+  },
+  {
+   "key": "artemisia_shrub",
+   "group": "shrub_grass",
+   "count": 2990,
+   "share_of_group": 0.6689,
+   "expected_share": 0.6667,
+   "height_m": {
+    "mean": 2.33,
+    "p10": 2.16,
+    "p90": 2.5
+   }
+  },
+  {
+   "key": "bunchgrass",
+   "group": "shrub_grass",
+   "count": 1480,
+   "share_of_group": 0.3311,
+   "expected_share": 0.3333,
+   "height_m": {
+    "mean": 0.76,
+    "p10": 0.7,
+    "p90": 0.8
+   }
+  }
+ ],
+ "density_by_cc": [
+  {
+   "cc_pct": [
+    1,
+    19
+   ],
+   "cells": 183263,
+   "trees_per_cell": 0.398,
+   "expected_trees_per_cell": 0.398,
+   "trees_per_ha": 39.8,
+   "mean_tree_height_m": 22.8,
+   "mean_chm_m": 22.99,
+   "landfire_cc_pct": 9.9,
+   "rendered_crown_cover_pct": 8.1
+  },
+  {
+   "cc_pct": [
+    20,
+    39
+   ],
+   "cells": 416560,
+   "trees_per_cell": 1.297,
+   "expected_trees_per_cell": 1.296,
+   "trees_per_ha": 129.7,
+   "mean_tree_height_m": 23.92,
+   "mean_chm_m": 23.89,
+   "landfire_cc_pct": 32.4,
+   "rendered_crown_cover_pct": 25.0
+  },
+  {
+   "cc_pct": [
+    40,
+    59
+   ],
+   "cells": 1104910,
+   "trees_per_cell": 2.022,
+   "expected_trees_per_cell": 2.022,
+   "trees_per_ha": 202.2,
+   "mean_tree_height_m": 30.99,
+   "mean_chm_m": 31.12,
+   "landfire_cc_pct": 50.5,
+   "rendered_crown_cover_pct": 49.6
+  },
+  {
+   "cc_pct": [
+    60,
+    79
+   ],
+   "cells": 1097496,
+   "trees_per_cell": 2.73,
+   "expected_trees_per_cell": 2.73,
+   "trees_per_ha": 273.0,
+   "mean_tree_height_m": 37.58,
+   "mean_chm_m": 38.65,
+   "landfire_cc_pct": 68.3,
+   "rendered_crown_cover_pct": 73.4
+  },
+  {
+   "cc_pct": [
+    80,
+    100
+   ],
+   "cells": 5455,
+   "trees_per_cell": 3.29,
+   "expected_trees_per_cell": 3.288,
+   "trees_per_ha": 329.0,
+   "mean_tree_height_m": 38.05,
+   "mean_chm_m": 38.77,
+   "landfire_cc_pct": 82.2,
+   "rendered_crown_cover_pct": 82.2
+  }
+ ],
+ "crown_policy": {
+  "conifer_ratio": 0.23,
+  "broadleaf_ratio": 1.2,
+  "rendered_minus_landfire_cc_pts": 0.41
+ }
+}

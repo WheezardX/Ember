@@ -1,0 +1,52 @@
+# B3 / HCP2 silhouette sheet: one generated tree per palette species at its palette mid height
+# (Douglas-fir 31.5 m, ponderosa 26.5 m, grand fir 28 m, sagebrush 1.4 m, bunchgrass 0.45 m) in a
+# row across the view, plus a 1.8 m post for scale, standing in a flat opening near Cooper Lake
+# (Three Queens). No scattered trees. Low camera, slightly upward, so crowns read against the sky.
+render_scenario_version = 1
+
+[scenario]
+name = "S_veg_lineup"
+description = "HCP2/B3: species silhouette sheet - one tree per species at palette mid height + 1.8 m post"
+world = "terrain:three_queens_2026"
+resolution = [2560, 1440]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_lineup = true
+wind_strength = 6.0
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "lineup"
+target_frac = [0.599, 0.32]
+distance_m = 75
+yaw_deg = 20
+pitch_deg = 4
+fov_deg = 60
+sun = "afternoon"
+
+[[bookmarks]]
+name = "lineup_backlit"      # same row against a low sun: silhouette only
+target_frac = [0.599, 0.32]
+distance_m = 75
+yaw_deg = 20
+pitch_deg = 4
+fov_deg = 60
+sun = "20,8"
+
+[[captures]]
+name = "lineup"
+bookmark = "lineup"
+
+[[captures]]
+name = "lineup_backlit"
+bookmark = "lineup_backlit"
+
+[[assert]]
+fact = "instances.total"
+op = "=="
+value = 5
+
+[[assert]]
+fact = "instances.generated_species"
+op = "=="
+value = 5

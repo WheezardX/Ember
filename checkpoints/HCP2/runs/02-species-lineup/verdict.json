@@ -1,0 +1,137 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_veg_lineup",
+  "run_dir": "runs\\viz\\S_veg_lineup\\20260928-092904",
+  "evaluated_utc": "2026-09-28T16:45:19Z",
+  "pass": true,
+  "summary": {
+    "captures": 2,
+    "match": 2,
+    "new": 0,
+    "mismatch": 0,
+    "missing": 0,
+    "checks": 4,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "lineup",
+      "bookmark": "lineup",
+      "image": "captures\\lineup.png",
+      "golden": "viz\\goldens\\S_veg_lineup\\lineup.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\lineup.png"
+    },
+    {
+      "name": "lineup_backlit",
+      "bookmark": "lineup_backlit",
+      "image": "captures\\lineup_backlit.png",
+      "golden": "viz\\goldens\\S_veg_lineup\\lineup_backlit.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\lineup_backlit.png"
+    }
+  ],
+  "orbits": [],
+  "checks": [
+    {
+      "kind": "assert",
+      "name": "instances.total",
+      "capture": "lineup",
+      "ok": true,
+      "actual": 5,
+      "expected": "== 5"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.generated_species",
+      "capture": "lineup",
+      "ok": true,
+      "actual": 5,
+      "expected": "== 5"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.total",
+      "capture": "lineup_backlit",
+      "ok": true,
+      "actual": 5,
+      "expected": "== 5"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.generated_species",
+      "capture": "lineup_backlit",
+      "ok": true,
+      "actual": 5,
+      "expected": "== 5"
+    }
+  ],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_veg_lineup",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_veg_lineup.toml",
+    "world": "C:\\Projects\\Terrain\\store\\three_queens_2026",
+    "started": "20260928-092904",
+    "seconds": 18.8,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "e68497f+dirty",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_veg_lineup/20260928-092904/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_veg_lineup\\20260928-092904\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ],
+    "orbits": []
+  }
+}

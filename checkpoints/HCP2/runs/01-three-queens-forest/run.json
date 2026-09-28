@@ -1,0 +1,49 @@
+{
+  "format": "ember-viz-run",
+  "version": 1,
+  "scenario": "S_tq_forest",
+  "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_tq_forest.toml",
+  "world": "C:\\Projects\\Terrain\\store\\three_queens_2026",
+  "started": "20260928-093630",
+  "seconds": 340.6,
+  "process_exit_code": 0,
+  "exit_code": 0,
+  "error": "",
+  "git": "e68497f+dirty",
+  "engine": {
+    "pinned": "5.8.3",
+    "installed": "5.8.3"
+  },
+  "command": [
+    "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+    "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+    "-game",
+    "-RenderOffscreen",
+    "-unattended",
+    "-nosplash",
+    "-nosound",
+    "-NoLoadingScreen",
+    "-windowed",
+    "-ResX=2560",
+    "-ResY=1440",
+    "-EmberRun=C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/plan.json",
+    "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_tq_forest\\20260928-093630\\log\\Ember.log",
+    "-log",
+    "-NoVerifyGC",
+    "-ExecCmds=DisableAllScreenMessages"
+  ],
+  "orbits": [
+    {
+      "name": "density_flyover",
+      "frames": 450,
+      "mp4": "orbits/density_flyover.mp4",
+      "error": ""
+    },
+    {
+      "name": "sway_close",
+      "frames": 300,
+      "mp4": "orbits/sway_close.mp4",
+      "error": ""
+    }
+  ]
+}

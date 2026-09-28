@@ -1,0 +1,226 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_tq_forest",
+  "run_dir": "runs\\viz\\S_tq_forest\\20260928-093630",
+  "evaluated_utc": "2026-09-28T16:45:18Z",
+  "pass": true,
+  "summary": {
+    "captures": 3,
+    "match": 3,
+    "new": 0,
+    "mismatch": 0,
+    "missing": 0,
+    "checks": 9,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "forest_oblique",
+      "bookmark": "forest_oblique",
+      "image": "captures\\forest_oblique.png",
+      "golden": "viz\\goldens\\S_tq_forest\\forest_oblique.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\forest_oblique.png"
+    },
+    {
+      "name": "ground_forest",
+      "bookmark": "ground_forest",
+      "image": "captures\\ground_forest.png",
+      "golden": "viz\\goldens\\S_tq_forest\\ground_forest.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\ground_forest.png"
+    },
+    {
+      "name": "ridge",
+      "bookmark": "ridge",
+      "image": "captures\\ridge.png",
+      "golden": "viz\\goldens\\S_tq_forest\\ridge.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\ridge.png"
+    }
+  ],
+  "orbits": [
+    {
+      "name": "density_flyover",
+      "frames": 450,
+      "mp4": "orbits/density_flyover.mp4",
+      "error": ""
+    },
+    {
+      "name": "sway_close",
+      "frames": 300,
+      "mp4": "orbits/sway_close.mp4",
+      "error": ""
+    }
+  ],
+  "checks": [
+    {
+      "kind": "assert",
+      "name": "instances.ungrounded",
+      "capture": "forest_oblique",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.generated_species",
+      "capture": "forest_oblique",
+      "ok": true,
+      "actual": 5,
+      "expected": "== 5"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.total",
+      "capture": "forest_oblique",
+      "ok": true,
+      "actual": 1448096,
+      "expected": "> 500000"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.ungrounded",
+      "capture": "ground_forest",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.generated_species",
+      "capture": "ground_forest",
+      "ok": true,
+      "actual": 5,
+      "expected": "== 5"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.ungrounded",
+      "capture": "ridge",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "instances.generated_species",
+      "capture": "ridge",
+      "ok": true,
+      "actual": 5,
+      "expected": "== 5"
+    },
+    {
+      "kind": "budget",
+      "name": "perf__frame_ms_p95_max",
+      "capture": "perf",
+      "ok": true,
+      "actual": 12.121699333190918,
+      "expected": "<= 16.7"
+    },
+    {
+      "kind": "budget",
+      "name": "render__vram_mb_max",
+      "capture": "perf",
+      "ok": true,
+      "actual": 3330.0078125,
+      "expected": "<= 4096"
+    }
+  ],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_tq_forest",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_tq_forest.toml",
+    "world": "C:\\Projects\\Terrain\\store\\three_queens_2026",
+    "started": "20260928-093630",
+    "seconds": 340.6,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "e68497f+dirty",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_tq_forest\\20260928-093630\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ],
+    "orbits": [
+      {
+        "name": "density_flyover",
+        "frames": 450,
+        "mp4": "orbits/density_flyover.mp4",
+        "error": ""
+      },
+      {
+        "name": "sway_close",
+        "frames": 300,
+        "mp4": "orbits/sway_close.mp4",
+        "error": ""
+      }
+    ]
+  }
+}

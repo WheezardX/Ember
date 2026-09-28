@@ -1,0 +1,36 @@
+{
+  "format": "ember-viz-run",
+  "version": 1,
+  "scenario": "S_forest_teanaway",
+  "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_forest_teanaway.toml",
+  "world": "C:\\Projects\\Terrain\\store\\teanaway_dev",
+  "started": "20260928-092754",
+  "seconds": 14.4,
+  "process_exit_code": 0,
+  "exit_code": 0,
+  "error": "",
+  "git": "e68497f+dirty",
+  "engine": {
+    "pinned": "5.8.3",
+    "installed": "5.8.3"
+  },
+  "command": [
+    "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+    "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+    "-game",
+    "-RenderOffscreen",
+    "-unattended",
+    "-nosplash",
+    "-nosound",
+    "-NoLoadingScreen",
+    "-windowed",
+    "-ResX=2560",
+    "-ResY=1440",
+    "-EmberRun=C:/Projects/Ember/runs/viz/S_forest_teanaway/20260928-092754/plan.json",
+    "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_forest_teanaway\\20260928-092754\\log\\Ember.log",
+    "-log",
+    "-NoVerifyGC",
+    "-ExecCmds=DisableAllScreenMessages"
+  ],
+  "orbits": []
+}

@@ -1,0 +1,21 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_tq_forest",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 330.40713670104742,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/captures/forest_oblique.png",
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/facts/forest_oblique.json",
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/captures/ground_forest.png",
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/facts/ground_forest.json",
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/captures/ridge.png",
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/facts/ridge.json",
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/facts/orbit_density_flyover.json",
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/frames/density_flyover",
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/facts/orbit_sway_close.json",
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/frames/sway_close",
+		"C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630/facts/perf.json"
+	]
+}

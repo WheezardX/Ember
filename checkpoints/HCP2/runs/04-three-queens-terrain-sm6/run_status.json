@@ -1,0 +1,27 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_tq_terrain",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 383.72520229965448,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/captures/overview_s.png",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/facts/overview_s.json",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/captures/fire_oblique_w.png",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/facts/fire_oblique_w.json",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/captures/kachess_lake.png",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/facts/kachess_lake.json",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/captures/cooper_lake.png",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/facts/cooper_lake.json",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/captures/alpine_nw.png",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/facts/alpine_nw.json",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/facts/orbit_orbit_dawn.json",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/frames/orbit_dawn",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/facts/orbit_orbit_noon.json",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/frames/orbit_noon",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/facts/orbit_orbit_dusk.json",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/frames/orbit_dusk",
+		"C:/Projects/Ember/runs/viz/S_tq_terrain/20260928-092937/facts/perf.json"
+	]
+}

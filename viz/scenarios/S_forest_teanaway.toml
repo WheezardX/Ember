@@ -1,9 +1,9 @@
-# C4/HCP2 pipeline check: Terrain-conformant vegetation on teanaway_dev (placeholder meshes).
+# C4/HCP2 pipeline check: Terrain-conformant vegetation on teanaway_dev (the fast forest fixture).
 render_scenario_version = 1
 
 [scenario]
 name = "S_forest_teanaway"
-description = "C4: teanaway_dev with all 74,595 scattered instances (placeholder cones/spheres until B3)"
+description = "C4: teanaway_dev with all 74,595 scattered instances (generated Nanite species, wind)"
 world = "terrain:teanaway_dev"
 resolution = [2560, 1440]
 budget = "interactive"

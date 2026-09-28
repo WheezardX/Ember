@@ -1,0 +1,40 @@
+[doctest] doctest version is "2.4.11"
+[doctest] run with "--help" for options
+===============================================================================
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(40):
+TEST CASE:  scatter: hash conformance constants (terrain tests/test_veg.py)
+
+0.000021 s: scatter: hash conformance constants (terrain tests/test_veg.py)
+===============================================================================
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(53):
+TEST CASE:  scatter: palette loads and maps EVT like the Python
+
+0.000191 s: scatter: palette loads and maps EVT like the Python
+===============================================================================
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(64):
+TEST CASE:  scatter: matches Terrain's golden vectors (synthetic 8x8)
+
+0.000199 s: scatter: matches Terrain's golden vectors (synthetic 8x8)
+===============================================================================
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(108):
+TEST CASE:  scatter: windows are independent (per-tile == whole grid)
+
+0.000217 s: scatter: windows are independent (per-tile == whole grid)
+===============================================================================
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(246):
+TEST CASE:  scatter: teanaway_dev per-tile scatter == Terrain's instances.npy, exactly
+
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(221): MESSAGE: teanaway_dev: 74595 C++ instances vs 74595 Terrain
+
+0.026540 s: scatter: teanaway_dev per-tile scatter == Terrain's instances.npy, exactly
+===============================================================================
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(250):
+TEST CASE:  scatter: three_queens_2026 per-tile scatter == Terrain's instances.npy, exactly
+
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(221): MESSAGE: three_queens_2026: 5861933 C++ instances vs 5861933 Terrain
+
+2.292014 s: scatter: three_queens_2026 per-tile scatter == Terrain's instances.npy, exactly
+===============================================================================
+[doctest] test cases:    6 |    6 passed | 0 failed | 21 skipped
+[doctest] assertions: 1751 | 1751 passed | 0 failed |
+[doctest] Status: SUCCESS!

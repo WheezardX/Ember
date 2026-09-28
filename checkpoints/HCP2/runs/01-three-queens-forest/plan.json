@@ -1,0 +1,155 @@
+{
+  "format": "ember-run-plan",
+  "version": 1,
+  "scenario": "S_tq_forest",
+  "world": "C:/Projects/Terrain/store/three_queens_2026",
+  "replay": null,
+  "out_dir": "C:/Projects/Ember/runs/viz/S_tq_forest/20260928-093630",
+  "resolution": [
+    2560,
+    1440
+  ],
+  "perf_frames": 300,
+  "exposure_bias": -2.0,
+  "fixed_lod": null,
+  "lod_refine_factor": 1.5,
+  "look": "C:/Projects/Ember/viz/looks/terrain_default.toml",
+  "vegetation": true,
+  "veg_radius_m": 4000.0,
+  "wind_strength": 6.0,
+  "wind_from_deg": 250.0,
+  "veg_lineup": false,
+  "exec_cmds": [],
+  "perf_exec_cmds": [],
+  "water_dir": "C:/Projects/Ember/store/render/three_queens_2026/water",
+  "perf_bookmark": "forest_oblique",
+  "bookmarks": [
+    {
+      "name": "forest_oblique",
+      "target_frac": [
+        0.507,
+        0.488
+      ],
+      "target_cell": null,
+      "distance_m": 2200.0,
+      "yaw_deg": 90.0,
+      "pitch_deg": -22.0,
+      "fov_deg": 55.0,
+      "sun": "afternoon"
+    },
+    {
+      "name": "ground_forest",
+      "target_frac": [
+        0.343,
+        0.84
+      ],
+      "target_cell": null,
+      "distance_m": 120.0,
+      "yaw_deg": 0.0,
+      "pitch_deg": 1.0,
+      "fov_deg": 70.0,
+      "sun": "afternoon"
+    },
+    {
+      "name": "ridge",
+      "target_frac": [
+        0.316,
+        0.613
+      ],
+      "target_cell": null,
+      "distance_m": 900.0,
+      "yaw_deg": 60.0,
+      "pitch_deg": -8.0,
+      "fov_deg": 55.0,
+      "sun": "afternoon"
+    },
+    {
+      "name": "fly_a",
+      "target_frac": [
+        0.433,
+        0.625
+      ],
+      "target_cell": null,
+      "distance_m": 350.0,
+      "yaw_deg": 31.0,
+      "pitch_deg": -20.0,
+      "fov_deg": 60.0,
+      "sun": "afternoon"
+    },
+    {
+      "name": "fly_b",
+      "target_frac": [
+        0.48,
+        0.54
+      ],
+      "target_cell": null,
+      "distance_m": 350.0,
+      "yaw_deg": 31.0,
+      "pitch_deg": -20.0,
+      "fov_deg": 60.0,
+      "sun": "afternoon"
+    },
+    {
+      "name": "sway_close",
+      "target_frac": [
+        0.433,
+        0.625
+      ],
+      "target_cell": null,
+      "distance_m": 220.0,
+      "yaw_deg": 60.0,
+      "pitch_deg": -10.0,
+      "fov_deg": 50.0,
+      "sun": "afternoon"
+    }
+  ],
+  "captures": [
+    {
+      "name": "forest_oblique",
+      "bookmark": "forest_oblique",
+      "t_s": null,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "ground_forest",
+      "bookmark": "ground_forest",
+      "t_s": null,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "ridge",
+      "bookmark": "ridge",
+      "t_s": null,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    }
+  ],
+  "orbits": [
+    {
+      "name": "density_flyover",
+      "bookmark": "fly_a",
+      "to_bookmark": "fly_b",
+      "degrees": 360.0,
+      "frames": 450,
+      "fps": 30,
+      "warmup_frames": 30
+    },
+    {
+      "name": "sway_close",
+      "bookmark": "sway_close",
+      "to_bookmark": null,
+      "degrees": 20.0,
+      "frames": 300,
+      "fps": 30,
+      "warmup_frames": 30
+    }
+  ]
+}

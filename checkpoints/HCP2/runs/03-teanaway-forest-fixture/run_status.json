@@ -1,0 +1,15 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_forest_teanaway",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 4.149695698171854,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_forest_teanaway/20260928-092754/captures/oblique_nw.png",
+		"C:/Projects/Ember/runs/viz/S_forest_teanaway/20260928-092754/facts/oblique_nw.json",
+		"C:/Projects/Ember/runs/viz/S_forest_teanaway/20260928-092754/captures/ground_ridge.png",
+		"C:/Projects/Ember/runs/viz/S_forest_teanaway/20260928-092754/facts/ground_ridge.json",
+		"C:/Projects/Ember/runs/viz/S_forest_teanaway/20260928-092754/facts/perf.json"
+	]
+}

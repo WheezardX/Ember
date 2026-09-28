@@ -1,0 +1,73 @@
+{
+  "hcp": "HCP2",
+  "runs": [
+    {
+      "label": "three-queens-forest",
+      "dir": "01-three-queens-forest",
+      "source": "runs\\viz\\S_tq_forest\\20260928-093630",
+      "pass": true,
+      "summary": {
+        "captures": 3,
+        "match": 3,
+        "new": 0,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 9,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "species-lineup",
+      "dir": "02-species-lineup",
+      "source": "runs\\viz\\S_veg_lineup\\20260928-092904",
+      "pass": true,
+      "summary": {
+        "captures": 2,
+        "match": 2,
+        "new": 0,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 4,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "teanaway-forest-fixture",
+      "dir": "03-teanaway-forest-fixture",
+      "source": "runs\\viz\\S_forest_teanaway\\20260928-092754",
+      "pass": true,
+      "summary": {
+        "captures": 2,
+        "match": 2,
+        "new": 0,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 8,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "three-queens-terrain-sm6",
+      "dir": "04-three-queens-terrain-sm6",
+      "source": "runs\\viz\\S_tq_terrain\\20260928-092937",
+      "pass": true,
+      "summary": {
+        "captures": 5,
+        "match": 5,
+        "new": 0,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 12,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    }
+  ]
+}

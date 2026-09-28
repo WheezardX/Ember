@@ -1,0 +1,14 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_veg_lineup",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 8.9168545976281166,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_veg_lineup/20260928-092904/captures/lineup.png",
+		"C:/Projects/Ember/runs/viz/S_veg_lineup/20260928-092904/facts/lineup.json",
+		"C:/Projects/Ember/runs/viz/S_veg_lineup/20260928-092904/captures/lineup_backlit.png",
+		"C:/Projects/Ember/runs/viz/S_veg_lineup/20260928-092904/facts/lineup_backlit.json"
+	]
+}
