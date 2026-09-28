@@ -23,6 +23,7 @@ ember-dev regen-assets --check    # engine-free: lock current? no unclaimed asse
 | Asset | Generator | Parameters | Used by |
 |---|---|---|---|
 | `/Game/Ember/Generated/M_EmberGray` | `m_ember_gray.py` | `Color` (vector, 0.35 gray), `Roughness` (scalar, 0.9) | `AEmberTerrainActor` clay mode (`look = "clay"`: fixtures, debugging) |
+| `/Game/Ember/Generated/M_Veg` + `Veg/SM_<palette key>` (5) | `veg_species.py` | `Color` (foliage), `TrunkColor`, `Roughness`; meshes: vertex RGB = shading, alpha = bark 0 / foliage 1 | `AEmberVegetationActor` (one HISM per species) |
 | `/Game/Ember/Generated/M_Terrain` | `m_terrain.py` | `Albedo` (texture, per tile), `AlbedoScale`/`AlbedoOffset` (UV0 → texture, skips the apron), `DetailStrength` (0.10), `DetailScale` (0.004 /cm), `Roughness` (0.92) | `AEmberTerrainActor` look mode: albedo composed per tile by `worldcore/look.cpp` from `viz/looks/*.toml` |
 
 ## Writing a generator

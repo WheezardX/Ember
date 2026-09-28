@@ -6,6 +6,7 @@ Plan: `EPIC_5_PLAN.md` (decisions D1–D10 in §4 / §8). Checkpoint bundles: `c
 |---|---|
 | [harness.md](harness.md) | `ember-dev`: build / run-scenario / evaluate / loop / bless; scenario format; what PASS means |
 | [scene-facts.md](scene-facts.md) | `ember-scene-facts` v1 schema (the machine-checkable half of every capture) |
+| [world.md](world.md) | Terrain mesh, LOD streaming, the data-driven look, Terrain-conformant vegetation |
 | [runner.md](runner.md) | Runner provisioning (engine pin, toolchain, GPU) — `ember-dev doctor` |
 | [assets.md](assets.md) | Assets from code: generators, lock, the escape hatch |
 
