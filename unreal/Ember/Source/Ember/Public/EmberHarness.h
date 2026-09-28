@@ -8,6 +8,7 @@
 class AEmberTerrainActor;
 class AEmberVegetationActor;
 class AEmberEnvironment;
+class AEmberFireActor;
 class ACameraActor;
 
 /**
@@ -47,6 +48,8 @@ private:
 		double Degrees = 360.0;
 		int32 Frames = 240;
 		int32 Fps = 30;            // wind clock during the orbit: t = frame / fps
+		double TFromS = -1.0;      // >= 0 with TToS: sim time sweeps TFromS -> TToS (timelapse)
+		double TToS = -1.0;
 		int32 WarmupFrames = 30;
 	};
 	struct FCapture
@@ -54,6 +57,7 @@ private:
 		FString Name;
 		FString Bookmark;
 		int32 WarmupFrames = 30;
+		double TimeS = -1.0;       // >= 0: fire sim time to show (replay scenarios)
 	};
 	enum class EState : uint8 { Idle, LoadWorld, Position, Warmup, Shoot, WaitShot, OrbitStart, OrbitWarmup, OrbitShoot, OrbitWait, PerfWarmup, Perf, Done };
 
@@ -90,6 +94,7 @@ private:
 	TArray<FString> ExecCmds;
 	TArray<FString> PerfExecCmds;  // run as the perf window opens (e.g. ProfileGPU)
 	FString WaterDir;
+	FString ReplayPath;        // Epic 4 replay (.replay.json) -> fire state player
 	FString PerfBookmark;  // "clay" or an absolute viz/looks/*.toml path
 	TArray<FBookmark> Bookmarks;
 	TArray<FCapture> Captures;
@@ -111,5 +116,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<AEmberTerrainActor> Terrain;
 	UPROPERTY(Transient) TObjectPtr<AEmberVegetationActor> Vegetation;
 	UPROPERTY(Transient) TObjectPtr<AEmberEnvironment> Environment;
+	UPROPERTY(Transient) TObjectPtr<AEmberFireActor> Fire;
+	void SetFireTime(double SimS, double ClockS);
 	UPROPERTY(Transient) TObjectPtr<ACameraActor> Camera;
 };

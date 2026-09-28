@@ -10,15 +10,21 @@
       }
     },
     "m_terrain.py": {
-      "script_sha256": "55bbb52ff952d194b932db37e9af58323f2e36c0a6063885b2996a722a652f22",
+      "script_sha256": "231b39484f760b1f79e956ebfb4598fcbe6e3e35955c11ff5d59c21390f8244c",
       "outputs": {
-        "/Game/Ember/Generated/M_Terrain": "unreal/Ember/Content/Ember/Generated/M_Terrain.uasset"
+        "/Game/Ember/Generated/M_Terrain": "unreal/Ember/Content/Ember/Generated/M_Terrain.uasset",
+        "/Game/Ember/Generated/T_LinearBlack": "unreal/Ember/Content/Ember/Generated/T_LinearBlack.uasset"
+      }
+    },
+    "m_veg.py": {
+      "script_sha256": "14db48d73e805c08b57462839649e374ea48a75128422158d9f0d10b04b60420",
+      "outputs": {
+        "/Game/Ember/Generated/M_Veg": "unreal/Ember/Content/Ember/Generated/M_Veg.uasset"
       }
     },
     "veg_species.py": {
-      "script_sha256": "51c1d1ba02b693fba888d6e1bf940726c3dbe7ce4bc44a3c2d4d4eea7f629e29",
+      "script_sha256": "a8ab8a13b0c23ee77e792e7f6d7f34b38840104d0b032073094cf634ab115018",
       "outputs": {
-        "/Game/Ember/Generated/M_Veg": "unreal/Ember/Content/Ember/Generated/M_Veg.uasset",
         "/Game/Ember/Generated/Veg/MI_Veg_pseudotsuga_menziesii": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_pseudotsuga_menziesii.uasset",
         "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v1.uasset",

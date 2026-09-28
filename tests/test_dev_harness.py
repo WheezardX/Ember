@@ -370,6 +370,8 @@ def test_manifest_lists_every_treegen_asset():
     veg = next(g for g in m["generator"] if g["script"] == "veg_species.py")
     assert veg["outputs"] == [f"/Game/Ember/Generated/{n}" for n in treegen.asset_names()]
     assert veg["depends"] == ["treegen.py"]
+    order = [g["script"] for g in m["generator"]]
+    assert order.index("m_veg.py") < order.index("veg_species.py")  # instances need their parent
 
 
 def test_treegen_lite_keeps_the_tree_and_drops_foliage():
@@ -390,3 +392,38 @@ def test_treegen_lite_keeps_the_tree_and_drops_foliage():
         (flo, fhi), (llo, lhi) = full.bounds(), lite.bounds()
         for ax in (0, 1, 2):
             assert abs((lhi[ax] - llo[ax]) - (fhi[ax] - flo[ax])) <= 0.1 * (fhi[ax] - flo[ax]), key
+
+
+def test_synth_fire_obeys_the_state_stream_rules(tmp_path: Path):
+    """The synthetic replay is a valid stream by Epic 4's own rules: phases monotone, arrival
+    written once, non-burnable fuels never burn, the burned area only grows."""
+    rasterio = pytest.importorskip("rasterio")
+    from rasterio.transform import from_origin
+
+    from ember.dev import firesynth
+    from ember.sim.stream import iter_frames, read_replay
+
+    region = tmp_path / "reg"
+    (region / "fuels").mkdir(parents=True)
+    fb = np.full((90, 120), 165, dtype=np.uint8)          # TU5 everywhere ...
+    fb[40:50, :] = 99                                     # ... a strip of bare rock
+    with rasterio.open(region / "fuels/fbfm40.cog.tif", "w", driver="GTiff", height=90, width=120,
+                       count=1, dtype="uint8", crs="EPSG:32610",
+                       transform=from_origin(600000.0, 5200000.0, 10.0, 10.0)) as w:
+        w.write(fb, 1)
+    path = firesynth.synth(region, tmp_path / "out", ignition_frac=(0.5, 0.25), hours=12,
+                           head_ms=0.05)
+    replay = read_replay(path)
+    assert replay["world"]["grid"]["nx"] == 40 and replay["world"]["grid"]["ny"] == 30
+    prev_phase, prev_burned, rock = None, -1, None
+    for _, f in iter_frames(path.parent / replay["stream"]):
+        if rock is None:
+            rock = f.phase == 0
+            assert rock[13:17].all()                     # the rock rows (30 m cells) are unburnable
+        assert not (f.phase[rock] > 0).any()
+        if prev_phase is not None:
+            assert (f.phase >= prev_phase).all()          # monotone
+        burned = int((f.phase >= 2).sum())
+        assert burned >= prev_burned
+        prev_phase, prev_burned = f.phase, burned
+    assert prev_burned > 0

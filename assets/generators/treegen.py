@@ -538,7 +538,7 @@ def has_lite(key: str) -> bool:
 
 def asset_names() -> list[str]:
     """Every asset veg_species.py writes (the manifest must list exactly these)."""
-    out = ["M_Veg"]
+    out = []
     for k in SPECIES:
         out.append(f"Veg/MI_Veg_{k}")
         out += [f"Veg/SM_{k}_v{v}" for v in range(VARIANTS)]

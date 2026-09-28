@@ -20,6 +20,7 @@
 #include "Serialization/JsonWriter.h"
 
 #include "EmberEnvironment.h"
+#include "EmberFireActor.h"
 #include "EmberTerrainActor.h"
 #include "EmberVegetationActor.h"
 
@@ -217,6 +218,25 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 	}
 	Inst->SetObjectField(TEXT("by_species"), BySp);
 	F->SetObjectField(TEXT("instances"), Inst);
+
+	TSharedRef<FJsonObject> FireJ = MakeShared<FJsonObject>();
+	FireJ->SetBoolField(TEXT("enabled"), false);
+	for (TActorIterator<AEmberFireActor> It(W); It; ++It)
+	{
+		FireJ->SetBoolField(TEXT("enabled"), true);
+		FireJ->SetStringField(TEXT("model"), It->ModelId);
+		FireJ->SetNumberField(TEXT("t_s"), It->TimeS);
+		FireJ->SetNumberField(TEXT("tick"), It->Tick);
+		FireJ->SetStringField(TEXT("time_utc"), FDateTime::FromUnixTimestamp(It->T0Unix + static_cast<int64>(It->TimeS)).ToIso8601());
+		FireJ->SetNumberField(TEXT("cells_burning"), static_cast<double>(It->CellsBurning));
+		FireJ->SetNumberField(TEXT("cells_burned"), static_cast<double>(It->CellsBurned));
+		FireJ->SetNumberField(TEXT("stream_burned"), static_cast<double>(It->StreamBurned));
+		FireJ->SetNumberField(TEXT("burned_ha"), It->CellsBurned * It->CellM * It->CellM / 1e4);
+		FireJ->SetNumberField(TEXT("start_s"), It->StartS);
+		FireJ->SetNumberField(TEXT("end_s"), It->EndS);
+		break;
+	}
+	F->SetObjectField(TEXT("fire"), FireJ);
 
 	TSharedRef<FJsonObject> Env = MakeShared<FJsonObject>();
 	for (TActorIterator<AEmberEnvironment> It(W); It; ++It)

@@ -59,6 +59,9 @@ public:
 	void SetWind(double StrengthCm, double FromDeg);
 	/** The wind clock (s). The harness owns it: frozen for stills, frame/fps for orbits (D7). */
 	void SetWindTime(double Seconds);
+	/** Fire state (EmberFireActor): each tree samples it at its pivot (char, crown flames). */
+	void SetFire(class UTexture* FireTex, const FLinearColor& FireRect);
+	void SetFireTime(double Seconds);
 
 	/**
 	 * B3 silhouette sheet: one tree per species at its palette mid height, in a row centred on

@@ -51,6 +51,10 @@ public:
 
 	/** Base colour for the clay material. */
 	void SetBaseColor(const FLinearColor& Color);
+	/** Bind the fire state (EmberFireActor) to every tile material, now and as tiles stream in. */
+	void SetFire(class UTexture* FireTex, const FLinearColor& FireRect);
+	/** The fire player's clock for flame flicker (s). */
+	void SetFireTime(double Seconds);
 
 	/** Water layer dir (ember-dev water: <dir>/z{lod}/x{x}/y{y}/water_level.tif). Before LoadRegion. */
 	bool SetWaterDir(const FString& Dir, FString& OutError);
@@ -102,6 +106,11 @@ public:
 	TArray<TObjectPtr<UTexture2D>> SectionTextures;
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> SectionMaterials;
+	UPROPERTY(Transient)
+	TObjectPtr<class UTexture> FireTexture;
+	FLinearColor FireRect = FLinearColor(0, 0, 1, 1);
+	double FireTimeS = 0.0;
+	void ApplyFire(UMaterialInstanceDynamic* MID) const;
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> TerrainMaster;
 	double ComposeMs = 0.0;  // total CPU time spent composing albedo (facts)

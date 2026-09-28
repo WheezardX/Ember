@@ -17,6 +17,7 @@
 #include "UnrealClient.h"
 
 #include "EmberEnvironment.h"
+#include "EmberFireActor.h"
 #include "EmberSceneFacts.h"
 #include "EmberTerrainActor.h"
 #include "EmberVegetationActor.h"
@@ -71,6 +72,7 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetBoolField(TEXT("veg_lineup"), bVegLineup);
 	J->TryGetStringField(TEXT("perf_bookmark"), PerfBookmark);
 	J->TryGetStringField(TEXT("water_dir"), WaterDir);
+	J->TryGetStringField(TEXT("replay"), ReplayPath);
 	const TArray<TSharedPtr<FJsonValue>>* Cmds = nullptr;
 	if (J->TryGetArrayField(TEXT("exec_cmds"), Cmds))
 	{
@@ -129,6 +131,8 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 			Or.Bookmark = O->GetStringField(TEXT("bookmark"));
 			O->TryGetStringField(TEXT("to_bookmark"), Or.ToBookmark);
 			O->TryGetNumberField(TEXT("fps"), Or.Fps);
+			O->TryGetNumberField(TEXT("t_from_s"), Or.TFromS);
+			O->TryGetNumberField(TEXT("t_to_s"), Or.TToS);
 			Or.Degrees = O->GetNumberField(TEXT("degrees"));
 			Or.Frames = O->GetIntegerField(TEXT("frames"));
 			Or.WarmupFrames = O->GetIntegerField(TEXT("warmup_frames"));
@@ -142,6 +146,7 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 		C.Name = O->GetStringField(TEXT("name"));
 		C.Bookmark = O->GetStringField(TEXT("bookmark"));
 		C.WarmupFrames = O->GetIntegerField(TEXT("warmup_frames"));
+		O->TryGetNumberField(TEXT("t_s"), C.TimeS);
 		Captures.Add(C);
 	}
 	return true;
@@ -391,6 +396,17 @@ void AEmberHarness::PrepareFlyoverHeights(const FOrbit& O)
 	FlyZ = Window(Window(Window(Base, true), false), false);  // box x box: no kinks in the climb rate
 }
 
+void AEmberHarness::SetFireTime(double SimS, double ClockS)
+{
+	if (!Fire)
+	{
+		return;
+	}
+	Fire->SetTime(SimS);
+	if (Terrain) Terrain->SetFireTime(ClockS);
+	if (Vegetation) Vegetation->SetFireTime(ClockS);
+}
+
 bool AEmberHarness::PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutError)
 {
 	FBookmark At;
@@ -405,6 +421,14 @@ bool AEmberHarness::PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutEr
 	if (Vegetation)
 	{
 		Vegetation->SetWindTime(static_cast<double>(Frame) / FMath::Max(1, O.Fps));
+	}
+	if (Fire)
+	{
+		// Timelapse: the sim clock sweeps with the frames (D7: the player owns time; flicker runs
+		// on the render clock so flames move at real speed however fast the sim runs).
+		const double U = static_cast<double>(Frame) / FMath::Max(1, O.Frames - 1);
+		const double Sim = (O.TFromS >= 0.0 && O.TToS >= 0.0) ? FMath::Lerp(O.TFromS, O.TToS, U) : Fire->TimeS;
+		SetFireTime(Sim, static_cast<double>(Frame) / FMath::Max(1, O.Fps));
 	}
 	return PlaceCamera(At, OutError);
 }
@@ -501,6 +525,21 @@ void AEmberHarness::Tick(float DeltaSeconds)
 				Vegetation->SpawnLineup(E.min_x + B->Target.X * E.width(), E.max_y - B->Target.Y * E.height(), B->YawDeg + 90.0);
 			}
 		}
+		if (!ReplayPath.IsEmpty())
+		{
+			Fire = GetWorld()->SpawnActor<AEmberFireActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+			if (!Fire->Load(ReplayPath, Terrain, Err))
+			{
+				Finish(2, TEXT("replay: ") + Err);
+				return;
+			}
+			Terrain->SetFire(Fire->GetTexture(), Fire->GetRect());
+			if (Vegetation)
+			{
+				Vegetation->SetFire(Fire->GetTexture(), Fire->GetRect());
+			}
+			SetFireTime(Fire->EndS, 0.0);  // default: the final footprint
+		}
 		for (const FString& Cmd : ExecCmds)
 		{
 			UE_LOG(LogEmberHarness, Display, TEXT("exec: %s"), *Cmd);
@@ -529,6 +568,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		if (Vegetation)
 		{
 			Vegetation->SetWindTime(0.0);  // stills: frozen wind clock (pixel-deterministic goldens)
+		}
+		if (Fire && C.TimeS >= 0.0)
+		{
+			SetFireTime(C.TimeS, 0.0);     // stills: frozen flicker clock too
 		}
 		FramesLeft = FMath::Max(1, C.WarmupFrames);
 		State = EState::Warmup;

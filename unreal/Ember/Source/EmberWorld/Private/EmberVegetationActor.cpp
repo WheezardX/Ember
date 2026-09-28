@@ -342,6 +342,24 @@ void AEmberVegetationActor::SetWindTime(double Seconds)
 	}
 }
 
+void AEmberVegetationActor::SetFire(UTexture* FireTex, const FLinearColor& FireRect)
+{
+	for (UMaterialInstanceDynamic* M : SpeciesMaterial)
+	{
+		M->SetTextureParameterValue(TEXT("FireTex"), FireTex);
+		M->SetVectorParameterValue(TEXT("FireRect"), FireRect);
+		M->SetScalarParameterValue(TEXT("FireOn"), FireTex ? 1.f : 0.f);
+	}
+}
+
+void AEmberVegetationActor::SetFireTime(double Seconds)
+{
+	for (UMaterialInstanceDynamic* M : SpeciesMaterial)
+	{
+		M->SetScalarParameterValue(TEXT("FireTime"), static_cast<float>(Seconds));
+	}
+}
+
 void AEmberVegetationActor::SpawnLineup(double WorldX, double WorldY, double RowDeg)
 {
 	bLineup = true;

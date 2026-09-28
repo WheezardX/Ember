@@ -242,6 +242,18 @@ def run_scenario(eng: Engine, sc: LoadedScenario, *, runs_root: Path | None = No
     elif not status:
         error = error or ("harness wrote no run_status.json (crash or plan error; "
                           "see log/Ember.log)")
+    # A material that fails to compile is silently replaced by UE's default material; the render
+    # "works" and looks wrong (HCP3: M_Terrain/M_Veg fire nodes). Treat it as a failed run.
+    if exit_code == 0 and log.exists():
+        text = log.read_text(encoding="utf-8", errors="replace")
+        bad = sorted({Path(m.group(1) or m.group(2)).stem.split(".")[0] for m in re.finditer(
+            r"\[AssetLog\] (\S+\.uasset): Failed to compile Material"
+            r"|Failed to compile Material (\S+) for platform", text)})
+        if bad:
+            exit_code = 6
+            first = re.search(r"Material\.ush:\d+:\d+: error: [^\r\n]+", text)
+            error = ("materials failed to compile (default material used): " + ", ".join(bad)
+                     + (f" - {first.group(0)}" if first else ""))
     orbits = encode_orbits(sc, run_dir) if exit_code == 0 else []
     inst = eng.installed_version()
     meta = {

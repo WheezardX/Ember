@@ -1,0 +1,69 @@
+# HCP3 development fixture: a SYNTHETIC 48 h wind-driven fire (ember-dev synth-fire) over Three
+# Queens, so fire rendering (char, flames, embers, burned trees) is built and regression-tested
+# independently of the real Jolly Mountain world. Regenerate the replay with:
+#   ember-dev synth-fire three_queens_2026 --ignition 0.507,0.488
+render_scenario_version = 1
+
+[scenario]
+name = "S_tq_fire_synth"
+description = "HCP3 dev: synthetic 48 h fire over Three Queens - char, flame front, embers, burned trees; timelapse"
+world = "terrain:three_queens_2026"
+replay = "../../store/render/three_queens_2026/fire/synth.replay.json"
+resolution = [2560, 1440]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 4000
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "fire_oblique"         # over the fire from the SW, the head running NE
+target_frac = [0.53, 0.46]
+distance_m = 4500
+yaw_deg = 40
+pitch_deg = -28
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "front_close"          # the head of the fire at 24 h
+target_frac = [0.55, 0.44]
+distance_m = 1200
+yaw_deg = 60
+pitch_deg = -18
+fov_deg = 50
+sun = "dusk"
+
+[[captures]]
+name = "t12h"
+bookmark = "fire_oblique"
+t_s = 43200
+
+[[captures]]
+name = "t24h_front"
+bookmark = "front_close"
+t_s = 86400
+
+[[captures]]
+name = "t48h"
+bookmark = "fire_oblique"
+t_s = 172800
+
+[[orbits]]
+name = "timelapse"            # 48 h in 10 s, camera slowly circling
+bookmark = "fire_oblique"
+degrees = 30
+frames = 300
+fps = 30
+t_from_s = 0
+t_to_s = 172800
+
+[[assert]]
+fact = "fire.enabled"
+op = "=="
+value = true
+
+[[assert]]
+fact = "fire.cells_burned"
+op = ">"
+value = 0
+capture = "t48h"

@@ -67,6 +67,8 @@ class Orbit(_Strict):
     bookmark: str               # start pose; yaw advances by `degrees` over `frames`
     to_bookmark: str | None = None
     degrees: float = 360.0
+    t_from_s: float | None = None   # replay scenarios: sim time sweeps t_from_s -> t_to_s
+    t_to_s: float | None = None     #   across the frames (timelapse)
     frames: int = Field(default=240, gt=1, le=3600)
     fps: int = 30
     warmup_frames: int = 30

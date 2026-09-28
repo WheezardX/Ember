@@ -147,6 +147,7 @@ void AEmberTerrainActor::BindLook(int32 Section, const emberworld::TileEntry& Ti
 	MID->SetTextureParameterValue(TEXT("Albedo"), Tex);
 	MID->SetScalarParameterValue(TEXT("AlbedoScale"), Region->tile_px / Full);
 	MID->SetScalarParameterValue(TEXT("AlbedoOffset"), Region->overlap_px / Full);
+	ApplyFire(MID);
 	Mesh->SetMaterial(Section, MID);
 	{
 		double Sum[3] = {0, 0, 0};
@@ -431,6 +432,40 @@ void AEmberTerrainActor::Tick(float DeltaSeconds)
 bool AEmberTerrainActor::GroundHeightAt(double WorldX, double WorldY, double& OutZ) const
 {
 	return Region.IsValid() && emberworld::sample_height(*Region, WorldX, WorldY, OutZ);
+}
+
+void AEmberTerrainActor::ApplyFire(UMaterialInstanceDynamic* MID) const
+{
+	if (!MID || !FireTexture)
+	{
+		return;
+	}
+	MID->SetTextureParameterValue(TEXT("FireTex"), FireTexture);
+	MID->SetVectorParameterValue(TEXT("FireRect"), FireRect);
+	MID->SetScalarParameterValue(TEXT("FireOn"), 1.f);
+	MID->SetScalarParameterValue(TEXT("FireTime"), static_cast<float>(FireTimeS));
+}
+
+void AEmberTerrainActor::SetFire(UTexture* FireTex, const FLinearColor& InRect)
+{
+	FireTexture = FireTex;
+	FireRect = InRect;
+	for (UMaterialInstanceDynamic* MID : SectionMaterials)
+	{
+		ApplyFire(MID);
+	}
+}
+
+void AEmberTerrainActor::SetFireTime(double Seconds)
+{
+	FireTimeS = Seconds;
+	for (UMaterialInstanceDynamic* MID : SectionMaterials)
+	{
+		if (MID && FireTexture)
+		{
+			MID->SetScalarParameterValue(TEXT("FireTime"), static_cast<float>(Seconds));
+		}
+	}
 }
 
 FVector AEmberTerrainActor::WorldToUE(double X, double Y, double Z) const

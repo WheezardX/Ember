@@ -74,19 +74,35 @@ def run_generator(eng: Engine, gen: Generator, log_dir: Path) -> tuple[bool, str
     return ok, why, secs
 
 
-def regen(eng: Engine, repo: Path | None = None) -> dict:
+def regen(eng: Engine, repo: Path | None = None, force: bool = False) -> dict:
+    """Run the generators whose inputs changed since the lock (script + declared dependencies),
+    or whose outputs are missing; `force` runs them all. Tree meshes take ~20 min to rebuild, so
+    unchanged generators are skipped."""
     repo = repo or repo_root()
     gens = load_manifest(repo)
+    lock_path = repo / LOCK
+    old = {}
+    if lock_path.exists():
+        old = json.loads(lock_path.read_text(encoding="utf-8"))["generators"]
     results = []
     all_ok = True
     for g in gens:
-        ok, why, secs = run_generator(eng, g, repo / "runs" / "dev" / "assets")
         files = [asset_file(eng, a) for a in g.outputs]
+        entry = old.get(g.script.name)
+        current = (not force and entry is not None and entry["script_sha256"] == gen_sha(g)
+                   and sorted(entry["outputs"]) == sorted(g.outputs)
+                   and all(f.exists() for f in files))
+        if current:
+            results.append({"script": g.script.name, "ok": True, "error": "", "seconds": 0.0,
+                            "skipped": True, "script_sha256": entry["script_sha256"],
+                            "outputs": entry["outputs"]})
+            continue
+        ok, why, secs = run_generator(eng, g, repo / "runs" / "dev" / "assets")
         present = all(f.exists() for f in files)
         ok = ok and present
         all_ok &= ok
         results.append({"script": g.script.name, "ok": ok, "error": why or ("" if present else
-                        "output file missing"), "seconds": round(secs, 1),
+                        "output file missing"), "seconds": round(secs, 1), "skipped": False,
                         "script_sha256": gen_sha(g),
                         "outputs": {a: str(asset_file(eng, a).relative_to(repo)).replace("\\", "/")
                                     for a in g.outputs}})
@@ -95,7 +111,7 @@ def regen(eng: Engine, repo: Path | None = None) -> dict:
                 "engine": eng.version,
                 "generators": {r["script"]: {"script_sha256": r["script_sha256"],
                                              "outputs": r["outputs"]} for r in results}}
-        (repo / LOCK).write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
+        lock_path.write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
     return {"ok": all_ok, "generators": results}
 
 

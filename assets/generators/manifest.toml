@@ -10,13 +10,16 @@ outputs = ["/Game/Ember/Generated/M_EmberGray"]
 
 [[generator]]
 script = "m_terrain.py"
-outputs = ["/Game/Ember/Generated/M_Terrain"]
+outputs = ["/Game/Ember/Generated/M_Terrain", "/Game/Ember/Generated/T_LinearBlack"]
+
+[[generator]]
+script = "m_veg.py"
+outputs = ["/Game/Ember/Generated/M_Veg"]
 
 [[generator]]
 script = "veg_species.py"
 depends = ["treegen.py"]   # hashed into the lock with the script
 outputs = [
-  "/Game/Ember/Generated/M_Veg",
   "/Game/Ember/Generated/Veg/MI_Veg_pseudotsuga_menziesii",
   "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v0",
   "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v1",

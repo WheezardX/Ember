@@ -267,6 +267,21 @@ def water(region: str = typer.Argument(..., help="Terrain region, e.g. three_que
                    f"level {b['level_m']} m via {b['method']}")
 
 
+@app.command("synth-fire")
+def synth_fire(region: str = typer.Argument(..., help="Terrain region, e.g. three_queens_2026"),
+               hours: int = typer.Option(48, "--hours"),
+               ignition: str = typer.Option("0.5,0.5", "--ignition",
+                                            help="ignition as data-extent fractions x,y")) -> None:
+    """Write a synthetic wind-driven fire replay (.ess + .replay.json) over a region."""
+    from ember.dev import firesynth, water
+    from ember.dev.scenario import terrain_store_root
+
+    fx, fy = (float(v) for v in ignition.split(","))
+    out = water.render_store(ue.repo_root(), region) / "fire"
+    path = firesynth.synth(terrain_store_root() / region, out, ignition_frac=(fx, fy), hours=hours)
+    typer.secho(f"synthetic fire {region}: {path}", fg=typer.colors.GREEN)
+
+
 @app.command("forest-report")
 def forest_report(region: str = typer.Argument(..., help="Terrain region, e.g. three_queens_2026"),
                   out: str = typer.Option(None, "--out",
@@ -295,8 +310,11 @@ def forest_report(region: str = typer.Argument(..., help="Terrain region, e.g. t
 
 @app.command("regen-assets")
 def regen_assets(check: bool = typer.Option(False, "--check",
-                                           help="Engine-free: is the lock current?")) -> None:
-    """Regenerate every .uasset from assets/generators (headless commandlet)."""
+                                           help="Engine-free: is the lock current?"),
+                 force: bool = typer.Option(False, "--force",
+                                            help="Run every generator, changed or not.")) -> None:
+    """Regenerate .uassets from assets/generators (headless commandlet); unchanged generators
+    are skipped unless --force."""
     from ember.dev import assets
 
     if check:
@@ -308,9 +326,12 @@ def regen_assets(check: bool = typer.Option(False, "--check",
         if problems:
             raise typer.Exit(1)
         return
-    res = assets.regen(ue.load_engine())
+    res = assets.regen(ue.load_engine(), force=force)
     for g in res["generators"]:
         fg = typer.colors.GREEN if g["ok"] else typer.colors.RED
+        if g.get("skipped"):
+            typer.echo(f"{g['script']}: unchanged, skipped")
+            continue
         typer.secho(f"{g['script']}: {'ok' if g['ok'] else 'FAILED'} in {g['seconds']}s "
                     f"-> {', '.join(g['outputs'])}", fg=fg)
         if g["error"]:
