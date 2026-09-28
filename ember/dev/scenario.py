@@ -50,9 +50,12 @@ class Capture(_Strict):
     bookmark: str
     t_s: int | None = None      # sim time to seek before capturing (replay scenarios only)
     warmup_frames: int = 30     # frames rendered before the shot (streaming / TAA settle)
-    # Image-diff thresholds against the golden; see ember/dev/imagediff.py.
-    ssim_min: float = 0.97
-    region_ssim_min: float = 0.90
+    # Image-diff thresholds against the golden (ember/dev/imagediff.py). Tight on purpose:
+    # HCP0 measured renders as pixel-identical run to run, and a real material change (clay
+    # roughness 0.5 -> 0.9) scored ssim 0.982 / region 0.927 - which 0.97 / 0.90 let through.
+    # Loosen per capture for legitimately noisy views (e.g. Niagara), with a comment.
+    ssim_min: float = 0.995
+    region_ssim_min: float = 0.98
     golden: bool = True         # False: captured and shown, never diffed (e.g. WIP views)
 
 

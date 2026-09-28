@@ -1,0 +1,9 @@
+# Asset generators (EPIC_5_PLAN §3, B1). Every .uasset under unreal/Ember/Content/Ember/Generated
+# is produced by exactly one generator listed here; `ember-dev regen-assets` runs them headless
+# (UnrealEditor-Cmd -run=pythonscript) and rewrites assets/generated.lock.json.
+# `ember-dev regen-assets --check` (engine-free, CI-safe) fails if any generator changed since
+# the lock was written, or if a generated asset exists that no generator claims.
+
+[[generator]]
+script = "m_ember_gray.py"
+outputs = ["/Game/Ember/Generated/M_EmberGray"]

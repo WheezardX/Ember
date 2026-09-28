@@ -1,0 +1,42 @@
+name: viz
+
+# Epic 5 engine-free checks. The UE build/run/capture loop needs the pinned engine + a GPU and
+# runs on the runner (EPIC_5_PLAN D2); CI covers what does not: the worldcore C++ library that
+# the UE EmberWorld module compiles (tile-store + GeoTIFF readers, seam-exact heightfield mesh,
+# later the scatter port) on both compilers, and the asset-generator lock.
+on:
+  push:
+    branches: [main]
+    paths: ['worldcore/**', 'sim/third_party/**', 'assets/**', 'ember/dev/**', '.github/workflows/viz.yml']
+  pull_request:
+    paths: ['worldcore/**', 'sim/third_party/**', 'assets/**', 'ember/dev/**', '.github/workflows/viz.yml']
+
+jobs:
+  worldcore:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - uses: seanmiddleditch/gha-setup-ninja@v5
+      - name: Configure
+        run: cmake -S worldcore -B worldcore/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build worldcore/build --parallel
+      - name: Tests (synthetic regions; teanaway_dev cases skip without the Terrain store)
+        run: worldcore/build/emberworld_tests
+
+  asset-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pydantic typer numpy scipy pillow
+      - name: Generated assets match their generators
+        run: PYTHONPATH=. python -m ember.dev regen-assets --check

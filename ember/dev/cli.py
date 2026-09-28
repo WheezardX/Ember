@@ -6,6 +6,7 @@
     ember-dev evaluate S [--run DIR]       diffs + facts + budgets -> verdict.json, contact sheet
     ember-dev loop S                       build + run-scenario + evaluate (the inner loop)
     ember-dev bless S [--run DIR]          accept a run's captures as the new goldens
+    ember-dev regen-assets [--check]       run asset generators headless / check the lock
     ember-dev scenarios                    list render scenarios
 """
 
@@ -195,6 +196,32 @@ def bless(name: str, run: str = typer.Option(None, "--run"),
     sc = _sc(name)
     done = do_bless(ue.repo_root(), sc, _resolve_run(name, run), only)
     typer.secho(f"blessed {len(done)}: {', '.join(done) or '-'}", fg=typer.colors.GREEN)
+
+
+@app.command("regen-assets")
+def regen_assets(check: bool = typer.Option(False, "--check",
+                                           help="Engine-free: is the lock current?")) -> None:
+    """Regenerate every .uasset from assets/generators (headless commandlet)."""
+    from ember.dev import assets
+
+    if check:
+        problems = assets.check_lock()
+        for pr in problems:
+            typer.secho(f"  {pr}", fg=typer.colors.RED)
+        typer.secho("assets: clean" if not problems else f"assets: {len(problems)} problem(s)",
+                    fg=typer.colors.GREEN if not problems else typer.colors.RED)
+        if problems:
+            raise typer.Exit(1)
+        return
+    res = assets.regen(ue.load_engine())
+    for g in res["generators"]:
+        fg = typer.colors.GREEN if g["ok"] else typer.colors.RED
+        typer.secho(f"{g['script']}: {'ok' if g['ok'] else 'FAILED'} in {g['seconds']}s "
+                    f"-> {', '.join(g['outputs'])}", fg=fg)
+        if g["error"]:
+            typer.echo(f"  {g['error']}")
+    if not res["ok"]:
+        raise typer.Exit(1)
 
 
 @app.command()

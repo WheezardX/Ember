@@ -205,3 +205,31 @@ Result: Failed (OtherCompilationError)
     assert len(warnings) == 1                      # duplicates collapsed
     assert any("LNK2019" in o for o in other)
     assert (result, reason) == ("Failed", "OtherCompilationError")
+
+
+def test_asset_lock_detects_stale_generator_and_unclaimed_asset(tmp_path: Path):
+    import hashlib
+
+    from ember.dev.assets import LOCK, check_lock
+
+    gen = tmp_path / "assets" / "generators"
+    gen.mkdir(parents=True)
+    (gen / "g.py").write_bytes(b"print('gen')\r\n")          # CRLF working copy
+    (gen / "manifest.toml").write_text('[[generator]]\nscript = "g.py"\n'
+                                       'outputs = ["/Game/Ember/Generated/M_A"]\n')
+    out = tmp_path / "unreal" / "Ember" / "Content" / "Ember" / "Generated"
+    out.mkdir(parents=True)
+    (out / "M_A.uasset").write_bytes(b"\x00")
+    lf_sha = hashlib.sha256(b"print('gen')\n").hexdigest()   # CI checks out LF
+    lock = {"format": "ember-generated-lock", "version": 1, "engine": "5.8.3",
+            "generators": {"g.py": {"script_sha256": lf_sha, "outputs": {
+                "/Game/Ember/Generated/M_A": "unreal/Ember/Content/Ember/Generated/M_A.uasset"}}}}
+    (tmp_path / LOCK).write_text(json.dumps(lock))
+    assert check_lock(tmp_path) == []
+    (gen / "g.py").write_bytes(b"print('edited')\n")
+    assert any("script changed" in p for p in check_lock(tmp_path))
+    (gen / "g.py").write_bytes(b"print('gen')\n")
+    (out / "M_Hand.uasset").write_bytes(b"\x00")               # hand-made asset sneaks in
+    assert any("no generator claims" in p for p in check_lock(tmp_path))
+    (tmp_path / LOCK).unlink()
+    assert any("missing" in p for p in check_lock(tmp_path))

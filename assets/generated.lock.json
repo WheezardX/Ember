@@ -1,0 +1,13 @@
+{
+  "format": "ember-generated-lock",
+  "version": 1,
+  "engine": "5.8.3",
+  "generators": {
+    "m_ember_gray.py": {
+      "script_sha256": "c63815049c958776a2d960205d78323d05bff020b93b914128d5ebf60e16477f",
+      "outputs": {
+        "/Game/Ember/Generated/M_EmberGray": "unreal/Ember/Content/Ember/Generated/M_EmberGray.uasset"
+      }
+    }
+  }
+}

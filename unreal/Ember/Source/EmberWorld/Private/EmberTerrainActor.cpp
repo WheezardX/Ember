@@ -21,13 +21,19 @@ void AEmberTerrainActor::SetBaseColor(const FLinearColor& Color)
 {
 	if (!Material)
 	{
-		// Phase 0: engine BasicShapeMaterial (has a "Color" parameter). Replaced by the
-		// generated M_Terrain master in Phase 1 (B2).
+		// Generated clay master (assets/generators/m_ember_gray.py); the engine's
+		// BasicShapeMaterial is only a fallback for a checkout that has not run regen-assets.
 		UMaterialInterface* Base = LoadObject<UMaterialInterface>(
-			nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+			nullptr, TEXT("/Game/Ember/Generated/M_EmberGray.M_EmberGray"));
 		if (!Base)
 		{
-			UE_LOG(LogEmberWorld, Warning, TEXT("BasicShapeMaterial not found; terrain uses the default material"));
+			UE_LOG(LogEmberWorld, Warning, TEXT("M_EmberGray missing (run ember-dev regen-assets); using BasicShapeMaterial"));
+			Base = LoadObject<UMaterialInterface>(
+				nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+		}
+		if (!Base)
+		{
+			UE_LOG(LogEmberWorld, Warning, TEXT("no terrain material found; using the default material"));
 			return;
 		}
 		Material = UMaterialInstanceDynamic::Create(Base, this);
