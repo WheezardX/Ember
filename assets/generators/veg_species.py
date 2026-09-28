@@ -49,11 +49,14 @@ def build_material():
     col = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -600, -100)
     col.set_editor_property("parameter_name", "Color")
     col.set_editor_property("default_value", unreal.LinearColor(0.05, 0.08, 0.04, 1.0))
-    trunk_col = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -600, -300)
+    trunk_col = mel.create_material_expression(
+        mat, unreal.MaterialExpressionVectorParameter, -600, -300)
     trunk_col.set_editor_property("parameter_name", "TrunkColor")
-    trunk_col.set_editor_property("default_value", unreal.LinearColor(0.06, 0.035, 0.02, 1.0))
+    trunk_col.set_editor_property("default_value",
+                                  unreal.LinearColor(0.06, 0.035, 0.02, 1.0))
     vc = mel.create_material_expression(mat, unreal.MaterialExpressionVertexColor, -600, 100)
-    lerp = mel.create_material_expression(mat, unreal.MaterialExpressionLinearInterpolate, -400, -150)
+    lerp = mel.create_material_expression(
+        mat, unreal.MaterialExpressionLinearInterpolate, -400, -150)
     link(trunk_col, "", lerp, "A")
     link(col, "", lerp, "B")
     link(vc, "A", lerp, "Alpha")          # vertex alpha: 0 = bark, 1 = foliage
@@ -93,8 +96,8 @@ def part(builder, shade, foliage=True):
     flags = unreal.GeometryScriptColorFlags()
     for ch in ("red", "green", "blue", "alpha"):  # be explicit: alpha carries bark/foliage
         flags.set_editor_property(ch, True)
-    colors.set_mesh_constant_vertex_color(m, unreal.LinearColor(shade, shade, shade, 1.0 if foliage else 0.0),
-                                          flags, False)
+    rgba = unreal.LinearColor(shade, shade, shade, 1.0 if foliage else 0.0)
+    colors.set_mesh_constant_vertex_color(m, rgba, flags, False)
     return m
 
 
@@ -119,7 +122,7 @@ def tier_crown(target, rng, base_z, top_z, r0, r1, tiers, overlap, droop=0.0):
         h = step * overlap
         shade = 0.55 + 0.45 * f + rng.uniform(-0.05, 0.05)
         jitter = r * 0.06
-        add(target, part(lambda m, r=r, z=z, h=h: prim.append_cone(
+        add(target, part(lambda m, r=r, z=z, h=h, jitter=jitter: prim.append_cone(
             m, opts(), xf(rng.uniform(-jitter, jitter), rng.uniform(-jitter, jitter), z - droop * r,
                           yaw=rng.uniform(0, 360)),
             base_radius=r, top_radius=r * 0.08, height=h, radial_steps=10, height_steps=1,
@@ -131,7 +134,8 @@ def tier_crown(target, rng, base_z, top_z, r0, r1, tiers, overlap, droop=0.0):
                                                 capped=True), 1.0))
 
 
-def blobs(target, rng, count, cx, cy, cz, spread_xy, spread_z, r_min, r_max, squash, shade_lo, shade_hi):
+def blobs(target, rng, count, cx, cy, cz, spread_xy, spread_z, r_min, r_max, squash,
+          shade_lo, shade_hi):
     for _ in range(count):
         a = rng.uniform(0, 2 * math.pi)
         d = spread_xy * math.sqrt(rng.random())
@@ -224,8 +228,10 @@ for k in SPECIES:
     unreal.GeometryScript_AssetUtils.copy_mesh_from_static_mesh(
         sm, dm, unreal.GeometryScriptCopyMeshFromAssetOptions(), unreal.GeometryScriptMeshReadLOD())
     res = colors.get_mesh_per_vertex_colors(dm)
-    color_list = next(r for r in res if type(r).__name__ == "GeometryScriptColorList")
+    color_list = next(r for r in res
+                      if type(r).__name__ == "GeometryScriptColorList")
     lst = unreal.GeometryScript_List
-    arr = lst.convert_color_list_to_array(color_list) if hasattr(lst, "convert_color_list_to_array") else []
+    arr = (lst.convert_color_list_to_array(color_list)
+           if hasattr(lst, "convert_color_list_to_array") else [])
     alphas = sorted({round(c.a, 2) for c in arr})
     unreal.log(f"EMBER_VEG {k}: {len(arr)} vertex colours, alpha values {alphas[:6]}")
