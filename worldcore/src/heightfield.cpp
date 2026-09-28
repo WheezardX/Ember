@@ -243,3 +243,40 @@ bool data_extent(const Region& region, Bounds& out, std::string& error) {
 }
 
 }  // namespace emberworld
+
+namespace emberworld {
+
+bool SurfaceSampler::build(const Region& region, const TileEntry& tile, const Raster& height) {
+    const int tp = region.tile_px, ov = region.overlap_px;
+    if (height.width != tp + 2 * ov || height.height != tp + 2 * ov) return false;
+    content_ = tile.content;
+    px_ = tile.content.width() / tp;
+    n_ = tp + 1;
+    z_.assign(static_cast<size_t>(n_) * n_, 0.0);
+    valid_.assign(static_cast<size_t>(n_) * n_, 0);
+    for (int j = 0; j < n_; ++j)
+        for (int i = 0; i < n_; ++i) {
+            double v;
+            if (corner_height(height, i + ov, j + ov, v)) {
+                z_[static_cast<size_t>(j) * n_ + i] = v;
+                valid_[static_cast<size_t>(j) * n_ + i] = 1;
+            }
+        }
+    return true;
+}
+
+bool SurfaceSampler::height_at(double wx, double wy, double& out_z) const {
+    if (n_ == 0) return false;
+    const double gx = (wx - content_.min_x) / px_, gy = (content_.max_y - wy) / px_;
+    if (gx < 0 || gy < 0 || gx > n_ - 1 || gy > n_ - 1) return false;
+    const int i = std::min(static_cast<int>(gx), n_ - 2), j = std::min(static_cast<int>(gy), n_ - 2);
+    const double tx = gx - i, ty = gy - j;
+    const size_t a = static_cast<size_t>(j) * n_ + i;
+    if (!valid_[a] || !valid_[a + 1] || !valid_[a + n_] || !valid_[a + n_ + 1]) return false;
+    const double top = z_[a] + (z_[a + 1] - z_[a]) * tx;
+    const double bot = z_[a + n_] + (z_[a + n_ + 1] - z_[a + n_]) * tx;
+    out_z = top + (bot - top) * ty;
+    return true;
+}
+
+}  // namespace emberworld

@@ -6,6 +6,7 @@
 #include "EmberHarness.generated.h"
 
 class AEmberTerrainActor;
+class AEmberVegetationActor;
 class AEmberEnvironment;
 class ACameraActor;
 
@@ -66,7 +67,9 @@ private:
 	float ExposureBias = -2.f;
 	int32 FixedLod = -1;          // >= 0: load that LOD only (fixtures); -1: stream around the camera
 	double RefineFactor = 1.5;
-	FString LookPath = TEXT("clay");  // "clay" or an absolute viz/looks/*.toml path
+	FString LookPath = TEXT("clay");
+	bool bVegetation = false;
+	double VegRadiusM = 1500.0;  // "clay" or an absolute viz/looks/*.toml path
 	TArray<FBookmark> Bookmarks;
 	TArray<FCapture> Captures;
 	TArray<FOrbit> Orbits;
@@ -85,6 +88,7 @@ private:
 	TArray<FString> Written;
 
 	UPROPERTY(Transient) TObjectPtr<AEmberTerrainActor> Terrain;
+	UPROPERTY(Transient) TObjectPtr<AEmberVegetationActor> Vegetation;
 	UPROPERTY(Transient) TObjectPtr<AEmberEnvironment> Environment;
 	UPROPERTY(Transient) TObjectPtr<ACameraActor> Camera;
 };

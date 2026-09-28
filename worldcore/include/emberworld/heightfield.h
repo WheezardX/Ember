@@ -78,6 +78,24 @@ EMBERWORLD_CORE_API MeshResult load_tile_mesh(const Region& region, const TileEn
 // targets / probes). Returns false outside the region or on read failure.
 EMBERWORLD_CORE_API bool sample_height(const Region& region, double wx, double wy, double& out_z);
 
+// The rendered surface of one tile: bilinear over the same corner heights the mesh uses, so
+// objects placed with it sit exactly on the triangles' plane at grid corners and within the
+// quad's bilinear patch elsewhere (vegetation grounding; Terrain's scatter z is the raw DEM
+// cell value, which floats/sinks by metres on slopes).
+class EMBERWORLD_CORE_API SurfaceSampler {
+public:
+    bool build(const Region& region, const TileEntry& tile, const Raster& height);
+    // World metres in, metres out; false outside the tile content or on invalid corners.
+    bool height_at(double wx, double wy, double& out_z) const;
+
+private:
+    Bounds content_;
+    double px_ = 10.0;
+    int n_ = 0;                       // corners per side
+    std::vector<double> z_;           // n_ x n_, row 0 = north
+    std::vector<uint8_t> valid_;
+};
+
 // Bounds of the valid data (same corner-validity rule as the mesh: a corner is valid when any
 // of its four pixels is), scanned over the finest LOD without building meshes. Tiles can
 // extend past the AOI; this is what bookmarks address.

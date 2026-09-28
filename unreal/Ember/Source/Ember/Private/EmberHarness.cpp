@@ -19,6 +19,7 @@
 #include "EmberEnvironment.h"
 #include "EmberSceneFacts.h"
 #include "EmberTerrainActor.h"
+#include "EmberVegetationActor.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogEmberHarness, Log, All);
 
@@ -61,6 +62,8 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	}
 	J->TryGetNumberField(TEXT("lod_refine_factor"), RefineFactor);
 	J->TryGetStringField(TEXT("look"), LookPath);
+	J->TryGetBoolField(TEXT("vegetation"), bVegetation);
+	J->TryGetNumberField(TEXT("veg_radius_m"), VegRadiusM);
 	double Ev = 0;
 	if (J->TryGetNumberField(TEXT("exposure_bias"), Ev))
 	{
@@ -308,6 +311,16 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			return;
 		}
 		Terrain->SetBaseColor(FLinearColor(0.35f, 0.35f, 0.35f));
+		if (bVegetation)
+		{
+			Vegetation = GetWorld()->SpawnActor<AEmberVegetationActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+			Vegetation->RadiusM = VegRadiusM;
+			if (!Vegetation->Init(Terrain, Err))
+			{
+				Finish(2, TEXT("vegetation: ") + Err);
+				return;
+			}
+		}
 		CaptureIndex = 0;
 		OrbitIndex = 0;
 		NextPhase();

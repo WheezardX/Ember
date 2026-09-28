@@ -21,6 +21,7 @@
 
 #include "EmberEnvironment.h"
 #include "EmberTerrainActor.h"
+#include "EmberVegetationActor.h"
 
 #if PLATFORM_WINDOWS
 #include "Windows/AllowWindowsPlatformTypes.h"
@@ -188,8 +189,24 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 	F->SetObjectField(TEXT("tiles"), Tiles);
 
 	TSharedRef<FJsonObject> Inst = MakeShared<FJsonObject>();
-	Inst->SetNumberField(TEXT("total"), 0);  // C4 fills this
-	Inst->SetObjectField(TEXT("by_species"), MakeShared<FJsonObject>());
+	TSharedRef<FJsonObject> BySp = MakeShared<FJsonObject>();
+	Inst->SetNumberField(TEXT("total"), 0);
+	Inst->SetBoolField(TEXT("enabled"), false);
+	for (TActorIterator<AEmberVegetationActor> It(W); It; ++It)
+	{
+		Inst->SetBoolField(TEXT("enabled"), true);
+		Inst->SetNumberField(TEXT("total"), static_cast<double>(It->InstancesTotal));
+		Inst->SetNumberField(TEXT("tiles"), It->TilesLoaded);
+		Inst->SetNumberField(TEXT("radius_m"), It->RadiusM);
+		Inst->SetNumberField(TEXT("scatter_ms"), It->ScatterMs);
+		Inst->SetNumberField(TEXT("ungrounded"), static_cast<double>(It->UngroundedInstances));
+		for (const auto& KV : It->BySpecies)
+		{
+			BySp->SetNumberField(KV.Key, static_cast<double>(KV.Value));
+		}
+		break;
+	}
+	Inst->SetObjectField(TEXT("by_species"), BySp);
 	F->SetObjectField(TEXT("instances"), Inst);
 
 	TSharedRef<FJsonObject> Env = MakeShared<FJsonObject>();

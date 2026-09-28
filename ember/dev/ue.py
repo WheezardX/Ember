@@ -178,6 +178,8 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "fixed_lod": s.scenario.fixed_lod,
         "lod_refine_factor": s.scenario.lod_refine_factor,
         "look": _look_ref(s.scenario.look),
+        "vegetation": s.scenario.vegetation,
+        "veg_radius_m": s.scenario.veg_radius_m,
         "bookmarks": [b.model_dump() for b in s.bookmarks],
         "captures": [c.model_dump() for c in s.captures],
         "orbits": [o.model_dump() for o in s.orbits],

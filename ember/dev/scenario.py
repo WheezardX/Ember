@@ -90,6 +90,8 @@ class ScenarioMeta(_Strict):
     fixed_lod: int | None = None  # load one LOD everywhere (fixtures); None = stream (C3)
     lod_refine_factor: float = 1.5  # streaming: refine while distance < factor * tile span
     look: str = "viz/looks/terrain_default.toml"  # repo-relative look file, or "clay"
+    vegetation: bool = False    # C4: instance the Terrain-conformant scatter near the camera
+    veg_radius_m: float = 1500.0
 
 
 class RenderScenario(_Strict):

@@ -274,3 +274,31 @@ TEST_CASE("heightfield: data_extent matches the union of mesh valid bounds") {
     CHECK(got.min_y == want.min_y);
     CHECK(got.max_y == want.max_y);
 }
+
+TEST_CASE("heightfield: SurfaceSampler matches mesh vertices at corners and interpolates between") {
+    const auto root = testutil::write_synth_region("sampler", hill);
+    auto rr = load_region(root.string());
+    REQUIRE(rr);
+    const Region& R = *rr.region;
+    const TileEntry& t = *R.find(5, 0, 0);
+    auto tr = read_tiff(R.path(t.height_tif));
+    REQUIRE(tr);
+    SurfaceSampler s;
+    REQUIRE(s.build(R, t, *tr.raster));
+    const Frame fr = region_frame(R);
+    auto m = build_tile_mesh(R, t, *tr.raster, fr);
+    REQUIRE(m.ok());
+    const int N = m.mesh.grid_n;
+    for (int j = 0; j < N; j += 3)
+        for (int i = 0; i < N; i += 3) {
+            double z = 0;
+            REQUIRE(s.height_at(t.content.min_x + i * 10.0, t.content.max_y - j * 10.0, z));
+            CHECK(static_cast<float>((z - fr.anchor_z) * 100.0) == doctest::Approx(m.mesh.positions[j * N + i].z));
+        }
+    double z0 = 0, z1 = 0, zm = 0;
+    REQUIRE(s.height_at(t.content.min_x + 20.0, t.content.max_y - 20.0, z0));
+    REQUIRE(s.height_at(t.content.min_x + 30.0, t.content.max_y - 20.0, z1));
+    REQUIRE(s.height_at(t.content.min_x + 25.0, t.content.max_y - 20.0, zm));
+    CHECK(zm == doctest::Approx(0.5 * (z0 + z1)));
+    CHECK_FALSE(s.height_at(t.content.min_x - 5.0, t.content.max_y - 20.0, zm));
+}

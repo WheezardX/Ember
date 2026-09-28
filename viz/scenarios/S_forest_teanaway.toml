@@ -1,0 +1,52 @@
+# C4/HCP2 pipeline check: Terrain-conformant vegetation on teanaway_dev (placeholder meshes).
+render_scenario_version = 1
+
+[scenario]
+name = "S_forest_teanaway"
+description = "C4: teanaway_dev with all 74,595 scattered instances (placeholder cones/spheres until B3)"
+world = "terrain:teanaway_dev"
+resolution = [2560, 1440]
+budget = "interactive"
+perf_frames = 180
+fixed_lod = 14
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 5000   # the whole 1.44 km region
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "oblique_nw"
+target_frac = [0.5, 0.5]
+distance_m = 1700
+yaw_deg = 315
+pitch_deg = -24
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "ground_ridge"
+target_frac = [0.45, 0.45]
+distance_m = 180
+yaw_deg = 20
+pitch_deg = -8
+fov_deg = 65
+sun = "morning"
+
+[[captures]]
+name = "oblique_nw"
+bookmark = "oblique_nw"
+
+[[captures]]
+name = "ground_ridge"
+bookmark = "ground_ridge"
+
+# Conformance at render time: every Terrain instance is on screen-side (scatter oracle = 74,595).
+[[assert]]
+fact = "instances.total"
+op = "=="
+value = 74595
+
+[[assert]]
+fact = "instances.ungrounded"
+op = "=="
+value = 0
