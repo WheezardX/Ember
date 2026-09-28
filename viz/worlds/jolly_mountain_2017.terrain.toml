@@ -1,0 +1,72 @@
+# Render world for the Jolly Mountain fire, 2017 (EPIC_5_PLAN D10, HCP3 "Fire replays in 3D").
+# A Terrain pipeline config: run it with Terrain's CLI into Terrain's store, from the Ember repo root:
+#
+#   terrain run --config viz/worlds/jolly_mountain_2017.terrain.toml --store ../Terrain/store
+#
+# PRE-FIRE world. The fire burned Aug 11 - Oct 2017, so:
+#   * fuels + vegetation from LANDFIRE 2016 Remap (every later edition already contains this
+#     fire's scar - the sim world pack hist-jolly-mountain-2017.ewp uses LF2025, see U10);
+#   * no LiDAR canopy model (3DEP point clouds here may post-date the fire); tree heights come
+#     from LF2016 canopy height instead;
+#   * greenness from the summer before the fire started.
+# The AOI is exactly the fire replay's world-pack grid (800 x 627 cells of 30 m, UTM 10N), so the
+# fire state and the render terrain share one frame.
+
+[project]
+name = "jolly_mountain_2017"
+crs  = "EPSG:32610"
+
+[aoi]
+type = "bbox"
+crs  = "EPSG:32610"
+#       min_x            min_y              max_x            max_y
+bbox = [640781.5485609254, 5235703.330345252, 664781.5485609254, 5254513.330345252]
+
+[dem]
+profile        = "game"              # 10 m
+sources        = ["3dep-ept", "copernicus-30m"]
+vertical_datum = "navd88"
+fill_voids     = true
+
+[dem.thinning]
+points_per_cell = 4
+
+[tiling]
+scheme     = "quadtree"
+tile_px    = 128                     # 1.28 km content tiles at 10 m
+overlap_px = 8
+base_lod   = 14
+num_lods   = 4
+
+[outputs.heightmap]
+enabled = true
+format  = "png16"
+
+[outputs.gltf_tiles]
+enabled = false
+
+[outputs.gltf]
+enabled = false
+
+[outputs.stl]
+enabled = false
+
+[fuels]
+enabled          = true
+landfire_version = "LF2016"          # pre-fire
+
+[canopy]
+enabled = false                      # post-fire LiDAR would show the burn; heights from LF2016 CH
+
+[season]
+enabled = true
+window  = ["2017-06-15", "2017-08-10"]   # before ignition (2017-08-11)
+
+[vegetation]
+enabled                = true
+palette                = "packs/palettes/cascades_mixed_conifer.toml"
+world_seed             = 1337
+layer_version          = 2
+candidates_per_cell    = 4
+max_instances_per_tile = 20000000
+preview                = false

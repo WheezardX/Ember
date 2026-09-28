@@ -10,4 +10,5 @@ THIRD_PARTY_INCLUDES_START
 #include "src/veg.cpp"
 #include "src/lod.cpp"
 #include "src/look.cpp"
+#include "src/firestate.cpp"
 THIRD_PARTY_INCLUDES_END

@@ -1,0 +1,85 @@
+// Fire state player core vs Epic 4's own reader (ember/sim/stream.py iter_frames) as the oracle.
+#include <algorithm>
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <string>
+
+#include "doctest.h"
+#include "emberworld/firestate.h"
+#include "json.hpp"
+
+using namespace emberworld::fire;
+
+namespace {
+std::string data(const char* name) { return std::string(EMBERWORLD_REPO_DIR) + "/worldcore/tests/data/" + name; }
+std::string repo_path(const std::string& rel) { return std::string(EMBERWORLD_REPO_DIR) + "/" + rel; }
+
+uint64_t fnv1a(const void* p, size_t n) {
+    uint64_t h = 0xcbf29ce484222325ULL;
+    const auto* b = static_cast<const uint8_t*>(p);
+    for (size_t i = 0; i < n; ++i) h = (h ^ b[i]) * 0x100000001b3ULL;
+    return h;
+}
+}  // namespace
+
+TEST_CASE("fire: small synthetic stream - every tick, between ticks, final arrival") {
+    Stream s;
+    REQUIRE(s.open(data("fire_small.ess")) == "");
+    CHECK(s.header().nx == 6);
+    CHECK(s.header().ny == 5);
+    CHECK(s.header().model_id == "test-model");
+    CHECK(s.ticks() == 7);
+    std::ifstream f(data("fire_small.expected.json"));
+    const auto exp = nlohmann::json::parse(f);
+    for (const auto& [t, fr] : exp.at("frames").items()) {
+        const int32_t ts = std::stoi(t);
+        for (int32_t probe : {ts, ts + 1799}) {  // exact tick time, and half a tick later
+            const State st = s.at(probe);
+            INFO("t=" << probe);
+            CHECK(st.phase == fr.at("phase").get<std::vector<uint8_t>>());
+            CHECK(st.intensity == fr.at("intensity").get<std::vector<uint8_t>>());
+            CHECK(st.metrics.burned == fr.at("burned").get<uint32_t>());
+        }
+    }
+    CHECK(s.final_arrival() == exp.at("final_arrival").get<std::vector<int32_t>>());
+    // seeking backwards gives the same answer as seeking forwards
+    const State late = s.at(7 * 3600), early = s.at(2 * 3600), again = s.at(7 * 3600);
+    CHECK(late.phase == again.phase);
+    CHECK(early.phase != late.phase);
+}
+
+TEST_CASE("fire: Jolly Mountain CP2 playback stream matches Epic 4's reader") {
+    std::ifstream f(data("fire_jolly.expected.json"));
+    const auto exp = nlohmann::json::parse(f);
+    const std::string path = repo_path(exp.at("stream").get<std::string>());
+    if (!std::filesystem::exists(path)) {
+        MESSAGE("CP2 stream not present - skipped (" << path << ")");
+        return;
+    }
+    Stream s;
+    REQUIRE(s.open(path) == "");
+    CHECK(s.header().cells() == exp.at("cells").get<size_t>());
+    CHECK(s.end_s() == exp.at("end_s").get<int32_t>());
+    for (const auto& [t, want] : exp.at("at").items()) {
+        const State st = s.at(std::stoi(t));
+        INFO("t=" << t);
+        CHECK(st.tick == want.at("tick").get<uint32_t>());
+        CHECK(std::to_string(fnv1a(st.phase.data(), st.phase.size())) == want.at("phase_fnv1a64").get<std::string>());
+        for (int k = 0; k < 4; ++k)
+            CHECK(std::count(st.phase.begin(), st.phase.end(), k) == want.at("counts")[k].get<int64_t>());
+    }
+    const auto& a = s.final_arrival();
+    CHECK(std::to_string(fnv1a(a.data(), a.size() * 4)) == exp.at("final_arrival_fnv1a64").get<std::string>());
+}
+
+TEST_CASE("fire: replay points at its stream and world grid") {
+    const std::string path = repo_path("runs/cp2/cp2-jolly-playback.replay.json");
+    if (!std::filesystem::exists(path)) return;
+    const ReplayInfo r = read_replay(path);
+    REQUIRE_MESSAGE(r.ok(), r.error);
+    CHECK(r.grid.cell_m == 30.0);
+    CHECK(r.grid.crs == "EPSG:32610");
+    CHECK(r.model_id == "arrival-playback");
+    CHECK(std::filesystem::exists(r.stream_path));
+}

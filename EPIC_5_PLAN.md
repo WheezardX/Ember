@@ -292,6 +292,12 @@ for now. We'll come back to the variation issue another time." Flyover vertical 
 (smoothed altitude). Next direction: the ground plane - better terrain texturing plus ground
 cover (low vegetation, rocks, duff); it will need its own line in the budget.
 
+**Ground plane decisions (Brad, 2026-09-28):** HCP3 first; the ground comes right after, so fire
+char/ash and ground detail land in one terrain-material pass. Ground textures procedural from code
+until licensed scans (with bark). Direction: FBFM40 fuel model drives ground detail (TL litter/duff
+and logs, TU understory, GR/GS/SH grass and shrub, NB rock/snow) plus near-only ground-cover
+instances; own budget line (~1.5 ms), terrain toward Nanite to make room.
+
 ## 9. Notes for later epics
 
 - **Epic 6:** C1 readers, F3 shell, camera rigs, and the state player are its foundation; the command-issuing UI plugs into Epic 4's suppression schema on top of this scene. National cartographic view is new work there, not a HCP5 overlay retrofit.
