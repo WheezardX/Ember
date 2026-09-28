@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -159,6 +160,24 @@ TEST_CASE("heightfield: frame, heights, and region-border nodata handling") {
     CHECK(c.mesh.surface_triangles == 128);
 }
 
+TEST_CASE("heightfield: surface triangles use UE's front-face winding") {
+    // Found at HCP0: the first render showed only skirts - the surface was back-face culled.
+    const auto root = testutil::write_synth_region("winding", [](double, double) { return 500.0; });
+    auto rr = load_region(root.string());
+    REQUIRE(rr);
+    auto m = load_tile_mesh(*rr.region, *rr.region->find(5, 0, 0), region_frame(*rr.region));
+    REQUIRE(m.ok());
+    const TileMesh& M = m.mesh;
+    for (int t = 0; t < M.surface_triangles; ++t) {
+        const Vec3f& p0 = M.positions[M.indices[3 * t]];
+        const Vec3f& p1 = M.positions[M.indices[3 * t + 1]];
+        const Vec3f& p2 = M.positions[M.indices[3 * t + 2]];
+        const double ux = p1.x - p0.x, uy = p1.y - p0.y, vx = p2.x - p0.x, vy = p2.y - p0.y;
+        const double cz = ux * vy - uy * vx;
+        REQUIRE(cz < 0.0);
+    }
+}
+
 TEST_CASE("heightfield: wrong raster size is an error, not a crash") {
     const auto root = testutil::write_synth_region("badsize", hill);
     auto rr = load_region(root.string());
@@ -212,6 +231,20 @@ TEST_CASE("teanaway_dev (real Terrain store, skipped when absent)") {
     // The AOI is 144x144 px (1.44 km @ 10 m) inside a 3x3 grid of 64 px tiles; the mesh covers
     // exactly the valid pixels: 144*144 quads.
     CHECK(tris == 144 * 144 * 2);
+    // Data extent = the 1.44 km AOI anchored at the tile grid's lower-left corner.
+    Bounds vb{1e300, 1e300, -1e300, -1e300};
+    for (const TileEntry* t : R.tiles_at(14)) {
+        auto m = load_tile_mesh(R, *t, fr);
+        if (!m.mesh.has_valid) continue;
+        vb.min_x = std::min(vb.min_x, m.mesh.valid_bounds.min_x);
+        vb.min_y = std::min(vb.min_y, m.mesh.valid_bounds.min_y);
+        vb.max_x = std::max(vb.max_x, m.mesh.valid_bounds.max_x);
+        vb.max_y = std::max(vb.max_y, m.mesh.valid_bounds.max_y);
+    }
+    CHECK(vb.width() == doctest::Approx(1440.0));
+    CHECK(vb.height() == doctest::Approx(1440.0));
+    CHECK(vb.min_x == doctest::Approx(R.extent().min_x));
+    CHECK(vb.min_y == doctest::Approx(R.extent().min_y));
     double z;
     const Bounds e = R.extent();
     CHECK(sample_height(R, 0.5 * (e.min_x + e.max_x), 0.5 * (e.min_y + e.max_y), z));

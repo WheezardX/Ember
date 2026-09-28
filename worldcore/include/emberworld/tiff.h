@@ -8,6 +8,8 @@
 // Engine-free C++20: compiled by CMake (worldcore_tests) and by the UE EmberWorld module.
 #pragma once
 
+#include "emberworld/api.h"
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -17,8 +19,8 @@ namespace emberworld {
 
 enum class SampleType : uint8_t { U8, I8, U16, I16, U32, I32, F32, F64 };
 
-const char* sample_type_name(SampleType t);
-int sample_bytes(SampleType t);
+EMBERWORLD_CORE_API const char* sample_type_name(SampleType t);
+EMBERWORLD_CORE_API int sample_bytes(SampleType t);
 
 struct GeoInfo {
     bool has_transform = false;
@@ -30,7 +32,7 @@ struct GeoInfo {
     std::optional<double> nodata;
 };
 
-struct Raster {
+struct EMBERWORLD_CORE_API Raster {
     int width = 0;
     int height = 0;
     SampleType type = SampleType::F32;
@@ -53,7 +55,7 @@ struct TiffResult {
     explicit operator bool() const { return raster.has_value(); }
 };
 
-TiffResult read_tiff(const std::string& path);
-TiffResult read_tiff_memory(const uint8_t* bytes, size_t size);
+EMBERWORLD_CORE_API TiffResult read_tiff(const std::string& path);
+EMBERWORLD_CORE_API TiffResult read_tiff_memory(const uint8_t* bytes, size_t size);
 
 }  // namespace emberworld

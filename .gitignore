@@ -37,3 +37,11 @@ Thumbs.db
 
 # worldcore (engine-free render world core) build tree
 /worldcore/build/
+
+# UE project build products
+/unreal/Ember/Binaries/
+/unreal/Ember/Intermediate/
+/unreal/Ember/Saved/
+/unreal/Ember/DerivedDataCache/
+/unreal/Ember/.vs/
+/unreal/Ember/*.sln

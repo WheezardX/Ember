@@ -6,6 +6,8 @@
 // covers apron_bounds (content + overlap_px on every side), row 0 = north.
 #pragma once
 
+#include "emberworld/api.h"
+
 #include <map>
 #include <optional>
 #include <string>
@@ -35,7 +37,7 @@ struct LayerTile {
     std::string hash;
 };
 
-struct Layer {
+struct EMBERWORLD_CORE_API Layer {
     std::string name;
     std::string unit;
     bool categorical = false;
@@ -48,7 +50,7 @@ struct HeightQuant {
     double scale = 1.0, offset = 0.0, z_min = 0.0, z_max = 0.0;
 };
 
-struct Region {
+struct EMBERWORLD_CORE_API Region {
     std::string root;          // absolute directory, forward slashes, no trailing slash
     std::string name;          // directory name
     int schema_version = 0;
@@ -75,6 +77,6 @@ struct RegionResult {
 };
 
 // dir: the region directory (containing manifest.json). Never throws.
-RegionResult load_region(const std::string& dir);
+EMBERWORLD_CORE_API RegionResult load_region(const std::string& dir);
 
 }  // namespace emberworld

@@ -1,0 +1,11 @@
+# Performance budgets (EPIC_5_PLAN D8), checked by `ember-dev evaluate` against facts/perf.json.
+# Key form: <fact path with "." written as "__">_max | _min.  Reference GPU: RTX 4080 SUPER (D2).
+
+[interactive]
+description = "60 fps @ 1440p for the incident view; <= 4 GB VRAM"
+perf__frame_ms_p95_max = 16.7
+render__vram_mb_max = 4096
+
+[batch]
+description = "Offline renders: no frame-time cap; VRAM still bounded so the runner can multitask"
+render__vram_mb_max = 12288

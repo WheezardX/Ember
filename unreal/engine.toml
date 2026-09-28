@@ -1,0 +1,10 @@
+# Pinned engine (EPIC_5_PLAN D1). Upgrades are ADR events: change these + record the ADR.
+# `ember-dev doctor` refuses to proceed on a mismatch. Override the install location with
+# $EMBER_UE_ROOT (never the version).
+engine_version = "5.8.3"
+engine_changelist = 58210709
+engine_root = "C:/Program Files/Epic Games/UE_5.8"
+
+project = "Ember/Ember.uproject"          # relative to this file
+editor_target = "EmberEditor"
+game_target = "Ember"

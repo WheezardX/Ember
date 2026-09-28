@@ -102,6 +102,15 @@ MeshResult build_tile_mesh(const Region& region, const TileEntry& tile, const Ra
             if (V(i, j)) {
                 m.min_z = std::min(m.min_z, wz);
                 m.max_z = std::max(m.max_z, wz);
+                Bounds& vb = m.valid_bounds;
+                if (!m.has_valid) {
+                    vb = {wx, wy, wx, wy};
+                    m.has_valid = true;
+                }
+                vb.min_x = std::min(vb.min_x, wx);
+                vb.max_x = std::max(vb.max_x, wx);
+                vb.min_y = std::min(vb.min_y, wy);
+                vb.max_y = std::max(vb.max_y, wy);
             }
             m.positions.push_back(frame.to_ue(wx, wy, wz));
             // Gradient in world metres; UE normal has Y = south, so dz/dy_south = -dz/dy_north.
@@ -126,8 +135,10 @@ MeshResult build_tile_mesh(const Region& region, const TileEntry& tile, const Ra
             const uint32_t a = j * N + i, b = a + 1, c = a + N, d = c + 1;
             // a b      (east ->)
             // c d      (south v)
-            tri(a, b, c);
-            tri(b, d, c);
+            // UE front faces: for an up-facing triangle, cross(p1-p0, p2-p0).z < 0 in the UE
+            // frame (left-handed, X east / Y south). Verified by render (HCP0 log) + unit test.
+            tri(a, c, b);
+            tri(b, c, d);
             m.surface_triangles += 2;
         }
 

@@ -10,6 +10,8 @@
 // Output frame is UE's: centimetres, X = east, Y = south, Z = up, relative to an anchor.
 #pragma once
 
+#include "emberworld/api.h"
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -36,12 +38,12 @@ struct Frame {
 };
 
 // Anchor at the centre of the region's extent, at z_min.
-Frame region_frame(const Region& r);
+EMBERWORLD_CORE_API Frame region_frame(const Region& r);
 
 struct MeshOptions {
     double skirt_depth_m = -1.0;  // < 0: max(4 * pixel size, 1 m) — Terrain's own rule
     bool skirts = true;
-    bool flip_winding = false;    // set if the consumer's front-face convention differs
+    bool flip_winding = false;    // default winding is UE's (see heightfield.cpp); flip for others
 };
 
 struct TileMesh {
@@ -55,6 +57,8 @@ struct TileMesh {
     int skirt_triangles = 0;
     int nodata_corners = 0;       // corners with no valid neighbouring pixel (no triangles touch them)
     double min_z = 0, max_z = 0;  // metres, over valid corners
+    Bounds valid_bounds;          // world metres covered by valid corners (if any)
+    bool has_valid = false;
 };
 
 struct MeshResult {
@@ -63,15 +67,15 @@ struct MeshResult {
     bool ok() const { return error.empty(); }
 };
 
-MeshResult build_tile_mesh(const Region& region, const TileEntry& tile, const Raster& height,
+EMBERWORLD_CORE_API MeshResult build_tile_mesh(const Region& region, const TileEntry& tile, const Raster& height,
                            const Frame& frame, const MeshOptions& opt = {});
 
 // Convenience: read the tile's height.tif and build.
-MeshResult load_tile_mesh(const Region& region, const TileEntry& tile, const Frame& frame,
+EMBERWORLD_CORE_API MeshResult load_tile_mesh(const Region& region, const TileEntry& tile, const Frame& frame,
                           const MeshOptions& opt = {});
 
 // Bilinear-free ground height at a world point from the finest LOD's corner rule (for camera
 // targets / probes). Returns false outside the region or on read failure.
-bool sample_height(const Region& region, double wx, double wy, double& out_z);
+EMBERWORLD_CORE_API bool sample_height(const Region& region, double wx, double wy, double& out_z);
 
 }  // namespace emberworld

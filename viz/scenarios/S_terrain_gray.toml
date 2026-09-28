@@ -1,0 +1,66 @@
+# HCP0 proof scenario: gray-shaded Teanaway dev terrain (Phase 0 - no materials yet).
+render_scenario_version = 1
+
+[scenario]
+name = "S_terrain_gray"
+description = "HCP0: teanaway_dev (1.44 km @ 10 m) gray-shaded, 3 bookmarks + 1440p perf window"
+world = "terrain:teanaway_dev"
+resolution = [2560, 1440]
+budget = "interactive"
+perf_frames = 300
+exposure_bias = -2.0   # chosen by the HCP0 sweep (checkpoints/HCP0)
+
+[[bookmarks]]
+name = "overview_n"
+target_frac = [0.5, 0.5]
+distance_m = 2300
+yaw_deg = 0          # looking north
+pitch_deg = -40
+fov_deg = 55
+sun = "noon"
+
+[[bookmarks]]
+name = "oblique_nw"
+target_frac = [0.5, 0.5]
+distance_m = 1700
+yaw_deg = 315        # from the SE looking NW
+pitch_deg = -24
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "low_morning"
+target_frac = [0.35, 0.4]
+distance_m = 750
+yaw_deg = 80
+pitch_deg = -14
+fov_deg = 60
+sun = "morning"
+
+[[captures]]
+name = "overview_n"
+bookmark = "overview_n"
+
+[[captures]]
+name = "oblique_nw"
+bookmark = "oblique_nw"
+
+[[captures]]
+name = "low_morning"
+bookmark = "low_morning"
+
+# Scene facts that must hold at every capture (docs/viz/scene-facts.md).
+[[assert]]
+fact = "tiles.loaded"
+op = "=="
+value = 9
+
+[[assert]]
+fact = "tiles.triangles"
+op = "=="
+value = 41472        # 144 x 144 valid pixels x 2: the mesh covers exactly the AOI
+
+[[assert]]
+fact = "render.vram_mb"
+op = ">"
+value = 0

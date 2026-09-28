@@ -36,6 +36,7 @@ dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]
 ember = "ember.cli:app"
+ember-dev = "ember.dev.cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["ember"]
@@ -53,10 +54,13 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
+# Verbatim compiler log lines are test data.
+"tests/test_dev_harness.py" = ["E501"]
 # Typer's API *requires* `typer.Option(...)` as a parameter default — B008 is a
 # false positive for this idiom.
 "ember/cli.py" = ["B008"]
 "ember/sim/cli.py" = ["B008"]
+"ember/dev/cli.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

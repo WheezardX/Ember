@@ -1,0 +1,344 @@
+#include "EmberHarness.h"
+
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
+#include "Dom/JsonObject.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "HAL/PlatformMisc.h"
+#include "ImageCore.h"
+#include "ImageUtils.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
+#include "UnrealClient.h"
+
+#include "EmberEnvironment.h"
+#include "EmberSceneFacts.h"
+#include "EmberTerrainActor.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogEmberHarness, Log, All);
+
+AEmberHarness::AEmberHarness()
+{
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickGroup = TG_PostUpdateWork;
+}
+
+bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
+{
+	FString Text;
+	if (!FFileHelper::LoadFileToString(Text, *Path))
+	{
+		OutError = TEXT("cannot read run plan ") + Path;
+		return false;
+	}
+	TSharedPtr<FJsonObject> J;
+	if (!FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), J) || !J.IsValid())
+	{
+		OutError = TEXT("run plan is not valid JSON");
+		return false;
+	}
+	if (J->GetStringField(TEXT("format")) != TEXT("ember-run-plan") || J->GetIntegerField(TEXT("version")) != 1)
+	{
+		OutError = TEXT("not an ember-run-plan v1");
+		return false;
+	}
+	Scenario = J->GetStringField(TEXT("scenario"));
+	WorldDir = J->GetStringField(TEXT("world"));
+	OutDir = J->GetStringField(TEXT("out_dir"));
+	const TArray<TSharedPtr<FJsonValue>>& Res = J->GetArrayField(TEXT("resolution"));
+	ResX = static_cast<int32>(Res[0]->AsNumber());
+	ResY = static_cast<int32>(Res[1]->AsNumber());
+	PerfFrames = J->GetIntegerField(TEXT("perf_frames"));
+	double Ev = 0;
+	if (J->TryGetNumberField(TEXT("exposure_bias"), Ev))
+	{
+		ExposureBias = static_cast<float>(Ev);
+	}
+	for (const TSharedPtr<FJsonValue>& V : J->GetArrayField(TEXT("bookmarks")))
+	{
+		const TSharedPtr<FJsonObject>& O = V->AsObject();
+		FBookmark B;
+		B.Name = O->GetStringField(TEXT("name"));
+		const TArray<TSharedPtr<FJsonValue>>* T = nullptr;
+		if (O->TryGetArrayField(TEXT("target_frac"), T) && T->Num() == 2)
+		{
+			B.bFrac = true;
+		}
+		else if (O->TryGetArrayField(TEXT("target_cell"), T) && T->Num() == 2)
+		{
+			B.bFrac = false;
+		}
+		else
+		{
+			OutError = TEXT("bookmark without target: ") + B.Name;
+			return false;
+		}
+		B.Target = FVector2D((*T)[0]->AsNumber(), (*T)[1]->AsNumber());
+		B.DistanceM = O->GetNumberField(TEXT("distance_m"));
+		B.YawDeg = O->GetNumberField(TEXT("yaw_deg"));
+		B.PitchDeg = O->GetNumberField(TEXT("pitch_deg"));
+		B.FovDeg = O->GetNumberField(TEXT("fov_deg"));
+		B.Sun = O->GetStringField(TEXT("sun"));
+		Bookmarks.Add(B);
+	}
+	for (const TSharedPtr<FJsonValue>& V : J->GetArrayField(TEXT("captures")))
+	{
+		const TSharedPtr<FJsonObject>& O = V->AsObject();
+		FCapture C;
+		C.Name = O->GetStringField(TEXT("name"));
+		C.Bookmark = O->GetStringField(TEXT("bookmark"));
+		C.WarmupFrames = O->GetIntegerField(TEXT("warmup_frames"));
+		Captures.Add(C);
+	}
+	return true;
+}
+
+bool AEmberHarness::Start(const FString& PlanPath, AEmberEnvironment* Env)
+{
+	StartSeconds = FPlatformTime::Seconds();
+	Environment = Env;
+	FString Err;
+	if (!LoadPlan(PlanPath, Err))
+	{
+		// No out dir known yet: log and exit non-zero; ember-dev reports the missing status.
+		UE_LOG(LogEmberHarness, Error, TEXT("%s"), *Err);
+		FPlatformMisc::RequestExitWithStatus(false, 3);
+		return false;
+	}
+	UE_LOG(LogEmberHarness, Display, TEXT("Run plan: %s — world %s — %d captures -> %s"),
+		*Scenario, *WorldDir, Captures.Num(), *OutDir);
+	if (GEngine)
+	{
+		GEngine->bEnableOnScreenDebugMessages = false;
+	}
+	if (Environment)
+	{
+		Environment->SetExposure(ExposureBias);
+	}
+	ShotHandle = UGameViewportClient::OnScreenshotCaptured().AddUObject(this, &AEmberHarness::OnScreenshot);
+	State = EState::LoadWorld;
+	return true;
+}
+
+void AEmberHarness::EndPlay(const EEndPlayReason::Type Reason)
+{
+	UGameViewportClient::OnScreenshotCaptured().Remove(ShotHandle);
+	Super::EndPlay(Reason);
+}
+
+bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
+{
+	const emberworld::Region* R = Terrain ? Terrain->GetRegion() : nullptr;
+	if (!R)
+	{
+		OutError = TEXT("no region loaded");
+		return false;
+	}
+	// Bookmarks address the valid data (the AOI), not the tile grid's padded extent.
+	const emberworld::Bounds E = Terrain->GetDataExtent();
+	double Wx, Wy;
+	if (B.bFrac)
+	{
+		Wx = E.min_x + B.Target.X * E.width();
+		Wy = E.max_y - B.Target.Y * E.height();
+	}
+	else
+	{
+		// Cells are finest-LOD pixels, x east / y south from the data extent's NW corner.
+		const double Px = R->tiles_at(R->finest_lod())[0]->content.width() / R->tile_px;
+		Wx = E.min_x + (B.Target.X + 0.5) * Px;
+		Wy = E.max_y - (B.Target.Y + 0.5) * Px;
+	}
+	double Wz = R->heightmap.z_min;
+	Terrain->GroundHeightAt(Wx, Wy, Wz);
+	const FVector Target = Terrain->WorldToUE(Wx, Wy, Wz);
+	const FRotator Rot(B.PitchDeg, B.YawDeg - 90.0, 0.0);  // compass -> UE yaw (X = east)
+	const FVector Loc = Target - Rot.Vector() * (B.DistanceM * 100.0);
+
+	if (!Camera)
+	{
+		FActorSpawnParameters P;
+		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Camera = GetWorld()->SpawnActor<ACameraActor>(Loc, Rot, P);
+		Camera->GetCameraComponent()->bConstrainAspectRatio = false;
+	}
+	Camera->SetActorLocationAndRotation(Loc, Rot);
+	Camera->GetCameraComponent()->SetFieldOfView(B.FovDeg);
+	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		PC->SetViewTarget(Camera);
+	}
+	if (Environment && !Environment->SetSun(B.Sun))
+	{
+		OutError = TEXT("unknown sun preset: ") + B.Sun;
+		return false;
+	}
+	return true;
+}
+
+void AEmberHarness::OnScreenshot(int32 W, int32 H, const TArray<FColor>& Pixels)
+{
+	ShotW = W;
+	ShotH = H;
+	ShotPixels = Pixels;
+	for (FColor& C : ShotPixels)
+	{
+		C.A = 255;
+	}
+	bShotReady = true;
+}
+
+void AEmberHarness::Finish(int32 ExitCode, const FString& Error)
+{
+	State = EState::Done;
+	TSharedRef<FJsonObject> S = MakeShared<FJsonObject>();
+	S->SetStringField(TEXT("format"), TEXT("ember-run-status"));
+	S->SetNumberField(TEXT("version"), 1);
+	S->SetStringField(TEXT("scenario"), Scenario);
+	S->SetNumberField(TEXT("exit_code"), ExitCode);
+	S->SetStringField(TEXT("error"), Error);
+	S->SetNumberField(TEXT("elapsed_s"), FPlatformTime::Seconds() - StartSeconds);
+	TArray<TSharedPtr<FJsonValue>> Files;
+	for (const FString& F : Written)
+	{
+		Files.Add(MakeShared<FJsonValueString>(F));
+	}
+	S->SetArrayField(TEXT("written"), Files);
+	if (!OutDir.IsEmpty())
+	{
+		UEmberSceneFactsSubsystem::WriteJson(S, OutDir / TEXT("run_status.json"));
+	}
+	if (!Error.IsEmpty())
+	{
+		UE_LOG(LogEmberHarness, Error, TEXT("Harness failed: %s"), *Error);
+	}
+	UE_LOG(LogEmberHarness, Display, TEXT("Harness done (exit %d) in %.1f s"), ExitCode, FPlatformTime::Seconds() - StartSeconds);
+	FPlatformMisc::RequestExitWithStatus(false, static_cast<uint8>(ExitCode));
+}
+
+void AEmberHarness::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	UEmberSceneFactsSubsystem* Facts = GetWorld()->GetSubsystem<UEmberSceneFactsSubsystem>();
+	FString Err;
+
+	switch (State)
+	{
+	case EState::Idle:
+	case EState::Done:
+		return;
+
+	case EState::LoadWorld:
+	{
+		FActorSpawnParameters P;
+		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Terrain = GetWorld()->SpawnActor<AEmberTerrainActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+		if (!Terrain->LoadRegion(WorldDir, -1, Err))
+		{
+			Finish(2, TEXT("world load failed: ") + Err);
+			return;
+		}
+		Terrain->SetBaseColor(FLinearColor(0.35f, 0.35f, 0.35f));
+		CaptureIndex = 0;
+		State = Captures.Num() ? EState::Position : EState::Perf;
+		FramesLeft = PerfFrames;
+		if (State == EState::Perf && Facts) Facts->BeginPerfWindow();
+		return;
+	}
+
+	case EState::Position:
+	{
+		const FCapture& C = Captures[CaptureIndex];
+		const FBookmark* B = Bookmarks.FindByPredicate([&](const FBookmark& X) { return X.Name == C.Bookmark; });
+		if (!B)
+		{
+			Finish(2, TEXT("unknown bookmark ") + C.Bookmark);
+			return;
+		}
+		if (!PlaceCamera(*B, Err))
+		{
+			Finish(2, Err);
+			return;
+		}
+		FramesLeft = FMath::Max(1, C.WarmupFrames);
+		State = EState::Warmup;
+		return;
+	}
+
+	case EState::Warmup:
+		if (--FramesLeft <= 0)
+		{
+			State = EState::Shoot;
+		}
+		return;
+
+	case EState::Shoot:
+		bShotReady = false;
+		FScreenshotRequest::RequestScreenshot(false);
+		FramesLeft = 120;  // timeout in frames
+		State = EState::WaitShot;
+		return;
+
+	case EState::WaitShot:
+	{
+		if (!bShotReady)
+		{
+			if (--FramesLeft <= 0)
+			{
+				Finish(2, TEXT("screenshot timed out: ") + Captures[CaptureIndex].Name);
+			}
+			return;
+		}
+		const FCapture& C = Captures[CaptureIndex];
+		const FString Png = OutDir / TEXT("captures") / (C.Name + TEXT(".png"));
+		const FImageView Img(ShotPixels.GetData(), ShotW, ShotH);
+		if (!FImageUtils::SaveImageByExtension(*Png, Img))
+		{
+			Finish(2, TEXT("failed to write ") + Png);
+			return;
+		}
+		Written.Add(Png);
+		if (Facts)
+		{
+			const FString FJ = OutDir / TEXT("facts") / (C.Name + TEXT(".json"));
+			UEmberSceneFactsSubsystem::WriteJson(Facts->BuildFacts(Scenario, C.Name), FJ);
+			Written.Add(FJ);
+		}
+		UE_LOG(LogEmberHarness, Display, TEXT("Captured %s (%dx%d)"), *C.Name, ShotW, ShotH);
+		if (++CaptureIndex < Captures.Num())
+		{
+			State = EState::Position;
+		}
+		else if (PerfFrames > 0)
+		{
+			FramesLeft = PerfFrames;
+			if (Facts) Facts->BeginPerfWindow();
+			State = EState::Perf;
+		}
+		else
+		{
+			Finish(0, FString());
+		}
+		return;
+	}
+
+	case EState::Perf:
+		if (--FramesLeft <= 0)
+		{
+			if (Facts)
+			{
+				Facts->EndPerfWindow();
+				const FString FJ = OutDir / TEXT("facts") / TEXT("perf.json");
+				UEmberSceneFactsSubsystem::WriteJson(Facts->BuildFacts(Scenario, TEXT("perf")), FJ);
+				Written.Add(FJ);
+			}
+			Finish(0, FString());
+		}
+		return;
+	}
+}
