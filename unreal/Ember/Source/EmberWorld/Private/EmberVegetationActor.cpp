@@ -28,11 +28,11 @@ uint64 VegKey(const emberworld::TileEntry& T)
 // Placeholder colours per species key (sRGB); B3 replaces meshes and materials.
 FLinearColor SpeciesColor(const FString& Key, bool bConifer)
 {
-	if (Key.Contains(TEXT("pseudotsuga"))) return FLinearColor::FromSRGBColor(FColor(0x2E, 0x3B, 0x26));
-	if (Key.Contains(TEXT("pinus"))) return FLinearColor::FromSRGBColor(FColor(0x3A, 0x44, 0x28));
-	if (Key.Contains(TEXT("abies"))) return FLinearColor::FromSRGBColor(FColor(0x26, 0x33, 0x1F));
-	if (Key.Contains(TEXT("grass"))) return FLinearColor::FromSRGBColor(FColor(0x9A, 0x8F, 0x5E));
-	return bConifer ? FLinearColor::FromSRGBColor(FColor(0x2E, 0x3B, 0x26)) : FLinearColor::FromSRGBColor(FColor(0x6B, 0x6A, 0x45));
+	if (Key.Contains(TEXT("pseudotsuga"))) return FLinearColor::FromSRGBColor(FColor(0x3F, 0x52, 0x34));
+	if (Key.Contains(TEXT("pinus"))) return FLinearColor::FromSRGBColor(FColor(0x56, 0x64, 0x3A));
+	if (Key.Contains(TEXT("abies"))) return FLinearColor::FromSRGBColor(FColor(0x34, 0x48, 0x2D));
+	if (Key.Contains(TEXT("grass"))) return FLinearColor::FromSRGBColor(FColor(0xB3, 0xA5, 0x71));
+	return bConifer ? FLinearColor::FromSRGBColor(FColor(0x3F, 0x52, 0x34)) : FLinearColor::FromSRGBColor(FColor(0x8A, 0x8A, 0x62));
 }
 }  // namespace
 
@@ -66,17 +66,16 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 	}
 	Palette = std::move(PR.palette);
 
+	// Generated species meshes (assets/generators/veg_species.py, keyed by palette key) with
+	// M_Veg; engine Cone/Sphere + clay are the fallback for a key with no generated mesh.
 	UStaticMesh* Cone = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"));
 	UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Ember/Generated/M_EmberGray.M_EmberGray"));
-	if (!Cone || !Sphere || !Base)
-	{
-		OutError = TEXT("placeholder vegetation assets missing (engine Cone/Sphere or M_EmberGray)");
-		return false;
-	}
+	UMaterialInterface* Clay = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Ember/Generated/M_EmberGray.M_EmberGray"));
+	UMaterialInterface* VegMaster = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Ember/Generated/M_Veg.M_Veg"));
 	SpeciesKeys.Reset();
 	SpeciesMesh.Reset();
 	SpeciesMaterial.Reset();
+	GeneratedSpecies = 0;
 	for (const emberworld::scatter::Group& G : Palette.groups)
 	{
 		const bool bConifer = G.name == "conifer_forest";
@@ -84,7 +83,20 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 		{
 			const FString Key = UTF8_TO_TCHAR(S.key.c_str());
 			SpeciesKeys.Add(Key);
-			SpeciesMesh.Add(bConifer ? Cone : Sphere);
+			// Render policy (not part of scatter conformance): Terrain's palette radius is a
+			// constant, so tall trees fitted to it become needles. Crowns are at least this
+			// fraction of height (conifers) / wider than tall (shrub, grass).
+			SpeciesMinCrownRatio.Add(bConifer ? 0.30 : 1.2);
+			UStaticMesh* Gen = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Ember/Generated/Veg/SM_%s.SM_%s"), *Key, *Key));
+			UMaterialInterface* Base = (Gen && VegMaster) ? VegMaster : Clay;
+			UStaticMesh* Mesh = Gen ? Gen : (bConifer ? Cone : Sphere);
+			if (!Mesh || !Base)
+			{
+				OutError = TEXT("no mesh/material for species ") + Key;
+				return false;
+			}
+			GeneratedSpecies += Gen ? 1 : 0;
+			SpeciesMesh.Add(Mesh);
 			UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, this);
 			MID->SetVectorParameterValue(TEXT("Color"), SpeciesColor(Key, bConifer));
 			SpeciesMaterial.Add(MID);
@@ -128,7 +140,8 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 		const double MeshH = FMath::Max(1.0, 2.0 * B.BoxExtent.Z);
 		const double MeshW = FMath::Max(1.0, 2.0 * B.BoxExtent.X);
 		const double HeightCm = In.height_m * 100.0;
-		const double CrownCm = 2.0 * In.radius_m * 100.0 * FMath::Clamp(In.scale, 0.5, 1.5);
+		const double CrownCm = FMath::Max(2.0 * In.radius_m * 100.0 * FMath::Clamp(In.scale, 0.5, 1.5),
+			HeightCm * SpeciesMinCrownRatio[In.species]);
 		const FVector Scale(CrownCm / MeshW, CrownCm / MeshW, HeightCm / MeshH);
 		FVector Loc = Terrain->WorldToUE(In.x, In.y, Z);
 		Loc.Z -= (B.Origin.Z - B.BoxExtent.Z) * Scale.Z;  // mesh bottom on the ground

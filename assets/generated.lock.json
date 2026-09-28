@@ -14,6 +14,17 @@
       "outputs": {
         "/Game/Ember/Generated/M_Terrain": "unreal/Ember/Content/Ember/Generated/M_Terrain.uasset"
       }
+    },
+    "veg_species.py": {
+      "script_sha256": "81446d9eae22377db82bbf8267377cd76d3ca667adc7d74a7734436d611a58c5",
+      "outputs": {
+        "/Game/Ember/Generated/M_Veg": "unreal/Ember/Content/Ember/Generated/M_Veg.uasset",
+        "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii.uasset",
+        "/Game/Ember/Generated/Veg/SM_pinus_ponderosa": "unreal/Ember/Content/Ember/Generated/Veg/SM_pinus_ponderosa.uasset",
+        "/Game/Ember/Generated/Veg/SM_abies_grandis": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_grandis.uasset",
+        "/Game/Ember/Generated/Veg/SM_artemisia_shrub": "unreal/Ember/Content/Ember/Generated/Veg/SM_artemisia_shrub.uasset",
+        "/Game/Ember/Generated/Veg/SM_bunchgrass": "unreal/Ember/Content/Ember/Generated/Veg/SM_bunchgrass.uasset"
+      }
     }
   }
 }

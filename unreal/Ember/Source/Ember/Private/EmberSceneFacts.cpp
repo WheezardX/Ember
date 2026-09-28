@@ -200,6 +200,7 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		Inst->SetNumberField(TEXT("radius_m"), It->RadiusM);
 		Inst->SetNumberField(TEXT("scatter_ms"), It->ScatterMs);
 		Inst->SetNumberField(TEXT("ungrounded"), static_cast<double>(It->UngroundedInstances));
+		Inst->SetNumberField(TEXT("generated_species"), It->GeneratedSpecies);
 		for (const auto& KV : It->BySpecies)
 		{
 			BySp->SetNumberField(KV.Key, static_cast<double>(KV.Value));

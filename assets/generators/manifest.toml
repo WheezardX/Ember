@@ -11,3 +11,14 @@ outputs = ["/Game/Ember/Generated/M_EmberGray"]
 [[generator]]
 script = "m_terrain.py"
 outputs = ["/Game/Ember/Generated/M_Terrain"]
+
+[[generator]]
+script = "veg_species.py"
+outputs = [
+  "/Game/Ember/Generated/M_Veg",
+  "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii",
+  "/Game/Ember/Generated/Veg/SM_pinus_ponderosa",
+  "/Game/Ember/Generated/Veg/SM_abies_grandis",
+  "/Game/Ember/Generated/Veg/SM_artemisia_shrub",
+  "/Game/Ember/Generated/Veg/SM_bunchgrass",
+]

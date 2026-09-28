@@ -22,8 +22,8 @@ class UStaticMesh;
  * (SurfaceSampler) rather than Terrain's raw DEM-cell z — positions/species/height/yaw/scale
  * are exactly Terrain's.
  *
- * Meshes are placeholders until B3's generated conifers: engine Cone (conifer_forest group) and
- * Sphere (everything else), fitted to each instance's height and crown radius.
+ * Meshes: generated per palette key (B3, /Game/Ember/Generated/Veg/SM_<key>, M_Veg), fitted to each
+ * instance's height and crown radius; engine Cone/Sphere only as a fallback for an ungenerated key.
  */
 UCLASS()
 class EMBERWORLD_API AEmberVegetationActor : public AActor
@@ -46,6 +46,7 @@ public:
 	int32 TilesLoaded = 0;
 	double ScatterMs = 0.0;       // cumulative CPU time in scatter + grounding
 	int64 UngroundedInstances = 0; // fell back to Terrain's z (no valid surface under them)
+	int32 GeneratedSpecies = 0;    // species drawn with a generated mesh (vs placeholder)
 	TMap<FString, int64> BySpecies;
 
 	UPROPERTY(Transient)
@@ -70,6 +71,7 @@ private:
 	emberworld::scatter::Palette Palette;
 	emberworld::ScatterInput Input;
 	TArray<FString> SpeciesKeys;
+	TArray<double> SpeciesMinCrownRatio;
 	TArray<double> SpeciesHalfHeightFrac;  // mesh bounds (placeholder fit)
 	TMap<uint64, FVegTile> Tiles;
 	FVector LastCamera = FVector::ZeroVector;

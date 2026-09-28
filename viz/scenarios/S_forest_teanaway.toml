@@ -50,3 +50,8 @@ value = 74595
 fact = "instances.ungrounded"
 op = "=="
 value = 0
+
+[[assert]]
+fact = "instances.generated_species"
+op = "=="
+value = 5
