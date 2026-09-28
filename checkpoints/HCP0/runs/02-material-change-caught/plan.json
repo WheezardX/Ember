@@ -1,0 +1,84 @@
+{
+  "format": "ember-run-plan",
+  "version": 1,
+  "scenario": "S_terrain_gray",
+  "world": "C:/Projects/Terrain/store/teanaway_dev",
+  "replay": null,
+  "out_dir": "C:/Projects/Ember/runs/viz/S_terrain_gray/20260927-171824",
+  "resolution": [
+    2560,
+    1440
+  ],
+  "perf_frames": 300,
+  "exposure_bias": -2.0,
+  "bookmarks": [
+    {
+      "name": "overview_n",
+      "target_frac": [
+        0.5,
+        0.5
+      ],
+      "target_cell": null,
+      "distance_m": 2300.0,
+      "yaw_deg": 0.0,
+      "pitch_deg": -40.0,
+      "fov_deg": 55.0,
+      "sun": "noon"
+    },
+    {
+      "name": "oblique_nw",
+      "target_frac": [
+        0.5,
+        0.5
+      ],
+      "target_cell": null,
+      "distance_m": 1700.0,
+      "yaw_deg": 315.0,
+      "pitch_deg": -24.0,
+      "fov_deg": 55.0,
+      "sun": "afternoon"
+    },
+    {
+      "name": "low_morning",
+      "target_frac": [
+        0.35,
+        0.4
+      ],
+      "target_cell": null,
+      "distance_m": 750.0,
+      "yaw_deg": 80.0,
+      "pitch_deg": -14.0,
+      "fov_deg": 60.0,
+      "sun": "morning"
+    }
+  ],
+  "captures": [
+    {
+      "name": "overview_n",
+      "bookmark": "overview_n",
+      "t_s": null,
+      "warmup_frames": 30,
+      "ssim_min": 0.97,
+      "region_ssim_min": 0.9,
+      "golden": true
+    },
+    {
+      "name": "oblique_nw",
+      "bookmark": "oblique_nw",
+      "t_s": null,
+      "warmup_frames": 30,
+      "ssim_min": 0.97,
+      "region_ssim_min": 0.9,
+      "golden": true
+    },
+    {
+      "name": "low_morning",
+      "bookmark": "low_morning",
+      "t_s": null,
+      "warmup_frames": 30,
+      "ssim_min": 0.97,
+      "region_ssim_min": 0.9,
+      "golden": true
+    }
+  ]
+}

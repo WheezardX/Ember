@@ -1,0 +1,214 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_terrain_gray",
+  "run_dir": "runs\\viz\\S_terrain_gray\\20260927-170859",
+  "evaluated_utc": "2026-09-28T00:22:56Z",
+  "pass": false,
+  "summary": {
+    "captures": 3,
+    "match": 0,
+    "new": 0,
+    "mismatch": 3,
+    "missing": 0,
+    "checks": 11,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "overview_n",
+      "bookmark": "overview_n",
+      "image": "captures\\overview_n.png",
+      "golden": "viz\\goldens\\S_terrain_gray\\overview_n.png",
+      "diff": {
+        "ok": false,
+        "reason": "ssim 0.7570 < 0.995; region (3, 0) ssim 0.6149 < 0.98",
+        "ssim": 0.7570249665039533,
+        "region_ssim_min": 0.6149181782935552,
+        "worst_region": [
+          3,
+          0
+        ],
+        "mean_abs_luma": 50.572128974609384,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "mismatch",
+      "heatmap": "diff\\overview_n.png"
+    },
+    {
+      "name": "oblique_nw",
+      "bookmark": "oblique_nw",
+      "image": "captures\\oblique_nw.png",
+      "golden": "viz\\goldens\\S_terrain_gray\\oblique_nw.png",
+      "diff": {
+        "ok": false,
+        "reason": "ssim 0.7543 < 0.995; region (3, 0) ssim 0.5932 < 0.98",
+        "ssim": 0.7543026969984337,
+        "region_ssim_min": 0.5931858416101529,
+        "worst_region": [
+          3,
+          0
+        ],
+        "mean_abs_luma": 42.543310959201385,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "mismatch",
+      "heatmap": "diff\\oblique_nw.png"
+    },
+    {
+      "name": "low_morning",
+      "bookmark": "low_morning",
+      "image": "captures\\low_morning.png",
+      "golden": "viz\\goldens\\S_terrain_gray\\low_morning.png",
+      "diff": {
+        "ok": false,
+        "reason": "ssim 0.8279 < 0.995; region (0, 0) ssim 0.6925 < 0.98",
+        "ssim": 0.8278687598421566,
+        "region_ssim_min": 0.6925279513315322,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 57.29800599609375,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "mismatch",
+      "heatmap": "diff\\low_morning.png"
+    }
+  ],
+  "checks": [
+    {
+      "kind": "assert",
+      "name": "tiles.loaded",
+      "capture": "overview_n",
+      "ok": true,
+      "actual": 9,
+      "expected": "== 9"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.triangles",
+      "capture": "overview_n",
+      "ok": true,
+      "actual": 41472,
+      "expected": "== 41472"
+    },
+    {
+      "kind": "assert",
+      "name": "render.vram_mb",
+      "capture": "overview_n",
+      "ok": true,
+      "actual": 901.05859375,
+      "expected": "> 0"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.loaded",
+      "capture": "oblique_nw",
+      "ok": true,
+      "actual": 9,
+      "expected": "== 9"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.triangles",
+      "capture": "oblique_nw",
+      "ok": true,
+      "actual": 41472,
+      "expected": "== 41472"
+    },
+    {
+      "kind": "assert",
+      "name": "render.vram_mb",
+      "capture": "oblique_nw",
+      "ok": true,
+      "actual": 901.80859375,
+      "expected": "> 0"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.loaded",
+      "capture": "low_morning",
+      "ok": true,
+      "actual": 9,
+      "expected": "== 9"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.triangles",
+      "capture": "low_morning",
+      "ok": true,
+      "actual": 41472,
+      "expected": "== 41472"
+    },
+    {
+      "kind": "assert",
+      "name": "render.vram_mb",
+      "capture": "low_morning",
+      "ok": true,
+      "actual": 902.30859375,
+      "expected": "> 0"
+    },
+    {
+      "kind": "budget",
+      "name": "perf__frame_ms_p95_max",
+      "capture": "perf",
+      "ok": true,
+      "actual": 3.4854001998901367,
+      "expected": "<= 16.7"
+    },
+    {
+      "kind": "budget",
+      "name": "render__vram_mb_max",
+      "capture": "perf",
+      "ok": true,
+      "actual": 902.55859375,
+      "expected": "<= 4096"
+    }
+  ],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_terrain_gray",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_terrain_gray.toml",
+    "world": "C:\\Projects\\Terrain\\store\\teanaway_dev",
+    "started": "20260927-170859",
+    "seconds": 81.0,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "6c384b5+dirty",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_terrain_gray/20260927-170859/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_terrain_gray\\20260927-170859\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_terrain_gray",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 3.7357033006846905,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_terrain_gray/20260927-171949/captures/overview_n.png",
+		"C:/Projects/Ember/runs/viz/S_terrain_gray/20260927-171949/facts/overview_n.json",
+		"C:/Projects/Ember/runs/viz/S_terrain_gray/20260927-171949/captures/oblique_nw.png",
+		"C:/Projects/Ember/runs/viz/S_terrain_gray/20260927-171949/facts/oblique_nw.json",
+		"C:/Projects/Ember/runs/viz/S_terrain_gray/20260927-171949/captures/low_morning.png",
+		"C:/Projects/Ember/runs/viz/S_terrain_gray/20260927-171949/facts/low_morning.json",
+		"C:/Projects/Ember/runs/viz/S_terrain_gray/20260927-171949/facts/perf.json"
+	]
+}

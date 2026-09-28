@@ -1,0 +1,83 @@
+{
+  "hcp": "HCP0",
+  "runs": [
+    {
+      "label": "winding-bug",
+      "dir": "01-winding-bug",
+      "source": "runs\\viz\\S_terrain_gray\\20260927-170859",
+      "pass": false,
+      "summary": {
+        "captures": 3,
+        "match": 0,
+        "new": 0,
+        "mismatch": 3,
+        "missing": 0,
+        "checks": 11,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "material-change-caught",
+      "dir": "02-material-change-caught",
+      "source": "runs\\viz\\S_terrain_gray\\20260927-171824",
+      "pass": false,
+      "summary": {
+        "captures": 3,
+        "match": 2,
+        "new": 0,
+        "mismatch": 1,
+        "missing": 0,
+        "checks": 11,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "deliberate-break-caught",
+      "dir": "03-deliberate-break-caught",
+      "source": "runs\\viz\\S_terrain_gray\\20260927-171921",
+      "pass": false,
+      "summary": {
+        "captures": 3,
+        "match": 0,
+        "new": 0,
+        "mismatch": 3,
+        "missing": 0,
+        "checks": 11,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": {
+        "build_s": 5.0,
+        "run_s": 13.9,
+        "evaluate_s": 2.1,
+        "total_s": 21.1
+      }
+    },
+    {
+      "label": "fixed-green",
+      "dir": "04-fixed-green",
+      "source": "runs\\viz\\S_terrain_gray\\20260927-171949",
+      "pass": true,
+      "summary": {
+        "captures": 3,
+        "match": 3,
+        "new": 0,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 11,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": {
+        "build_s": 4.7,
+        "run_s": 13.4,
+        "evaluate_s": 1.6,
+        "total_s": 19.8
+      }
+    }
+  ]
+}

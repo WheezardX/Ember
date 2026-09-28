@@ -234,6 +234,16 @@ Two-track note for agent teams: B (assets) and C (streaming) parallelize after H
 - D2: the dev box is the runner and the D8 reference GPU — RTX 4080 SUPER 16 GB, i7-14700K, 32 GB RAM. On-demand: agents use it when a session is open here; not always-on.
 - D3: runtime streaming from the store/bundles; zero per-AOI cook.
 - HCP cadence: async review bundles, explicit sign-off per HCP; no standing slot.
+- **D10 (added at kickoff) — world source.** Upstream reality check: the only tiled Epic 1/2
+  region is `teanaway_dev` (1.44 × 1.44 km @ 10 m, 14 tiles, 74,595 scattered trees); Jolly
+  Mountain exists only as a 30 m Copernicus bake + `.ewp`; there is no imagery; the Epic 2
+  scatter "spec" is the code (`terrain/veg/{hashing,scatter}.py`) + `tests/golden/scatter_pnw.json`.
+  Decision: C1 reads **Terrain's tile store** (manifest v2, per-tile uncompressed TIFFs) as the
+  canonical render world; `.ewp` is read only for fire-state grid alignment. Phase 0 runs on
+  `teanaway_dev`. Phase 1 bakes (a) a larger Teanaway region (~10 × 10 km @ 10 m) for the
+  HCP1/HCP2 orbits and (b) the Jolly Mountain AOI through Terrain's tiler (10 m where 3DEP
+  covers it, else 30 m) for HCP3. The C++ scatter port's conformance oracle is the golden JSON
+  plus the full `teanaway_dev/veg/instances.npy`.
 
 ---
 

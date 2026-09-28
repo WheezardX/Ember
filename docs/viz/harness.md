@@ -1,0 +1,125 @@
+# The iteration harness (`ember-dev`) — EPIC_5_PLAN §2, workstream A
+
+The loop an agent runs to change the UE renderer without ever opening the editor:
+
+```
+ember-dev doctor                 # is this machine a working runner? (engine pin, toolchain, GPU, data)
+ember-dev build                  # UBT incremental build of EmberEditor; parsed errors
+ember-dev run-scenario S         # headless capture run -> runs/viz/S/<stamp>/
+ember-dev evaluate S             # goldens + facts + budgets -> verdict.json + contact_sheet.png
+ember-dev loop S                 # build + run-scenario + evaluate; exit 0 only on PASS
+ember-dev bless S                # accept the latest run's captures as goldens (after looking!)
+ember-dev regen-assets [--check] # assets-from-code (docs/viz/assets.md)
+ember-dev scenarios              # list render scenarios
+```
+
+Every command takes `--json` where it produces a result. `ember-dev` is installed with ember
+(`pip install -e .` in the terrain env); `python -m ember.dev ...` is equivalent.
+
+Measured on the runner (HCP0, 2026-09-27): **inner loop 20–35 s** (incremental build 5–20 s,
+harness run ~13 s, evaluate ~2 s). First run after a clean checkout adds shader compilation
+(~1 min).
+
+## What happens in a run
+
+`run-scenario` writes a **run plan** (`plan.json`, `ember-run-plan` v1 — the scenario resolved
+to absolute paths) and launches
+
+```
+UnrealEditor.exe unreal/Ember/Ember.uproject -game -RenderOffscreen -unattended -nosplash
+    -nosound -windowed -ResX=W -ResY=H -EmberRun=<plan.json> -abslog=<run>/log/Ember.log ...
+```
+
+No window, no editor UI. `AEmberGameMode` sees `-EmberRun=` and spawns `AEmberHarness`, which:
+loads the world (`AEmberTerrainActor`, Terrain tile store via worldcore), then for each capture
+places the camera from its bookmark, renders `warmup_frames`, grabs the frame, writes
+`captures/<name>.png` and `facts/<name>.json`; then measures `perf_frames` frames into
+`facts/perf.json`; then writes `run_status.json` and exits. A watchdog (`--timeout`, default
+600 s) kills a hung run. The harness's own `run_status.json` is authoritative for success; the
+process exit code is kept for diagnosis.
+
+Run directory:
+```
+runs/viz/<scenario>/<stamp>/
+  plan.json  run.json  run_status.json  log/Ember.log
+  captures/<capture>.png      facts/<capture>.json  facts/perf.json
+  verdict.json  contact_sheet.png  diff/<capture>.png      (written by evaluate)
+```
+
+## Render scenarios (`viz/scenarios/*.toml`, `render_scenario_version = 1`)
+
+Adding a test view is a data change. Schema (validated by `ember/dev/scenario.py`):
+
+```toml
+render_scenario_version = 1
+[scenario]
+name = "S_terrain_gray"
+description = "..."
+world = "terrain:teanaway_dev"   # Terrain store region ($EMBER_TERRAIN_STORE or ../Terrain/store),
+                                 # or a path relative to this file
+replay = "..."                   # optional .replay.json (fire state; Phase 2)
+resolution = [2560, 1440]
+budget = "interactive"           # key into viz/budgets.toml
+perf_frames = 300                # 0 = no perf window
+exposure_bias = -2.0             # manual EV100 bias; captures never auto-expose
+
+[[bookmarks]]                    # orbit-style: survives terrain edits
+name = "overview_n"
+target_frac = [0.5, 0.5]         # 0..1 of the DATA extent, x east / y south  (or target_cell = [x, y])
+distance_m = 2300
+yaw_deg = 0                      # compass bearing the camera looks toward
+pitch_deg = -40
+fov_deg = 55
+sun = "noon"                     # dawn | morning | noon | afternoon | dusk | "az,el"
+
+[[captures]]
+name = "overview_n"
+bookmark = "overview_n"
+warmup_frames = 30
+ssim_min = 0.995                 # defaults; loosen per capture only with a reason
+region_ssim_min = 0.98
+golden = true                    # false: captured + shown, never diffed
+
+[[assert]]                       # scene facts that must hold (docs/viz/scene-facts.md)
+fact = "tiles.loaded"
+op = "=="
+value = 9
+capture = "overview_n"           # optional; default: every capture
+```
+
+Bookmark targets address the **data extent** — the valid AOI — not the tile grid, which can
+extend past it (teanaway_dev: 1.44 km of data in a 1.92 km tile grid).
+
+## Evaluate: what PASS means
+
+* **Golden diff** per capture: SSIM on luminance, globally and on a 4×4 region grid; the region
+  minimum catches local breaks a global mean averages away. Goldens live in
+  `viz/goldens/<scenario>/` downscaled to 1280 px wide; captures are BOX-downscaled to match.
+  A capture with no golden is `new` (not a failure).
+* **Scene-facts asserts** from the scenario.
+* **Budgets** (`viz/budgets.toml`, EPIC_5_PLAN D8) against `facts/perf.json`: key
+  `<fact path with . as __>_max|_min`, e.g. `perf__frame_ms_p95_max = 16.7`.
+* The run itself succeeded (`run_status.json` exit 0).
+
+Why the thresholds are tight (0.995 / 0.98): two unchanged runs are **pixel-identical** on the
+runner (fixed exposure, fixed warmup, no DOF/motion blur). The HCP0 calibration found that the
+first defaults (0.97 / 0.90) let both a real material change and a flipped-normal regression
+pass. Tight thresholds are cheap because noise is zero; loosen per capture (with a comment) for
+views that are legitimately non-deterministic (Niagara, later).
+
+The **contact sheet** (one row per capture: capture | golden | dissimilarity heatmap) is what a
+reviewer — human or model — looks at. The verdict JSON is the agent's feedback signal.
+
+## Blessing goldens
+
+`bless` copies captures over goldens. Only bless after looking at the contact sheet and
+deciding the change is intended; say why in the commit message. Goldens are committed.
+
+## Gotchas (learned the hard way)
+
+* **Facts can pass while the picture is wrong.** The first HCP0 run had correct tile and
+  triangle counts and rendered only skirts (inverted winding). Always look at the sheet.
+* The terrain env's numpy BLAS crashes on `@` (Windows delay-load 0xc06d007f). Harness code
+  avoids BLAS; keep it that way.
+* Run-scenario needs the editor target built (`ember-dev build`); uncooked `-game` loads the
+  editor-built project modules.

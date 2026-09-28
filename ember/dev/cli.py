@@ -6,6 +6,7 @@
     ember-dev evaluate S [--run DIR]       diffs + facts + budgets -> verdict.json, contact sheet
     ember-dev loop S                       build + run-scenario + evaluate (the inner loop)
     ember-dev bless S [--run DIR]          accept a run's captures as the new goldens
+    ember-dev bundle HCPn --run L=DIR ...  copy labelled runs into checkpoints/HCPn/ for review
     ember-dev regen-assets [--check]       run asset generators headless / check the lock
     ember-dev scenarios                    list render scenarios
 """
@@ -196,6 +197,40 @@ def bless(name: str, run: str = typer.Option(None, "--run"),
     sc = _sc(name)
     done = do_bless(ue.repo_root(), sc, _resolve_run(name, run), only)
     typer.secho(f"blessed {len(done)}: {', '.join(done) or '-'}", fg=typer.colors.GREEN)
+
+
+@app.command()
+def bundle(hcp: str, runs: list[str] = typer.Option(..., "--run",
+                                                   help="label=run_dir (repeatable, in order)")
+           ) -> None:
+    """Assemble a checkpoint review bundle: per labelled run, the contact sheet, verdict, plan
+    and run metadata go to checkpoints/<HCP>/runs/<NN>-<label>/. The memo is written by hand."""
+    import shutil
+
+    out = ue.repo_root() / "checkpoints" / hcp / "runs"
+    out.mkdir(parents=True, exist_ok=True)
+    index = []
+    for i, spec in enumerate(runs, 1):
+        label, _, d = spec.partition("=")
+        src = Path(d)
+        if not src.is_dir():
+            typer.secho(f"not a run dir: {src}", fg=typer.colors.RED)
+            raise typer.Exit(2)
+        dst = out / f"{i:02d}-{label}"
+        dst.mkdir(exist_ok=True)
+        for name in ("contact_sheet.png", "verdict.json", "plan.json", "run.json",
+                     "run_status.json"):
+            if (src / name).exists():
+                shutil.copyfile(src / name, dst / name)
+        v = {}
+        if (src / "verdict.json").exists():
+            v = json.loads((src / "verdict.json").read_text(encoding="utf-8"))
+        index.append({"label": label, "dir": dst.name, "source": str(src),
+                      "pass": v.get("pass"), "summary": v.get("summary"),
+                      "loop_timings": v.get("loop_timings")})
+    (out.parent / "bundle.json").write_text(json.dumps({"hcp": hcp, "runs": index}, indent=2),
+                                            encoding="utf-8")
+    typer.secho(f"bundle {hcp}: {len(index)} runs -> {out}", fg=typer.colors.GREEN)
 
 
 @app.command("regen-assets")

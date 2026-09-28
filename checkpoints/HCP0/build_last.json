@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "target": "EmberEditor",
+  "config": "Development",
+  "exit_code": 0,
+  "seconds": 4.7,
+  "result": "Succeeded",
+  "reason": "",
+  "errors": [],
+  "warnings": [],
+  "other_errors": [],
+  "log": "C:\\Projects\\Ember\\runs\\dev\\build\\EmberEditor-Development.log"
+}
