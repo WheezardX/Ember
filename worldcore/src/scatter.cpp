@@ -22,6 +22,7 @@ constexpr uint64_t kGolden = 0x9E3779B97F4A7C15ULL;
 constexpr double kPi = 3.141592653589793;  // == Python math.pi
 // Attempt sub-keys (terrain/veg/scatter.py).
 constexpr uint64_t kAccept = 1, kSpecies = 2, kJx = 3, kJy = 4, kHeight = 5, kYaw = 6;
+constexpr uint64_t kClass = 7, kCrown = 8;
 }  // namespace
 
 uint64_t splitmix64(uint64_t x) {
@@ -54,7 +55,10 @@ int weighted_pick(uint64_t h, std::span<const int64_t> weights) {
 
 const Group& Palette::group_for_evt(int64_t evt) const {
     for (const Group& g : groups)
-        if (g.evt_min <= evt && evt <= g.evt_max) return g;
+        for (int64_t code : g.evt_codes)
+            if (code == evt) return g;
+    for (const Group& g : groups)
+        if (g.has_range && g.evt_min <= evt && evt <= g.evt_max) return g;
     for (const Group& g : groups)
         if (g.name == default_group) return g;
     return groups.front();
@@ -68,6 +72,8 @@ std::vector<const Species*> Palette::species_index() const {
 }
 
 void Palette::finalize() {
+    class_weights.clear();
+    for (const CrownClass& c : structure) class_weights.push_back(c.weight);
     int off = 0;
     for (Group& g : groups) {
         g.offset = off;
@@ -84,6 +90,23 @@ PaletteResult load_palette(const std::string& path) {
         Palette& p = res.palette;
         p.name = t["name"].value_or(std::string{});
         p.default_group = t["default_group"].value_or(std::string{});
+        p.crown_base_m = t["crown_base_m"].value_or(0.0);
+        if (const toml::array* st = t["structure"].as_array()) {
+            for (const auto& cn : *st) {
+                const toml::table* ct = cn.as_table();
+                if (!ct) continue;
+                CrownClass c;
+                c.name = (*ct)["name"].value_or(std::string{});
+                c.weight = (*ct)["weight"].value_or(int64_t{1});
+                c.h_lo = (*ct)["h_lo"].value_or(1.0);
+                c.h_hi = (*ct)["h_hi"].value_or(1.0);
+                p.structure.push_back(std::move(c));
+            }
+        }
+        if (p.structure.empty()) {
+            res.error = path + ": palette has no [[structure]] (schema 2 / scatter v2)";
+            return res;
+        }
         const toml::array* groups = t["groups"].as_array();
         if (!groups || groups->empty()) {
             res.error = path + ": palette has no [[groups]]";
@@ -94,8 +117,13 @@ PaletteResult load_palette(const std::string& path) {
             if (!gt) continue;
             Group g;
             g.name = (*gt)["name"].value_or(std::string{});
-            g.evt_min = (*gt)["evt_min"].value_or(int64_t{0});
-            g.evt_max = (*gt)["evt_max"].value_or(int64_t{0});
+            if (const toml::array* codes = (*gt)["evt_codes"].as_array())
+                for (const auto& cn : *codes) g.evt_codes.push_back(cn.value_or(int64_t{-1}));
+            const auto lo = (*gt)["evt_min"].value<int64_t>();
+            const auto hi = (*gt)["evt_max"].value<int64_t>();
+            g.has_range = lo.has_value() && hi.has_value();
+            g.evt_min = lo.value_or(0);
+            g.evt_max = hi.value_or(0);
             if (const toml::array* sp = (*gt)["species"].as_array()) {
                 for (const auto& sn : *sp) {
                     const toml::table* st = sn.as_table();
@@ -105,7 +133,7 @@ PaletteResult load_palette(const std::string& path) {
                     s.weight = (*st)["weight"].value_or(int64_t{1});
                     s.height_min_m = (*st)["height_min_m"].value_or(1.0);
                     s.height_max_m = (*st)["height_max_m"].value_or(1.0);
-                    s.radius_m = (*st)["radius_m"].value_or(1.0);
+                    s.crown_ratio = (*st)["crown_ratio"].value_or(0.25);
                     g.species.push_back(std::move(s));
                 }
             }
@@ -158,21 +186,25 @@ void scatter_window(const Palette& palette, const Params& p, int r0, int c0, int
                 in.y = p.y_top - (static_cast<double>(r) + jy) * p.cell_size;
                 in.z = z;
 
+                // Stand structure: crown class -> fraction of the canopy-top height.
+                const CrownClass& cls = palette.structure[static_cast<size_t>(
+                    weighted_pick(hash64({cell_seed, a, kClass}), palette.class_weights))];
                 const double hfrac = u01(hash64({cell_seed, a, kHeight}));
                 double h_m;
-                if (hv > 0 && hv != p.cc_nodata) {  // sic: upstream compares height to cc_nodata
-                    h_m = std::min(std::max(hv, sp.height_min_m), sp.height_max_m);
-                    h_m *= 0.85 + 0.30 * hfrac;
+                if (hv > 0 && hv != p.height_nodata) {
+                    const double ceiling = std::min(hv, sp.height_max_m);
+                    h_m = ceiling * (cls.h_lo + (cls.h_hi - cls.h_lo) * hfrac);
                 } else {
                     h_m = sp.height_min_m + hfrac * (sp.height_max_m - sp.height_min_m);
                 }
-                h_m = std::min(std::max(h_m, sp.height_min_m), sp.height_max_m);
+                h_m = std::max(h_m, sp.height_min_m);
 
                 in.yaw_rad = u01(hash64({cell_seed, a, kYaw})) * 2.0 * kPi;
                 in.scale = h_m / (0.5 * (sp.height_min_m + sp.height_max_m));
+                const double crown = 0.85 + 0.30 * u01(hash64({cell_seed, a, kCrown}));
+                in.radius_m = 0.5 * (palette.crown_base_m + sp.crown_ratio * h_m) * crown;
                 in.height_m = h_m;
                 in.species = group.offset + sp_local;
-                in.radius_m = sp.radius_m;
                 out.push_back(in);
             }
         }

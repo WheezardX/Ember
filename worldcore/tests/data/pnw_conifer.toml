@@ -1,10 +1,36 @@
-# PNW conifer species palette (provisional pack, pre-Epic-7).
+# PNW conifer species palette (provisional pack, pre-Epic-7). Superseded for real regions by
+# cascades_mixed_conifer.toml (per-EVT mixes); kept as the golden-vector fixture palette.
 # Maps LANDFIRE EVT code ranges to weighted species tiers. Weights are integers
 # (deterministic pick). `key` is a mesh/asset key UE resolves later. Heights are
 # clamp bounds; actual height comes from CH/CHM where available.
 name = "pnw_conifer"
-schema_version = 1
+schema_version = 2
 default_group = "shrub_grass"
+# Crown diameter = crown_base_m + crown_ratio x height (x 0.85..1.15). 1.5 m makes the rendered
+# crown cover track LANDFIRE CC over Three Queens (mean +0.6 points; ember-dev forest-report).
+crown_base_m = 1.5
+
+# Stand structure (scatter v2, ADR 0007): crown class -> height fraction of the canopy top.
+[[structure]]
+name = "dominant"
+weight = 2
+h_lo = 0.90
+h_hi = 1.00
+[[structure]]
+name = "codominant"
+weight = 3
+h_lo = 0.75
+h_hi = 0.90
+[[structure]]
+name = "intermediate"
+weight = 2
+h_lo = 0.50
+h_hi = 0.75
+[[structure]]
+name = "suppressed"
+weight = 3
+h_lo = 0.15
+h_hi = 0.50
 
 # Forest / woodland (LANDFIRE EVT 7xxx). Teanaway sample codes: 7018, 7045, 7053...
 [[groups]]
@@ -16,19 +42,19 @@ evt_max = 7999
   weight = 5
   height_min_m = 8.0
   height_max_m = 55.0
-  radius_m = 2.5
+  crown_ratio = 0.26
   [[groups.species]]
   key = "pinus_ponderosa"         # Ponderosa pine
   weight = 4
   height_min_m = 8.0
   height_max_m = 45.0
-  radius_m = 2.2
+  crown_ratio = 0.32
   [[groups.species]]
   key = "abies_grandis"           # Grand fir
   weight = 2
   height_min_m = 6.0
   height_max_m = 50.0
-  radius_m = 2.0
+  crown_ratio = 0.26
 
 # Shrub / grass fallback (everything not forest, incl. the default).
 [[groups]]
@@ -40,10 +66,10 @@ evt_max = 6999
   weight = 6
   height_min_m = 0.3
   height_max_m = 2.5
-  radius_m = 0.8
+  crown_ratio = 1.2
   [[groups.species]]
   key = "bunchgrass"
   weight = 3
   height_min_m = 0.1
   height_max_m = 0.8
-  radius_m = 0.4
+  crown_ratio = 1.2

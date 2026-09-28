@@ -56,9 +56,9 @@ window  = ["2025-07-01", "2025-08-31"]   # the summer BEFORE the fire: pre-burn,
 
 [vegetation]
 enabled                = true
-palette                = "packs/palettes/pnw_conifer.toml"
+palette                = "packs/palettes/cascades_mixed_conifer.toml"   # per-EVT mixes (ADR 0007)
 world_seed             = 1337
-layer_version          = 1
+layer_version          = 2                                             # scatter v2
 candidates_per_cell    = 4
 max_instances_per_tile = 20000000     # the whole AOI is one scatter tile upstream; never truncate
 preview                = false

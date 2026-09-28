@@ -59,6 +59,23 @@ TEST_CASE("scatter: palette loads and maps EVT like the Python") {
     CHECK(p.group_for_evt(9999).name == p.default_group);
     CHECK(p.species_index().size() == 5);
     CHECK(p.groups[1].offset == 3);
+    REQUIRE(p.structure.size() == 4);                     // scatter v2 stand structure
+    CHECK(p.class_weights == std::vector<int64_t>{2, 3, 2, 3});
+}
+
+TEST_CASE("scatter: exact EVT codes win over ranges (scatter v2 palettes)") {
+    // Same resolution rule as terrain/veg/palette.py::group_for_evt.
+    Palette p;
+    p.default_group = "d";
+    Group range{"range", {}, true, 7000, 7999, {Species{"a"}}};
+    Group exact{"exact", {7139, 7292}, false, 0, 0, {Species{"b"}}};
+    Group dflt{"d", {}, false, 0, 0, {Species{"c"}}};
+    p.groups = {range, exact, dflt};
+    p.structure = {CrownClass{"all", 1, 1.0, 1.0}};
+    p.finalize();
+    CHECK(p.group_for_evt(7139).name == "exact");   // exact code listed after the range
+    CHECK(p.group_for_evt(7042).name == "range");
+    CHECK(p.group_for_evt(5000).name == "d");
 }
 
 TEST_CASE("scatter: matches Terrain's golden vectors (synthetic 8x8)") {
@@ -99,6 +116,7 @@ TEST_CASE("scatter: matches Terrain's golden vectors (synthetic 8x8)") {
         CHECK(rounds_to(in.height_m, g[4].get<double>(), 3));
         CHECK(rounds_to(in.yaw_rad, g[5].get<double>(), 4));
         CHECK(rounds_to(in.scale, g[6].get<double>(), 4));
+        CHECK(rounds_to(in.radius_m, g[7].get<double>(), 3));
     }
     std::vector<std::string> keys;
     for (const Species* s : pr.palette.species_index()) keys.push_back(s->key);

@@ -1,4 +1,5 @@
-// Epic 2 deterministic vegetation scatter, ported bit-for-bit (EPIC_5_PLAN C4, D5).
+// Epic 2 deterministic vegetation scatter v2 (Terrain ADR 0007: per-EVT palettes, stand
+// structure), ported bit-for-bit (EPIC_5_PLAN C4, D5).
 //
 // Reference implementation: Terrain `terrain/veg/{hashing,scatter,palette}.py` (the "spec is the
 // code", EPIC_5_PLAN D10). Contract:
@@ -34,11 +35,21 @@ struct Species {
     int64_t weight = 1;
     double height_min_m = 1.0;
     double height_max_m = 1.0;
-    double radius_m = 1.0;
+    double crown_ratio = 0.25;    // crown diameter / tree height
+};
+
+// Stand-structure tier: height = h_lo..h_hi x the cell's canopy-top height.
+struct CrownClass {
+    std::string name;
+    int64_t weight = 1;
+    double h_lo = 1.0;
+    double h_hi = 1.0;
 };
 
 struct Group {
     std::string name;
+    std::vector<int64_t> evt_codes;  // exact codes: win over any range
+    bool has_range = false;
     int64_t evt_min = 0;
     int64_t evt_max = 0;
     std::vector<Species> species;
@@ -49,9 +60,12 @@ struct Group {
 struct EMBERWORLD_CORE_API Palette {
     std::string name;
     std::string default_group;
+    double crown_base_m = 0.0;           // crown diameter = base + crown_ratio x height
+    std::vector<CrownClass> structure;
+    std::vector<int64_t> class_weights;  // derived from structure
     std::vector<Group> groups;
 
-    const Group& group_for_evt(int64_t evt) const;  // first matching range, else default
+    const Group& group_for_evt(int64_t evt) const;  // exact code, then first range, else default
     std::vector<const Species*> species_index() const;
     void finalize();                                // fill weights/offsets after edits
 };
@@ -73,6 +87,7 @@ struct Params {
     int candidates_per_cell = 4;
     double cc_nodata = -9999.0;
     double dem_nodata = -9999.0;
+    double height_nodata = -9999.0;
 };
 
 struct Instance {
@@ -81,7 +96,7 @@ struct Instance {
     double height_m = 0;
     double yaw_rad = 0;
     double scale = 0;
-    double radius_m = 0;
+    double radius_m = 0;          // crown radius: 0.5 x (crown_base_m + crown_ratio x height) x 0.85..1.15
 };
 
 // Scatter a window of the canonical grid. Arrays are window-local, row-major (row 0 = north),

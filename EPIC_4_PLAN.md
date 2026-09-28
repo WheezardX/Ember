@@ -285,7 +285,8 @@ Linux leg of the determinism matrix, which only runs in CI.
       emits those trees with z = 0 (Three Queens: 24,074 of 5,861,933, all in border-connected
       DEM nodata). Skip cells whose DEM is nodata (or mask fuels to the AOI) so the instance set
       is what can stand on the terrain. Ember drops them (`instances.no_surface`). Found at HCP2.
-- [ ] U9 (Epic 2, veg scatter spec - question, not a bug) — every tree in a cell takes the cell's
+- [x] U9 (Epic 2, veg scatter spec) - DONE 2026-09-28 as scatter v2 (Terrain ADR 0007, e6044a9):
+      stand-structure crown classes, crowns scaled to height, per-EVT species mixes. Was: — every tree in a cell takes the cell's
       CHM canopy-top height (±15 %, clamped to the species range): all three conifers average
       33-34 m over Three Queens, there is no understory, and the re-clamp piles 270 k ponderosa at
       exactly 45 m. Consider a stand-structure height draw (dominant/co-dominant/suppressed)

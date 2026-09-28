@@ -265,17 +265,6 @@ def test_orbit_validation():
                                                            "to_bookmark": "zz"}]})
 
 
-def test_crown_ratio_matches_renderer():
-    """forest-report's crown-cover check must use the renderer's crown policy."""
-    import re
-
-    from ember.dev.forest import CONIFER_CROWN_RATIO
-    repo = Path(__file__).resolve().parents[1]
-    src = (repo / "unreal/Ember/Source/EmberWorld/Private/EmberVegetationActor.cpp").read_text()
-    m = re.search(r"constexpr double ConiferCrownRatio = ([0-9.]+);", src)
-    assert m and float(m.group(1)) == CONIFER_CROWN_RATIO
-
-
 def test_forest_report_synthetic(tmp_path: Path):
     """Density vs the accept rule, species shares, crown cover and outside-mask counting."""
     rasterio = pytest.importorskip("rasterio")
@@ -314,8 +303,8 @@ def test_forest_report_synthetic(tmp_path: Path):
     assert len(b) == 1 and b[0]["trees_per_cell"] == 2.0 and b[0]["expected_trees_per_cell"] == 2.0
     assert [s["share_of_group"] for s in rep["species"]] == [0.8, 0.2]
     assert [s["expected_share"] for s in rep["species"]] == [0.75, 0.25]
-    # two 30 m conifers per 100 m2 cell: crown 0.23 x 30 = 6.9 m -> 1 - exp(-2 x 37.4 / 100)
-    assert b[0]["rendered_crown_cover_pct"] == pytest.approx(52.7, abs=0.2)
+    # two trees of crown radius 1 m per 100 m2 cell: 1 - exp(-2 pi / 100)
+    assert b[0]["rendered_crown_cover_pct"] == pytest.approx(6.09, abs=0.02)
 
 
 def test_water_levels_reservoir_ring_and_river():

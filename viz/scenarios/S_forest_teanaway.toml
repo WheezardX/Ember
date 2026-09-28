@@ -3,7 +3,7 @@ render_scenario_version = 1
 
 [scenario]
 name = "S_forest_teanaway"
-description = "C4: teanaway_dev with all 74,595 scattered instances (generated Nanite species, wind)"
+description = "C4: teanaway_dev with all 24,814 scatter-v2 instances (generated Nanite species, wind)"
 world = "terrain:teanaway_dev"
 resolution = [2560, 1440]
 budget = "interactive"
@@ -40,11 +40,11 @@ bookmark = "oblique_nw"
 name = "ground_ridge"
 bookmark = "ground_ridge"
 
-# Conformance at render time: every Terrain instance is on screen-side (scatter oracle = 74,595).
+# Conformance at render time: every Terrain instance is on screen-side (scatter oracle = 24,814, scatter v2).
 [[assert]]
 fact = "instances.total"
 op = "=="
-value = 74595
+value = 24814
 
 [[assert]]
 fact = "instances.ungrounded"

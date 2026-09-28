@@ -53,9 +53,11 @@ stair-step shorelines up close. U7 (hydro-flattening in Terrain) remains the dat
 
 ## Vegetation (C4, B3)
 
-* **Placement is Terrain's, exactly.** `worldcore/scatter.cpp` ports `terrain/veg` bit-for-bit:
-  the golden vectors and all 74,595 teanaway_dev instances match `veg/instances.npy` (positions
-  exact, float32 attributes bit-equal). Cells hash on global canonical indices, so each streamed
+* **Placement is Terrain's, exactly.** `worldcore/scatter.cpp` ports `terrain/veg` scatter v2
+  (Terrain ADR 0007: one species mix per LANDFIRE EVT, stand-structure crown classes, crowns
+  scaled to height) bit-for-bit: the golden vectors and every teanaway_dev (24,814) and Three
+  Queens (5,856,630) instance match `veg/instances.npy` (positions exact, float32 attributes
+  bit-equal). Cells hash on global canonical indices, so each streamed
   tile is scattered alone from its own finest-LOD layer rasters (verified bit-identical to the
   canonical rasters) and the union equals Terrain's whole-AOI scatter.
 * **Render policies (not conformance):** trees are grounded on the rendered surface
@@ -63,9 +65,8 @@ stair-step shorelines up close. U7 (hydro-flattening in Terrain) remains the dat
   which floats/sinks by metres on slopes. Instances with no rendered surface under them (Terrain
   scatters over fuels outside the DEM's AOI mask, z = 0 - upstream U8) are dropped and counted
   (`instances.no_surface`); `instances.ungrounded` (a tile whose surface failed) must stay 0.
-  Conifer crown diameter is at least `ConiferCrownRatio` (0.23) × height: calibrated so the
-  rendered crown cover matches LANDFIRE CC (0.30 rendered +12 points too dense; see
-  `ember-dev forest-report`).
+  Crowns are Terrain's (scatter v2 sizes them: 0.5 x (crown_base_m + crown_ratio x height));
+  the mesh bounds are fitted to each instance's height and crown diameter.
 * **Meshes:** `assets/generators/veg_species.py` → one **Nanite** mesh per palette key
   (`/Game/Ember/Generated/Veg/SM_<key>`) + `M_Veg` (bark/foliage via vertex alpha, wind WPO). The
   generator sets `nanite_settings` explicitly and fails if it did not stick (GeometryScript's
@@ -78,7 +79,7 @@ stair-step shorelines up close. U7 (hydro-flattening in Terrain) remains the dat
   Tree components use `ShadowCacheInvalidationBehavior = Always` (moving WPO + cached shadow
   pages gave saw-toothed self-shadows).
 * **Streaming:** `AEmberVegetationActor` instances finest tiles within `veg_radius_m` of the
-  camera, one ISM per species per tile (Nanite culls; HISM's CPU cluster tree cost 4× the load
+  camera, one ISM per species key per tile (a key in several palette groups shares one slot; Nanite culls; HISM's CPU cluster tree cost 4× the load
   time for nothing). Trees are kept out of the distance-field scene
   (`bAffectDistanceFieldLighting = false`, ~0.9 GB VRAM at 1.45 M instances).
   Facts: `instances.total`, `by_species`, `generated_species`, `ungrounded`, `no_surface`,

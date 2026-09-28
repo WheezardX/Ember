@@ -78,8 +78,8 @@ private:
 	};
 
 	bool LoadTile(const emberworld::TileEntry& Tile, FString& OutError);
-	/** Instance transform for a tree of this species/height/radius/scale/yaw standing at Loc. */
-	FTransform FitInstance(int32 Species, double HeightM, double RadiusM, double Scale, double YawRad, FVector Loc) const;
+	/** Instance transform for a tree of this species slot / height / crown radius / yaw standing at Loc. */
+	FTransform FitInstance(int32 Slot, double HeightM, double CrownRadiusM, double YawRad, FVector Loc) const;
 	void UnloadTile(uint64 Key);
 	void RecomputeStats();
 
@@ -89,8 +89,9 @@ private:
 	emberworld::scatter::Palette Palette;
 	emberworld::ScatterInput Input;
 	TArray<FString> SpeciesKeys;
-	TArray<double> SpeciesMinCrownRatio;
-	TArray<double> SpeciesHalfHeightFrac;  // mesh bounds (placeholder fit)
+	TArray<int32> IndexToSlot;         // palette species index -> unique-key slot
+	TArray<double> SlotHeightLineupM;  // lineup: a mature tree of the species
+	TArray<double> SlotCrownRatio;
 	TMap<uint64, FVegTile> Tiles;
 	FVector LastCamera = FVector::ZeroVector;
 	bool bInitialised = false;

@@ -263,6 +263,26 @@ Two-track note for agent teams: B (assets) and C (streaming) parallelize after H
 - **Lakes:** water plane now (HCP1 Q2); U7 (hydro-flattened DEM upstream) stays open as the
   long-term data fix.
 
+## 8c. HCP2 review, round 1 (Brad, 2026-09-28) - not signed off
+
+- **Density reads too dense; species mix wrong** (pine should be rare here; it is 36 % everywhere
+  because the palette maps every forest EVT to one DF 5 : PP 4 : GF 2 mix). Decision: **Ember edits
+  Terrain directly** - per-EVT species mixes in the palette, and a stand-structure scatter
+  (fewer canopy trees, heights under the CHM ceiling, crowns scaled to tree size; closes U9).
+  The C++ port stays exactly conformant (golden vectors + instances.npy oracle regenerated).
+- **Wind not visible** under a moving camera: locked-off sway clip, stronger motion, secondary
+  branch-tip flutter.
+- **Close-up trees cartoonish - fix before moving on.** Decision: **hybrid B3 v2** - tree
+  geometry generated from code (branch skeletons, needle-clump cards, species-specific), with a
+  small licensed set of photo-scanned bark/needle textures under a B4 ADR (licence + provenance).
+- **Budget/LOD:** 4 GB stays; the radius is not the only lever. Vegetation tiers: near (~0.8 km,
+  full trees, wind, live shadows), mid (to ~6 km, per-species octahedral impostors, cached
+  shadows), far (no instances; canopy colour + canopy height in the terrain mesh), context (D11).
+  Frame/VRAM budget table per system (terrain, vegetation, fire/smoke, weather, post, headroom)
+  enforced in evaluate as systems land.
+- Order: Terrain species + stand structure -> B3 v2 trees -> vegetation tiers + budgets -> wind
+  clip -> HCP2 re-bundle. D11 written alongside the tiers.
+
 ## 9. Notes for later epics
 
 - **Epic 6:** C1 readers, F3 shell, camera rigs, and the state player are its foundation; the command-issuing UI plugs into Epic 4's suppression schema on top of this scene. National cartographic view is new work there, not a HCP5 overlay retrofit.

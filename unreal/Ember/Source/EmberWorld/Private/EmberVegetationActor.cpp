@@ -21,25 +21,31 @@ DEFINE_LOG_CATEGORY_STATIC(LogEmberVeg, Log, All);
 
 namespace
 {
-// Conifer crown diameter >= this x height. Calibrated so the rendered crown cover (Poisson overlap
-// of crown discs per 10 m cell) matches LANDFIRE CC over Three Queens: 0.30 rendered +12 points
-// too dense (+18 at CC 60-80 %), 0.23 gives +0.4 mean (`ember-dev forest-report`, which keeps
-// its own copy of this constant - tests/test_dev_harness.py checks they agree).
-constexpr double ConiferCrownRatio = 0.23;
-
 uint64 VegKey(const emberworld::TileEntry& T)
 {
 	return (uint64(uint32(T.x) & 0xFFFFFF) << 24) | uint64(uint32(T.y) & 0xFFFFFF);
 }
 
+// Broadleaf / shrub / grass keys (fallback mesh: sphere; everything else is a conifer: cone).
+bool IsBroadleaf(const FString& Key)
+{
+	for (const TCHAR* B : {TEXT("alnus"), TEXT("populus"), TEXT("acer"), TEXT("artemisia"), TEXT("grass")})
+	{
+		if (Key.Contains(B)) return true;
+	}
+	return false;
+}
+
 // Placeholder colours per species key (sRGB); B3 replaces meshes and materials.
-FLinearColor SpeciesColor(const FString& Key, bool bConifer)
+FLinearColor SpeciesColor(const FString& Key)
 {
 	if (Key.Contains(TEXT("pseudotsuga"))) return FLinearColor::FromSRGBColor(FColor(0x3F, 0x52, 0x34));
 	if (Key.Contains(TEXT("pinus"))) return FLinearColor::FromSRGBColor(FColor(0x56, 0x64, 0x3A));
 	if (Key.Contains(TEXT("abies"))) return FLinearColor::FromSRGBColor(FColor(0x34, 0x48, 0x2D));
+	if (Key.Contains(TEXT("tsuga"))) return FLinearColor::FromSRGBColor(FColor(0x38, 0x4E, 0x33));
+	if (Key.Contains(TEXT("thuja"))) return FLinearColor::FromSRGBColor(FColor(0x46, 0x57, 0x2E));
 	if (Key.Contains(TEXT("grass"))) return FLinearColor::FromSRGBColor(FColor(0xB3, 0xA5, 0x71));
-	return bConifer ? FLinearColor::FromSRGBColor(FColor(0x3F, 0x52, 0x34)) : FLinearColor::FromSRGBColor(FColor(0x8A, 0x8A, 0x62));
+	return IsBroadleaf(Key) ? FLinearColor::FromSRGBColor(FColor(0x5C, 0x6E, 0x34)) : FLinearColor::FromSRGBColor(FColor(0x3F, 0x52, 0x34));
 }
 }  // namespace
 
@@ -82,31 +88,37 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 	SpeciesKeys.Reset();
 	SpeciesMesh.Reset();
 	SpeciesMaterial.Reset();
+	IndexToSlot.Reset();
+	SlotHeightLineupM.Reset();
+	SlotCrownRatio.Reset();
 	GeneratedSpecies = 0;
+	// A key can appear in several palette groups (one mix per forest type): one slot per key.
 	for (const emberworld::scatter::Group& G : Palette.groups)
 	{
-		const bool bConifer = G.name == "conifer_forest";
 		for (const emberworld::scatter::Species& S : G.species)
 		{
 			const FString Key = UTF8_TO_TCHAR(S.key.c_str());
-			SpeciesKeys.Add(Key);
-			// Render policy (not part of scatter conformance): Terrain's palette radius is a
-			// constant, so tall trees fitted to it become needles. Crowns are at least this
-			// fraction of height (conifers) / wider than tall (shrub, grass).
-			SpeciesMinCrownRatio.Add(bConifer ? ConiferCrownRatio : 1.2);
-			UStaticMesh* Gen = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Ember/Generated/Veg/SM_%s.SM_%s"), *Key, *Key));
-			UMaterialInterface* Base = (Gen && VegMaster) ? VegMaster : Clay;
-			UStaticMesh* Mesh = Gen ? Gen : (bConifer ? Cone : Sphere);
-			if (!Mesh || !Base)
+			int32 Slot = SpeciesKeys.IndexOfByKey(Key);
+			if (Slot == INDEX_NONE)
 			{
-				OutError = TEXT("no mesh/material for species ") + Key;
-				return false;
+				Slot = SpeciesKeys.Add(Key);
+				SlotHeightLineupM.Add(FMath::Max(S.height_min_m, 0.55 * S.height_max_m));  // a mature tree
+				SlotCrownRatio.Add(S.crown_ratio);
+				UStaticMesh* Gen = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Ember/Generated/Veg/SM_%s.SM_%s"), *Key, *Key));
+				UMaterialInterface* Base = (Gen && VegMaster) ? VegMaster : Clay;
+				UStaticMesh* Mesh = Gen ? Gen : (IsBroadleaf(Key) ? Sphere : Cone);
+				if (!Mesh || !Base)
+				{
+					OutError = TEXT("no mesh/material for species ") + Key;
+					return false;
+				}
+				GeneratedSpecies += Gen ? 1 : 0;
+				SpeciesMesh.Add(Mesh);
+				UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, this);
+				MID->SetVectorParameterValue(TEXT("Color"), SpeciesColor(Key));
+				SpeciesMaterial.Add(MID);
 			}
-			GeneratedSpecies += Gen ? 1 : 0;
-			SpeciesMesh.Add(Mesh);
-			UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, this);
-			MID->SetVectorParameterValue(TEXT("Color"), SpeciesColor(Key, bConifer));
-			SpeciesMaterial.Add(MID);
+			IndexToSlot.Add(Slot);
 		}
 	}
 	bInitialised = true;
@@ -132,10 +144,11 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 	PerSpecies.SetNum(NS);
 	for (const emberworld::scatter::Instance& In : TS.instances)
 	{
-		if (In.species < 0 || In.species >= NS)
+		if (In.species < 0 || In.species >= IndexToSlot.Num())
 		{
 			continue;
 		}
+		const int32 Slot = IndexToSlot[In.species];
 		double Z = In.z;
 		if (!bSurface)
 		{
@@ -148,8 +161,7 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 			++NoSurfaceInstances;
 			continue;
 		}
-		PerSpecies[In.species].Add(FitInstance(In.species, In.height_m, In.radius_m, In.scale, In.yaw_rad,
-			Terrain->WorldToUE(In.x, In.y, Z)));
+		PerSpecies[Slot].Add(FitInstance(Slot, In.height_m, In.radius_m, In.yaw_rad, Terrain->WorldToUE(In.x, In.y, Z)));
 	}
 
 	FVegTile& VT = Tiles.Add(VegKey(Tile));
@@ -183,14 +195,15 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 	return true;
 }
 
-FTransform AEmberVegetationActor::FitInstance(int32 Species, double HeightM, double InRadiusM, double Scale, double YawRad, FVector Loc) const
+FTransform AEmberVegetationActor::FitInstance(int32 Slot, double HeightM, double CrownRadiusM, double YawRad, FVector Loc) const
 {
-	const FBoxSphereBounds B = SpeciesMesh[Species]->GetBounds();
+	// Terrain's scatter v2 sizes every crown (0.5 x crown_ratio x height x 0.85..1.15): the mesh's
+	// bounds are fitted to that height and crown diameter, no render-side crown policy.
+	const FBoxSphereBounds B = SpeciesMesh[Slot]->GetBounds();
 	const double MeshH = FMath::Max(1.0, 2.0 * B.BoxExtent.Z);
 	const double MeshW = FMath::Max(1.0, 2.0 * B.BoxExtent.X);
 	const double HeightCm = HeightM * 100.0;
-	const double CrownCm = FMath::Max(2.0 * InRadiusM * 100.0 * FMath::Clamp(Scale, 0.5, 1.5),
-		HeightCm * SpeciesMinCrownRatio[Species]);
+	const double CrownCm = FMath::Max(1.0, 2.0 * CrownRadiusM * 100.0);
 	const FVector S(CrownCm / MeshW, CrownCm / MeshW, HeightCm / MeshH);
 	Loc.Z -= (B.Origin.Z - B.BoxExtent.Z) * S.Z;  // mesh bottom on the ground
 	return FTransform(FRotator(0.0, FMath::RadiansToDegrees(YawRad), 0.0), Loc, S);
@@ -231,14 +244,10 @@ void AEmberVegetationActor::SpawnLineup(double WorldX, double WorldY, double Row
 	const FVector2D Dir(FMath::Sin(Rh), FMath::Cos(Rh));  // world metres, x east / y north
 	struct FItem { int32 Species; double HeightM; double WidthM; };
 	TArray<FItem> Items;
-	int32 Si = 0;
-	for (const emberworld::scatter::Group& G : Palette.groups)
+	for (int32 Slot = 0; Slot < SpeciesKeys.Num(); ++Slot)
 	{
-		for (const emberworld::scatter::Species& S : G.species)
-		{
-			const double H = 0.5 * (S.height_min_m + S.height_max_m);
-			Items.Add({Si++, H, FMath::Max(2.0 * S.radius_m, H * SpeciesMinCrownRatio[Si - 1])});
-		}
+		const double H = SlotHeightLineupM[Slot];
+		Items.Add({Slot, H, H * SlotCrownRatio[Slot]});
 	}
 	Items.Add({-1, 1.8, 0.4});  // the post
 	const double Gap = 4.0;
@@ -259,7 +268,7 @@ void AEmberVegetationActor::SpawnLineup(double WorldX, double WorldY, double Row
 		{
 			C->SetStaticMesh(SpeciesMesh[I.Species]);
 			C->SetMaterial(0, SpeciesMaterial[I.Species]);
-			C->SetWorldTransform(FitInstance(I.Species, I.HeightM, 0.0, 1.0, 0.0, Loc));
+			C->SetWorldTransform(FitInstance(I.Species, I.HeightM, 0.5 * I.WidthM, 0.0, Loc));
 		}
 		else
 		{

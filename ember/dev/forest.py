@@ -10,9 +10,10 @@ reproduces exactly) with the fuels/canopy rasters it was scattered from. Section
   * density: trees per 10 m cell by canopy-cover bin vs the accept rule's expectation
     (candidates_per_cell x CC);
   * heights: per-species distribution, and mean tree height vs CHM by CC bin;
-  * crown cover: the renderer's crown policy (max(2 x radius x scale, ratio x height)) turned into
-    a per-cell covered fraction (Poisson overlap of crown discs) vs LANDFIRE CC - the check behind
-    CONIFER_CROWN_RATIO.
+  * crown cover: each instance's crown radius (Terrain scatter v2 sizes crowns: 0.5 x crown_ratio
+    x height, drawn as-is by the renderer) turned into a per-cell covered fraction (Poisson
+    overlap of crown discs) vs LANDFIRE CC - the calibration check for the palette's stand
+    structure and candidates_per_cell.
 
 Writes forest_report.json + forest_report.png.
 """
@@ -25,9 +26,6 @@ from pathlib import Path
 
 import numpy as np
 
-# Must equal ConiferCrownRatio in unreal/.../EmberVegetationActor.cpp (checked by a test).
-CONIFER_CROWN_RATIO = 0.23
-BROADLEAF_CROWN_RATIO = 1.2  # shrub/grass: wider than tall
 CC_BINS = [(1, 20), (20, 40), (40, 60), (60, 80), (80, 101)]
 
 
@@ -65,11 +63,8 @@ def report(region_dir: Path) -> tuple[dict, dict]:
     r, c = np.asarray(rows), np.asarray(cols)
     ok = (r >= 0) & (r < cc.shape[0]) & (c >= 0) & (c < cc.shape[1])
     r, c = r[ok], c[ok]
-    sp = inst["species"][ok].astype(int)
     h = inst["height"][ok].astype(np.float64)
-    conifer = np.array([g == "conifer_forest" for g in groups])[sp]
-    crown = np.maximum(2.0 * inst["radius"][ok] * np.clip(inst["scale"][ok], 0.5, 1.5),
-                       h * np.where(conifer, CONIFER_CROWN_RATIO, BROADLEAF_CROWN_RATIO))
+    crown = 2.0 * inst["radius"][ok].astype(np.float64)
 
     n = np.zeros_like(cc)
     np.add.at(n, (r, c), 1.0)
@@ -83,16 +78,24 @@ def report(region_dir: Path) -> tuple[dict, dict]:
     aoi_ha = float((cc >= 0).sum()) * cell * cell / 1e4
     total = int(len(inst))
     species = []
+    seen: set[str] = set()
     for i, k in enumerate(keys):
+        if k in seen:     # a key in several groups (one mix per forest type): report it once
+            continue
+        seen.add(k)
         g = groups[i]
         members = [j for j, gg in enumerate(groups) if gg == g]
         w = [s["weight"] for gg in pal["groups"] if gg["name"] == g for s in gg["species"]]
         n_g = int(np.isin(inst["species"], members).sum())
-        n_k = int((inst["species"] == i).sum())
-        hk = inst["height"][inst["species"] == i]
+        n_first = int((inst["species"] == i).sum())
+        same = [j for j, kk in enumerate(keys) if kk == k]
+        sel = np.isin(inst["species"], same)
+        n_k = int(sel.sum())
+        hk = inst["height"][sel]
         species.append({
             "key": k, "group": g, "count": n_k,
-            "share_of_group": round(n_k / n_g, 4) if n_g else None,
+            "share_of_all": round(n_k / max(total, 1), 4),
+            "share_of_group": round(n_first / n_g, 4) if n_g else None,   # first group listed
             "expected_share": round(w[members.index(i)] / sum(w), 4),
             "height_m": {"mean": round(float(hk.mean()), 2) if n_k else None,
                          "p10": round(float(np.percentile(hk, 10)), 2) if n_k else None,
@@ -125,12 +128,14 @@ def report(region_dir: Path) -> tuple[dict, dict]:
         "outside_dem_mask": int((inst["z"] == 0).sum()),
         "species": species,
         "density_by_cc": bins,
-        "crown_policy": {"conifer_ratio": CONIFER_CROWN_RATIO,
-                         "broadleaf_ratio": BROADLEAF_CROWN_RATIO,
-                         "rendered_minus_landfire_cc_pts": round(bias, 2)},
+        "crown_cover": {"source": "instance crown radius (scatter v2)",
+                        "rendered_minus_landfire_cc_pts": round(bias, 2)},
     }
-    arrays = {"keys": keys, "species_heights": [inst["height"][inst["species"] == i]
-                                                for i in range(len(keys))],
+    ukeys = list(dict.fromkeys(keys))
+    slots = {k: [j for j, kk in enumerate(keys) if kk == k] for k in ukeys}
+    arrays = {"keys": ukeys,
+              "species_heights": [inst["height"][np.isin(inst["species"], slots[k])]
+                                  for k in ukeys],
               "cc": cc[valid], "cover": cover[valid], "n": n[valid]}
     return rep, arrays
 
@@ -145,20 +150,21 @@ def plot(rep: dict, arrays: dict, out_png: Path) -> None:
     x = [f"{d['cc_pct'][0]}-{d['cc_pct'][1]}" for d in b]
     ax[0].bar(x, [d["trees_per_ha"] for d in b], color="#4a6b3a", label="Terrain scatter")
     ax[0].plot(x, [d["expected_trees_per_cell"] * 100 for d in b], "k_", ms=28, mew=2,
-               label="expected (4 x CC per cell)")
+               label="expected (candidates x CC per cell)")
     ax[0].set(title="Trees per ha by LANDFIRE canopy cover", xlabel="CC %", ylabel="trees / ha")
     ax[0].legend(fontsize=8)
-    for i, k in enumerate(arrays["keys"]):
-        hs = arrays["species_heights"][i]
+    top = sorted(range(len(arrays["keys"])), key=lambda i: -len(arrays["species_heights"][i]))
+    for i in top[:8]:                                  # the 8 most common species
+        k, hs = arrays["keys"][i], arrays["species_heights"][i]
         if len(hs) > 100:
-            ax[1].hist(hs, bins=60, range=(0, 60), histtype="step", lw=1.5,
+            ax[1].hist(hs, bins=60, range=(0, 75), histtype="step", lw=1.5,
                        label=f"{k} ({len(hs):,})")
-    ax[1].set(title="Tree heights (CHM clamped to species range, +/-15 %)", xlabel="m",
+    ax[1].set(title="Tree heights (crown class x canopy-top height)", xlabel="m",
               ylabel="instances")
     ax[1].legend(fontsize=7)
     ax[2].plot(x, [d["landfire_cc_pct"] for d in b], "o-", color="#333", label="LANDFIRE CC")
     ax[2].plot(x, [d["rendered_crown_cover_pct"] for d in b], "s-", color="#4a6b3a",
-               label=f"rendered crowns (ratio {rep['crown_policy']['conifer_ratio']})")
+               label="rendered crowns")
     ax[2].set(title="Canopy cover: data vs rendered crowns", xlabel="CC bin %",
               ylabel="% of ground covered", ylim=(0, 100))
     ax[2].legend(fontsize=8)
