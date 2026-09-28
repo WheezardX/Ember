@@ -97,3 +97,18 @@ terrain alone?
    horizon continues?
 4. **Look direction:** keep fuel-class colouring (reads like a map: legible, honest), or push
    toward photographic (NAIP / Sentinel-2 true colour, which would be a new upstream layer)?
+
+## Resolution (2026-09-28)
+
+**SIGNED OFF by Brad: "good enough for now".** It reads like a map, not a rendering, and that's
+acceptable at this stage.
+
+1. **Gate:** passed.
+2. **Lakes (U7):** fix now with a **water plane**. Done in the renderer from a derived water
+   layer (see the commit after this memo), not by re-baking the DEM.
+3. **Region edge:** handled by the future LOD plan (below), not a one-off fade.
+4. **Look:** map colouring is fine for now. The long-term direction is a **Google-Maps-like LOD
+   system** (continuous zoom from wide context down to the fire, with the world continuing
+   past the AOI) and, eventually, **real trees** rendered up close.
+
+Recorded as plan item D11 in `EPIC_5_PLAN.md`.

@@ -247,6 +247,22 @@ Two-track note for agent teams: B (assets) and C (streaming) parallelize after H
 
 ---
 
+## 8b. Direction from HCP1 review (Brad, 2026-09-28)
+
+- **D11 — LOD / world-context plan (to write before HCP5–HCP7).** Today's renderer streams one
+  AOI's quadtree and stops at its edge (a "diorama cliff"). The target is a **Google-Maps-like
+  LOD system**: continuous zoom from regional context down to the fire line, with the world
+  continuing past the incident AOI at progressively coarser resolution (e.g. a 30 m / 90 m
+  surround from national DEM + land cover, then cartographic far-field). Output is a written
+  plan: tile pyramid spanning AOI + surround, per-LOD data sources, streaming budget, handoff
+  to Epic 9's CDN tiles. It also covers the region-edge treatment (HCP1 Q3).
+- **Look:** map-like fuel-class colouring is accepted for now. Photographic imagery is not
+  requested.
+- **Trees:** eventually render actual trees (beyond B3's generated primitives); an HCP2+
+  concern, tied to the LOD plan's near-field tier.
+- **Lakes:** water plane now (HCP1 Q2); U7 (hydro-flattened DEM upstream) stays open as the
+  long-term data fix.
+
 ## 9. Notes for later epics
 
 - **Epic 6:** C1 readers, F3 shell, camera rigs, and the state player are its foundation; the command-issuing UI plugs into Epic 4's suppression schema on top of this scene. National cartographic view is new work there, not a HCP5 overlay retrofit.
