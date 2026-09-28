@@ -1,15 +1,31 @@
 #include "EmberTerrainActor.h"
 
+#include "Camera/PlayerCameraManager.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 #include "HAL/PlatformTime.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
 
+THIRD_PARTY_INCLUDES_START
+#include "emberworld/lod.h"
+THIRD_PARTY_INCLUDES_END
+
 DEFINE_LOG_CATEGORY_STATIC(LogEmberWorld, Log, All);
+
+namespace
+{
+uint64 TileKey(const emberworld::TileEntry& T)
+{
+	return (uint64(uint32(T.lod)) << 48) | (uint64(uint32(T.x) & 0xFFFFFF) << 24) | uint64(uint32(T.y) & 0xFFFFFF);
+}
+}  // namespace
 
 AEmberTerrainActor::AEmberTerrainActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 	Mesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Terrain"));
 	Mesh->bUseAsyncCooking = true;
 	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -45,7 +61,7 @@ void AEmberTerrainActor::SetBaseColor(const FLinearColor& Color)
 	Material->SetVectorParameterValue(TEXT("Color"), Color);
 }
 
-bool AEmberTerrainActor::LoadRegion(const FString& RegionDir, int32 Lod, FString& OutError)
+bool AEmberTerrainActor::LoadRegion(const FString& RegionDir, int32 FixedLod, FString& OutError)
 {
 	const double T0 = FPlatformTime::Seconds();
 	emberworld::RegionResult R = emberworld::load_region(TCHAR_TO_UTF8(*RegionDir));
@@ -57,80 +73,184 @@ bool AEmberTerrainActor::LoadRegion(const FString& RegionDir, int32 Lod, FString
 	Region = MakeUnique<emberworld::Region>(std::move(*R.region));
 	Frame = emberworld::region_frame(*Region);
 	RegionName = UTF8_TO_TCHAR(Region->name.c_str());
-	if (Lod < 0)
+	TilesTotal = Region->tiles.size();
+	std::string Err;
+	if (!emberworld::data_extent(*Region, DataExtent, Err))
 	{
-		Lod = Region->finest_lod();
+		UE_LOG(LogEmberWorld, Warning, TEXT("data extent: %s"), UTF8_TO_TCHAR(Err.c_str()));
 	}
 
 	Mesh->ClearAllMeshSections();
-	TilesTotal = Region->tiles.size();
-	TilesLoaded = 0;
+	Loaded.Reset();
+	FreeSections.Reset();
+	NextSection = 0;
+	LoadMs = 0.0;
+
+	bStreaming = FixedLod < 0;
+	SetActorTickEnabled(bStreaming);
+	if (!bStreaming)
+	{
+		for (const emberworld::TileEntry* Tile : Region->tiles_at(FixedLod))
+		{
+			if (!LoadTile(*Tile, OutError))
+			{
+				return false;
+			}
+		}
+	}
+	RecomputeStats();
+	LoadMs = (FPlatformTime::Seconds() - T0) * 1000.0;
+	UE_LOG(LogEmberWorld, Log, TEXT("Loaded region %s (%s): %d tiles, %lld triangles (+%lld skirt), %.1f ms"),
+		*RegionName, bStreaming ? TEXT("streaming") : *FString::Printf(TEXT("fixed lod %d"), FixedLod),
+		TilesLoaded, Triangles, SkirtTriangles, LoadMs);
+	return true;
+}
+
+bool AEmberTerrainActor::LoadTile(const emberworld::TileEntry& Tile, FString& OutError)
+{
+	emberworld::MeshResult M = emberworld::load_tile_mesh(*Region, Tile, Frame);
+	if (!M.ok())
+	{
+		OutError = FString::Printf(TEXT("tile z%d/x%d/y%d: %s"), Tile.lod, Tile.x, Tile.y, UTF8_TO_TCHAR(M.error.c_str()));
+		return false;
+	}
+	const emberworld::TileMesh& TM = M.mesh;
+	TArray<FVector> Verts;
+	TArray<FVector> Normals;
+	TArray<FVector2D> UV0, UV1, Empty;
+	TArray<int32> Tris;
+	Verts.Reserve(TM.positions.size());
+	Normals.Reserve(TM.normals.size());
+	UV0.Reserve(TM.uv0.size());
+	UV1.Reserve(TM.uv1.size());
+	for (size_t i = 0; i < TM.positions.size(); ++i)
+	{
+		Verts.Emplace(TM.positions[i].x, TM.positions[i].y, TM.positions[i].z);
+		Normals.Emplace(TM.normals[i].x, TM.normals[i].y, TM.normals[i].z);
+		UV0.Emplace(TM.uv0[i].u, TM.uv0[i].v);
+		UV1.Emplace(TM.uv1[i].u, TM.uv1[i].v);
+	}
+	Tris.Reserve(TM.indices.size());
+	for (uint32 Idx : TM.indices)
+	{
+		Tris.Add(static_cast<int32>(Idx));
+	}
+	const int32 Section = FreeSections.Num() ? FreeSections.Pop() : NextSection++;
+	Mesh->CreateMeshSection(Section, Verts, Tris, Normals, UV0, UV1, Empty, Empty,
+		TArray<FColor>(), TArray<FProcMeshTangent>(), /*bCreateCollision=*/false);
+	if (Material)
+	{
+		Mesh->SetMaterial(Section, Material);
+	}
+	FLoadedTile& L = Loaded.Add(TileKey(Tile));
+	L.Section = Section;
+	L.Lod = Tile.lod;
+	L.Triangles = TM.surface_triangles;
+	L.SkirtTriangles = TM.skirt_triangles;
+	L.NodataCorners = TM.nodata_corners;
+	return true;
+}
+
+void AEmberTerrainActor::UnloadTile(uint64 Key)
+{
+	if (const FLoadedTile* L = Loaded.Find(Key))
+	{
+		Mesh->ClearMeshSection(L->Section);
+		FreeSections.Add(L->Section);
+		Loaded.Remove(Key);
+	}
+}
+
+void AEmberTerrainActor::RecomputeStats()
+{
+	TilesLoaded = Loaded.Num();
 	Triangles = SkirtTriangles = NodataCorners = 0;
 	LodHistogram.Reset();
+	for (const auto& KV : Loaded)
+	{
+		Triangles += KV.Value.Triangles;
+		SkirtTriangles += KV.Value.SkirtTriangles;
+		NodataCorners += KV.Value.NodataCorners;
+		LodHistogram.FindOrAdd(KV.Value.Lod)++;
+	}
+}
 
-	int32 Section = 0;
-	bool bAnyValid = false;
-	for (const emberworld::TileEntry* Tile : Region->tiles_at(Lod))
+int32 AEmberTerrainActor::UpdateStreaming(const FVector& CameraUE)
+{
+	if (!Region.IsValid())
 	{
-		emberworld::MeshResult M = emberworld::load_tile_mesh(*Region, *Tile, Frame);
-		if (!M.ok())
+		return 0;
+	}
+	const double T0 = FPlatformTime::Seconds();
+	const double Wx = Frame.anchor_x + CameraUE.X / 100.0;
+	const double Wy = Frame.anchor_y - CameraUE.Y / 100.0;
+	const double Wz = Frame.anchor_z + CameraUE.Z / 100.0;
+	emberworld::LodOptions Opt;
+	Opt.refine_factor = RefineFactor;
+	const std::vector<const emberworld::TileEntry*> Want = emberworld::select_tiles(*Region, Wx, Wy, Wz, Opt);
+
+	TSet<uint64> WantKeys;
+	for (const emberworld::TileEntry* T : Want)
+	{
+		WantKeys.Add(TileKey(*T));
+	}
+	TArray<uint64> Drop;
+	for (const auto& KV : Loaded)
+	{
+		if (!WantKeys.Contains(KV.Key))
 		{
-			OutError = FString::Printf(TEXT("tile z%d/x%d/y%d: %s"), Tile->lod, Tile->x, Tile->y, UTF8_TO_TCHAR(M.error.c_str()));
-			return false;
+			Drop.Add(KV.Key);
 		}
-		const emberworld::TileMesh& TM = M.mesh;
-		if (TM.has_valid)
+	}
+	for (uint64 K : Drop)
+	{
+		UnloadTile(K);
+	}
+	int32 Changes = Drop.Num();
+	FString Err;
+	for (const emberworld::TileEntry* T : Want)
+	{
+		if (!Loaded.Contains(TileKey(*T)))
 		{
-			const emberworld::Bounds& V = TM.valid_bounds;
-			if (!bAnyValid)
+			if (!LoadTile(*T, Err))
 			{
-				DataExtent = V;
-				bAnyValid = true;
+				UE_LOG(LogEmberWorld, Error, TEXT("%s"), *Err);
+				continue;
 			}
-			DataExtent.min_x = FMath::Min(DataExtent.min_x, V.min_x);
-			DataExtent.min_y = FMath::Min(DataExtent.min_y, V.min_y);
-			DataExtent.max_x = FMath::Max(DataExtent.max_x, V.max_x);
-			DataExtent.max_y = FMath::Max(DataExtent.max_y, V.max_y);
+			++Changes;
 		}
-		TArray<FVector> Verts;
-		TArray<FVector> Normals;
-		TArray<FVector2D> UV0, UV1, Empty;
-		TArray<int32> Tris;
-		Verts.Reserve(TM.positions.size());
-		Normals.Reserve(TM.normals.size());
-		for (size_t i = 0; i < TM.positions.size(); ++i)
-		{
-			Verts.Emplace(TM.positions[i].x, TM.positions[i].y, TM.positions[i].z);
-			Normals.Emplace(TM.normals[i].x, TM.normals[i].y, TM.normals[i].z);
-			UV0.Emplace(TM.uv0[i].u, TM.uv0[i].v);
-			UV1.Emplace(TM.uv1[i].u, TM.uv1[i].v);
-		}
-		Tris.Reserve(TM.indices.size());
-		for (uint32 Idx : TM.indices)
-		{
-			Tris.Add(static_cast<int32>(Idx));
-		}
-		Mesh->CreateMeshSection(Section, Verts, Tris, Normals, UV0, UV1, Empty, Empty,
-			TArray<FColor>(), TArray<FProcMeshTangent>(), /*bCreateCollision=*/false);
-		if (Material)
-		{
-			Mesh->SetMaterial(Section, Material);
-		}
-		++Section;
-		++TilesLoaded;
-		Triangles += TM.surface_triangles;
-		SkirtTriangles += TM.skirt_triangles;
-		NodataCorners += TM.nodata_corners;
-		LodHistogram.FindOrAdd(Tile->lod)++;
 	}
-	if (!bAnyValid)
+	if (Changes)
 	{
-		DataExtent = Region->extent();
+		RecomputeStats();
+		LastStreamMs = (FPlatformTime::Seconds() - T0) * 1000.0;
+		++StreamUpdates;
 	}
-	LoadMs = (FPlatformTime::Seconds() - T0) * 1000.0;
-	UE_LOG(LogEmberWorld, Log, TEXT("Loaded region %s lod %d: %d tiles, %lld triangles (+%lld skirt), %.1f ms"),
-		*RegionName, Lod, TilesLoaded, Triangles, SkirtTriangles, LoadMs);
-	return true;
+	return Changes;
+}
+
+void AEmberTerrainActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (!bStreaming)
+	{
+		return;
+	}
+	const APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (!PC || !PC->PlayerCameraManager)
+	{
+		return;
+	}
+	const FVector Cam = PC->PlayerCameraManager->GetCameraLocation();
+	if (StreamUpdates == 0 || FVector::Dist(Cam, LastStreamCamera) > 100.0)  // re-select every metre moved
+	{
+		LastStreamCamera = Cam;
+		UpdateStreaming(Cam);
+		if (StreamUpdates == 0)
+		{
+			++StreamUpdates;  // count the first selection even if it changed nothing
+		}
+	}
 }
 
 bool AEmberTerrainActor::GroundHeightAt(double WorldX, double WorldY, double& OutZ) const

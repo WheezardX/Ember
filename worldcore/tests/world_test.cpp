@@ -251,3 +251,26 @@ TEST_CASE("teanaway_dev (real Terrain store, skipped when absent)") {
     CHECK(z > R.heightmap.z_min);
     CHECK(z < R.heightmap.z_max);
 }
+
+TEST_CASE("heightfield: data_extent matches the union of mesh valid bounds") {
+    const auto root = testutil::write_synth_region("extent", hill);
+    auto rr = load_region(root.string());
+    REQUIRE(rr);
+    const Region& R = *rr.region;
+    Bounds want{1e300, 1e300, -1e300, -1e300};
+    for (const TileEntry* t : R.tiles_at(R.finest_lod())) {
+        auto m = load_tile_mesh(R, *t, region_frame(R));
+        REQUIRE(m.ok());
+        want.min_x = std::min(want.min_x, m.mesh.valid_bounds.min_x);
+        want.min_y = std::min(want.min_y, m.mesh.valid_bounds.min_y);
+        want.max_x = std::max(want.max_x, m.mesh.valid_bounds.max_x);
+        want.max_y = std::max(want.max_y, m.mesh.valid_bounds.max_y);
+    }
+    Bounds got;
+    std::string err;
+    REQUIRE(data_extent(R, got, err));
+    CHECK(got.min_x == want.min_x);
+    CHECK(got.max_x == want.max_x);
+    CHECK(got.min_y == want.min_y);
+    CHECK(got.max_y == want.max_y);
+}

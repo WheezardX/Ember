@@ -205,3 +205,41 @@ bool sample_height(const Region& region, double wx, double wy, double& out_z) {
 }
 
 }  // namespace emberworld
+
+namespace emberworld {
+
+bool data_extent(const Region& region, Bounds& out, std::string& error) {
+    const int tp = region.tile_px, ov = region.overlap_px;
+    bool any = false;
+    for (const TileEntry* t : region.tiles_at(region.finest_lod())) {
+        TiffResult tr = read_tiff(region.path(t->height_tif));
+        if (!tr) {
+            error = tr.error.message;
+            return false;
+        }
+        const Raster& h = *tr.raster;
+        const double px = t->content.width() / tp;
+        for (int j = 0; j <= tp; ++j)
+            for (int i = 0; i <= tp; ++i) {
+                double v;
+                if (!corner_height(h, i + ov, j + ov, v)) continue;
+                const double wx = t->content.min_x + i * px, wy = t->content.max_y - j * px;
+                if (!any) {
+                    out = {wx, wy, wx, wy};
+                    any = true;
+                }
+                out.min_x = std::min(out.min_x, wx);
+                out.max_x = std::max(out.max_x, wx);
+                out.min_y = std::min(out.min_y, wy);
+                out.max_y = std::max(out.max_y, wy);
+            }
+    }
+    if (!any) {
+        out = region.extent();
+        error = "no valid data in the finest LOD";
+        return false;
+    }
+    return true;
+}
+
+}  // namespace emberworld

@@ -1,0 +1,61 @@
+# C3: camera-driven LOD streaming on teanaway_dev (same views as S_terrain_gray, no fixed LOD).
+render_scenario_version = 1
+
+[scenario]
+name = "S_terrain_stream"
+description = "C3 streaming: teanaway_dev LOD cut per bookmark (compare S_terrain_gray = all finest)"
+world = "terrain:teanaway_dev"
+resolution = [2560, 1440]
+budget = "interactive"
+perf_frames = 120
+exposure_bias = -2.0
+lod_refine_factor = 1.5
+
+[[bookmarks]]
+name = "high_overview"
+target_frac = [0.5, 0.5]
+distance_m = 6000
+yaw_deg = 0
+pitch_deg = -50
+fov_deg = 55
+sun = "noon"
+
+[[bookmarks]]
+name = "oblique_nw"
+target_frac = [0.5, 0.5]
+distance_m = 1700
+yaw_deg = 315
+pitch_deg = -24
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "low_morning"
+target_frac = [0.35, 0.4]
+distance_m = 750
+yaw_deg = 80
+pitch_deg = -14
+fov_deg = 60
+sun = "morning"
+
+[[captures]]
+name = "high_overview"
+bookmark = "high_overview"
+
+[[captures]]
+name = "oblique_nw"
+bookmark = "oblique_nw"
+
+[[captures]]
+name = "low_morning"
+bookmark = "low_morning"
+
+[[assert]]
+fact = "tiles.streaming"
+op = "=="
+value = true
+
+[[assert]]
+fact = "tiles.stream_updates"
+op = ">="
+value = 1

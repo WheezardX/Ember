@@ -77,6 +77,8 @@ class ScenarioMeta(_Strict):
     budget: str = "interactive" # key into viz/budgets.toml
     perf_frames: int = 0        # >0: frames measured after the last capture -> facts/perf.json
     exposure_bias: float = -2.0  # manual exposure EV100 bias (captures must not auto-expose)
+    fixed_lod: int | None = None  # load one LOD everywhere (fixtures); None = stream (C3)
+    lod_refine_factor: float = 1.5  # streaming: refine while distance < factor * tile span
 
 
 class RenderScenario(_Strict):

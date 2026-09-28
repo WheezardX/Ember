@@ -171,6 +171,9 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		Tiles->SetNumberField(TEXT("skirt_triangles"), static_cast<double>(T->SkirtTriangles));
 		Tiles->SetNumberField(TEXT("nodata_corners"), static_cast<double>(T->NodataCorners));
 		Tiles->SetNumberField(TEXT("load_ms"), T->LoadMs);
+		Tiles->SetBoolField(TEXT("streaming"), T->IsStreaming());
+		Tiles->SetNumberField(TEXT("stream_updates"), T->StreamUpdates);
+		Tiles->SetNumberField(TEXT("last_stream_ms"), T->LastStreamMs);
 		TSharedRef<FJsonObject> H = MakeShared<FJsonObject>();
 		for (const auto& KV : T->LodHistogram)
 		{

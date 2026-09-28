@@ -54,6 +54,8 @@ private:
 	FString Scenario, WorldDir, OutDir;
 	int32 ResX = 1920, ResY = 1080, PerfFrames = 0;
 	float ExposureBias = -2.f;
+	int32 FixedLod = -1;          // >= 0: load that LOD only (fixtures); -1: stream around the camera
+	double RefineFactor = 1.5;
 	TArray<FBookmark> Bookmarks;
 	TArray<FCapture> Captures;
 

@@ -54,6 +54,12 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	ResX = static_cast<int32>(Res[0]->AsNumber());
 	ResY = static_cast<int32>(Res[1]->AsNumber());
 	PerfFrames = J->GetIntegerField(TEXT("perf_frames"));
+	int32 Lod = -1;
+	if (J->TryGetNumberField(TEXT("fixed_lod"), Lod))
+	{
+		FixedLod = Lod;
+	}
+	J->TryGetNumberField(TEXT("lod_refine_factor"), RefineFactor);
 	double Ev = 0;
 	if (J->TryGetNumberField(TEXT("exposure_bias"), Ev))
 	{
@@ -238,7 +244,8 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		FActorSpawnParameters P;
 		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		Terrain = GetWorld()->SpawnActor<AEmberTerrainActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
-		if (!Terrain->LoadRegion(WorldDir, -1, Err))
+		Terrain->RefineFactor = RefineFactor;
+		if (!Terrain->LoadRegion(WorldDir, FixedLod, Err))
 		{
 			Finish(2, TEXT("world load failed: ") + Err);
 			return;

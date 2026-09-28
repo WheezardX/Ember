@@ -233,3 +233,12 @@ def test_asset_lock_detects_stale_generator_and_unclaimed_asset(tmp_path: Path):
     assert any("no generator claims" in p for p in check_lock(tmp_path))
     (tmp_path / LOCK).unlink()
     assert any("missing" in p for p in check_lock(tmp_path))
+
+
+def test_ue_module_compiles_every_worldcore_source():
+    """WorldCoreUnity.cpp must include every worldcore/src/*.cpp (else: link errors in UE only)."""
+    repo = Path(__file__).resolve().parents[1]
+    unity = (repo / "unreal/Ember/Source/EmberWorld/Private/WorldCoreUnity.cpp").read_text()
+    missing = [p.name for p in (repo / "worldcore/src").glob("*.cpp")
+               if f'#include "src/{p.name}"' not in unity]
+    assert not missing, f"add to WorldCoreUnity.cpp: {missing}"

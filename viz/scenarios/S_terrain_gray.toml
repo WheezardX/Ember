@@ -8,6 +8,7 @@ world = "terrain:teanaway_dev"
 resolution = [2560, 1440]
 budget = "interactive"
 perf_frames = 300
+fixed_lod = 14       # the fixture: finest LOD everywhere, so tile/triangle asserts stay exact
 exposure_bias = -2.0   # chosen by the HCP0 sweep (checkpoints/HCP0)
 
 [[bookmarks]]

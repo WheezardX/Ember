@@ -78,4 +78,9 @@ EMBERWORLD_CORE_API MeshResult load_tile_mesh(const Region& region, const TileEn
 // targets / probes). Returns false outside the region or on read failure.
 EMBERWORLD_CORE_API bool sample_height(const Region& region, double wx, double wy, double& out_z);
 
+// Bounds of the valid data (same corner-validity rule as the mesh: a corner is valid when any
+// of its four pixels is), scanned over the finest LOD without building meshes. Tiles can
+// extend past the AOI; this is what bookmarks address.
+EMBERWORLD_CORE_API bool data_extent(const Region& region, Bounds& out, std::string& error);
+
 }  // namespace emberworld

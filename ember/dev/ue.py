@@ -168,6 +168,8 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "resolution": list(s.scenario.resolution),
         "perf_frames": s.scenario.perf_frames,
         "exposure_bias": exposure_bias,
+        "fixed_lod": s.scenario.fixed_lod,
+        "lod_refine_factor": s.scenario.lod_refine_factor,
         "bookmarks": [b.model_dump() for b in s.bookmarks],
         "captures": [c.model_dump() for c in s.captures],
     }
