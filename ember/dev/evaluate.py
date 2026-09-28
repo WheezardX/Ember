@@ -35,6 +35,10 @@ def evaluate_run(repo: Path, sc: LoadedScenario, run_dir: Path) -> dict:
     budget = budgets.get(spec.scenario.budget, {})
     gdir = goldens_dir(repo, sc.name)
 
+    run_meta = {}
+    if (run_dir / "run.json").exists():
+        run_meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+
     captures_out = []
     checks: list[F.Check] = []
     for cap in spec.captures:
@@ -76,10 +80,10 @@ def evaluate_run(repo: Path, sc: LoadedScenario, run_dir: Path) -> dict:
             checks.append(F.Check("budget", "perf-file", "perf", False, None,
                                   "facts/perf.json present"))
 
-    run_meta = {}
-    if (run_dir / "run.json").exists():
-        run_meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
 
+    orbit_problems = [o for o in run_meta.get("orbits", []) if not o.get("mp4")]
+    for o in orbit_problems:
+        checks.append(F.Check("orbit", o["name"], "orbit", False, o.get("error"), "mp4 written"))
     failures = [c for c in captures_out if c["status"] in ("mismatch", "missing")]
     failed_checks = [c for c in checks if not c.ok]
     run_ok = run_meta.get("exit_code", 0) == 0
@@ -98,6 +102,7 @@ def evaluate_run(repo: Path, sc: LoadedScenario, run_dir: Path) -> dict:
             "run_exit_code": run_meta.get("exit_code"),
         },
         "captures": captures_out,
+        "orbits": run_meta.get("orbits", []),
         "checks": [c.to_dict() for c in checks],
         "run": run_meta,
     }

@@ -66,3 +66,11 @@ value = 41472        # 144 x 144 valid pixels x 2: the mesh covers exactly the A
 fact = "render.vram_mb"
 op = ">"
 value = 0
+
+# Review-bundle orbit (frames -> MP4 via ffmpeg; not diffed).
+[[orbits]]
+name = "orbit_oblique"
+bookmark = "oblique_nw"
+degrees = 180
+frames = 90
+fps = 30

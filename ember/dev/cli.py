@@ -222,6 +222,8 @@ def bundle(hcp: str, runs: list[str] = typer.Option(..., "--run",
                      "run_status.json"):
             if (src / name).exists():
                 shutil.copyfile(src / name, dst / name)
+        if (src / "orbits").is_dir():
+            shutil.copytree(src / "orbits", dst / "orbits", dirs_exist_ok=True)
         v = {}
         if (src / "verdict.json").exists():
             v = json.loads((src / "verdict.json").read_text(encoding="utf-8"))

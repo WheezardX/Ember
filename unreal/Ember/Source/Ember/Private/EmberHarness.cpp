@@ -93,6 +93,21 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 		B.Sun = O->GetStringField(TEXT("sun"));
 		Bookmarks.Add(B);
 	}
+	const TArray<TSharedPtr<FJsonValue>>* OrbitArr = nullptr;
+	if (J->TryGetArrayField(TEXT("orbits"), OrbitArr))
+	{
+		for (const TSharedPtr<FJsonValue>& V : *OrbitArr)
+		{
+			const TSharedPtr<FJsonObject>& O = V->AsObject();
+			FOrbit Or;
+			Or.Name = O->GetStringField(TEXT("name"));
+			Or.Bookmark = O->GetStringField(TEXT("bookmark"));
+			Or.Degrees = O->GetNumberField(TEXT("degrees"));
+			Or.Frames = O->GetIntegerField(TEXT("frames"));
+			Or.WarmupFrames = O->GetIntegerField(TEXT("warmup_frames"));
+			Orbits.Add(Or);
+		}
+	}
 	for (const TSharedPtr<FJsonValue>& V : J->GetArrayField(TEXT("captures")))
 	{
 		const TSharedPtr<FJsonObject>& O = V->AsObject();
@@ -228,6 +243,42 @@ void AEmberHarness::Finish(int32 ExitCode, const FString& Error)
 	FPlatformMisc::RequestExitWithStatus(false, static_cast<uint8>(ExitCode));
 }
 
+void AEmberHarness::NextPhase()
+{
+	UEmberSceneFactsSubsystem* Facts = GetWorld()->GetSubsystem<UEmberSceneFactsSubsystem>();
+	if (CaptureIndex < Captures.Num())
+	{
+		State = EState::Position;
+	}
+	else if (OrbitIndex < Orbits.Num())
+	{
+		State = EState::OrbitStart;
+	}
+	else if (PerfFrames > 0 && State != EState::Perf)
+	{
+		FramesLeft = PerfFrames;
+		if (Facts) Facts->BeginPerfWindow();
+		State = EState::Perf;
+	}
+	else
+	{
+		Finish(0, FString());
+	}
+}
+
+bool AEmberHarness::PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutError)
+{
+	const FBookmark* B = Bookmarks.FindByPredicate([&](const FBookmark& X) { return X.Name == O.Bookmark; });
+	if (!B)
+	{
+		OutError = TEXT("orbit ") + O.Name + TEXT(": unknown bookmark ") + O.Bookmark;
+		return false;
+	}
+	FBookmark At = *B;
+	At.YawDeg = B->YawDeg + O.Degrees * (static_cast<double>(Frame) / FMath::Max(1, O.Frames));
+	return PlaceCamera(At, OutError);
+}
+
 void AEmberHarness::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -258,9 +309,8 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		}
 		Terrain->SetBaseColor(FLinearColor(0.35f, 0.35f, 0.35f));
 		CaptureIndex = 0;
-		State = Captures.Num() ? EState::Position : EState::Perf;
-		FramesLeft = PerfFrames;
-		if (State == EState::Perf && Facts) Facts->BeginPerfWindow();
+		OrbitIndex = 0;
+		NextPhase();
 		return;
 	}
 
@@ -323,20 +373,77 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			Written.Add(FJ);
 		}
 		UE_LOG(LogEmberHarness, Display, TEXT("Captured %s (%dx%d)"), *C.Name, ShotW, ShotH);
-		if (++CaptureIndex < Captures.Num())
+		++CaptureIndex;
+		NextPhase();
+		return;
+	}
+
+	case EState::OrbitStart:
+	{
+		const FOrbit& O = Orbits[OrbitIndex];
+		OrbitFrame = 0;
+		if (!PlaceOrbitFrame(O, 0, Err))
 		{
-			State = EState::Position;
+			Finish(2, Err);
+			return;
 		}
-		else if (PerfFrames > 0)
+		FramesLeft = FMath::Max(1, O.WarmupFrames);
+		State = EState::OrbitWarmup;
+		return;
+	}
+
+	case EState::OrbitWarmup:
+		if (--FramesLeft <= 0)
 		{
-			FramesLeft = PerfFrames;
-			if (Facts) Facts->BeginPerfWindow();
-			State = EState::Perf;
+			if (Facts)
+			{
+				const FString FJ = OutDir / TEXT("facts") / (TEXT("orbit_") + Orbits[OrbitIndex].Name + TEXT(".json"));
+				UEmberSceneFactsSubsystem::WriteJson(Facts->BuildFacts(Scenario, TEXT("orbit_") + Orbits[OrbitIndex].Name), FJ);
+				Written.Add(FJ);
+			}
+			State = EState::OrbitShoot;
 		}
-		else
+		return;
+
+	case EState::OrbitShoot:
+		bShotReady = false;
+		FScreenshotRequest::RequestScreenshot(false);
+		FramesLeft = 120;
+		State = EState::OrbitWait;
+		return;
+
+	case EState::OrbitWait:
+	{
+		const FOrbit& O = Orbits[OrbitIndex];
+		if (!bShotReady)
 		{
-			Finish(0, FString());
+			if (--FramesLeft <= 0)
+			{
+				Finish(2, FString::Printf(TEXT("orbit %s frame %d: screenshot timed out"), *O.Name, OrbitFrame));
+			}
+			return;
 		}
+		const FString Png = OutDir / TEXT("frames") / O.Name / FString::Printf(TEXT("f%05d.png"), OrbitFrame);
+		if (!FImageUtils::SaveImageByExtension(*Png, FImageView(ShotPixels.GetData(), ShotW, ShotH)))
+		{
+			Finish(2, TEXT("failed to write ") + Png);
+			return;
+		}
+		if (++OrbitFrame < O.Frames)
+		{
+			// Move now; the next tick requests the frame rendered from the new pose.
+			if (!PlaceOrbitFrame(O, OrbitFrame, Err))
+			{
+				Finish(2, Err);
+				return;
+			}
+			State = EState::OrbitShoot;
+			return;
+		}
+		UE_LOG(LogEmberHarness, Display, TEXT("Orbit %s: %d frames"), *O.Name, O.Frames);
+		Written.Add(OutDir / TEXT("frames") / O.Name);
+		++OrbitIndex;
+		NextPhase();
 		return;
 	}
 

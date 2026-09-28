@@ -59,6 +59,16 @@ class Capture(_Strict):
     golden: bool = True         # False: captured and shown, never diffed (e.g. WIP views)
 
 
+class Orbit(_Strict):
+    """A camera orbit around a bookmark's target, captured every frame -> MP4 (review bundles)."""
+    name: str
+    bookmark: str               # start pose; yaw advances by `degrees` over `frames`
+    degrees: float = 360.0
+    frames: int = Field(default=240, gt=1, le=3600)
+    fps: int = 30
+    warmup_frames: int = 30
+
+
 class FactAssert(_Strict):
     fact: str                   # dotted path into the scene-facts JSON, e.g. "tiles.loaded"
     op: Literal["==", "!=", ">=", "<=", ">", "<"]
@@ -87,6 +97,7 @@ class RenderScenario(_Strict):
     scenario: ScenarioMeta
     bookmarks: list[Bookmark]
     captures: list[Capture]
+    orbits: list[Orbit] = Field(default_factory=list)
     asserts: list[FactAssert] = Field(default_factory=list, alias="assert")
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -107,6 +118,9 @@ class RenderScenario(_Strict):
                 raise ValueError(f"capture {c.name!r} references unknown bookmark {c.bookmark!r}")
             if c.t_s is not None and self.scenario.replay is None:
                 raise ValueError(f"capture {c.name!r} sets t_s but the scenario has no replay")
+        for o in self.orbits:
+            if o.bookmark not in names:
+                raise ValueError(f"orbit {o.name!r} references unknown bookmark {o.bookmark!r}")
         for a in self.asserts:
             if a.capture is not None and a.capture not in caps:
                 raise ValueError(f"assert on {a.fact!r} references unknown capture {a.capture!r}")

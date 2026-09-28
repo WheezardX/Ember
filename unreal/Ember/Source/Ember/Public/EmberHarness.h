@@ -37,18 +37,28 @@ private:
 		double DistanceM = 1000, YawDeg = 0, PitchDeg = -30, FovDeg = 60;
 		FString Sun = TEXT("noon");
 	};
+	struct FOrbit
+	{
+		FString Name;
+		FString Bookmark;          // start pose: target, distance, pitch, fov, sun, start yaw
+		double Degrees = 360.0;
+		int32 Frames = 240;
+		int32 WarmupFrames = 30;
+	};
 	struct FCapture
 	{
 		FString Name;
 		FString Bookmark;
 		int32 WarmupFrames = 30;
 	};
-	enum class EState : uint8 { Idle, LoadWorld, Position, Warmup, Shoot, WaitShot, Perf, Done };
+	enum class EState : uint8 { Idle, LoadWorld, Position, Warmup, Shoot, WaitShot, OrbitStart, OrbitWarmup, OrbitShoot, OrbitWait, Perf, Done };
 
 	bool LoadPlan(const FString& Path, FString& OutError);
 	bool PlaceCamera(const FBookmark& B, FString& OutError);
 	void OnScreenshot(int32 W, int32 H, const TArray<FColor>& Pixels);
 	void Finish(int32 ExitCode, const FString& Error);
+	void NextPhase();                                  // captures -> orbits -> perf -> finish
+	bool PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutError);
 
 	// plan
 	FString Scenario, WorldDir, OutDir;
@@ -59,10 +69,13 @@ private:
 	FString LookPath = TEXT("clay");  // "clay" or an absolute viz/looks/*.toml path
 	TArray<FBookmark> Bookmarks;
 	TArray<FCapture> Captures;
+	TArray<FOrbit> Orbits;
 
 	// run state
 	EState State = EState::Idle;
 	int32 CaptureIndex = 0;
+	int32 OrbitIndex = 0;
+	int32 OrbitFrame = 0;
 	int32 FramesLeft = 0;
 	bool bShotReady = false;
 	int32 ShotW = 0, ShotH = 0;

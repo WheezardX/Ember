@@ -242,3 +242,16 @@ def test_ue_module_compiles_every_worldcore_source():
     missing = [p.name for p in (repo / "worldcore/src").glob("*.cpp")
                if f'#include "src/{p.name}"' not in unity]
     assert not missing, f"add to WorldCoreUnity.cpp: {missing}"
+
+
+def test_orbit_validation():
+    base = {"render_scenario_version": 1, "scenario": {"name": "x", "world": "w"},
+            "bookmarks": [{"name": "a", "target_frac": [0.5, 0.5], "distance_m": 10}],
+            "captures": []}
+    ok = RenderScenario.model_validate({**base, "orbits": [{"name": "o", "bookmark": "a"}]})
+    assert ok.orbits[0].frames == 240 and ok.orbits[0].degrees == 360
+    with pytest.raises(ValueError, match="unknown bookmark"):
+        RenderScenario.model_validate({**base, "orbits": [{"name": "o", "bookmark": "zz"}]})
+    with pytest.raises(ValueError):
+        RenderScenario.model_validate({**base, "orbits": [{"name": "o", "bookmark": "a",
+                                                           "frames": 1}]})

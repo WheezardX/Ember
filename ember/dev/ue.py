@@ -180,6 +180,7 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "look": _look_ref(s.scenario.look),
         "bookmarks": [b.model_dump() for b in s.bookmarks],
         "captures": [c.model_dump() for c in s.captures],
+        "orbits": [o.model_dump() for o in s.orbits],
     }
     p = run_dir / "plan.json"
     p.write_text(json.dumps(plan, indent=2), encoding="utf-8")
@@ -222,6 +223,7 @@ def run_scenario(eng: Engine, sc: LoadedScenario, *, runs_root: Path | None = No
     elif not status:
         error = error or ("harness wrote no run_status.json (crash or plan error; "
                           "see log/Ember.log)")
+    orbits = encode_orbits(sc, run_dir) if exit_code == 0 else []
     inst = eng.installed_version()
     meta = {
         "format": "ember-viz-run", "version": 1, "scenario": sc.name,
@@ -230,9 +232,41 @@ def run_scenario(eng: Engine, sc: LoadedScenario, *, runs_root: Path | None = No
         "exit_code": exit_code, "error": error, "git": _git_sha(repo),
         "engine": {"pinned": eng.version, "installed": inst[0] if inst else None},
         "command": cmd,
+        "orbits": orbits,
     }
     (run_dir / "run.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return run_dir
+
+
+def encode_orbits(sc: LoadedScenario, run_dir: Path, keep_frames: bool = False) -> list[dict]:
+    """frames/<orbit>/f%05d.png -> orbits/<orbit>.mp4 (H.264, yuv420p, crf 18) via ffmpeg."""
+    import shutil
+
+    out = []
+    ff = shutil.which("ffmpeg")
+    for o in sc.spec.orbits:
+        frames = run_dir / "frames" / o.name
+        mp4 = run_dir / "orbits" / f"{o.name}.mp4"
+        entry = {"name": o.name, "frames": len(list(frames.glob("f*.png"))), "mp4": None,
+                 "error": ""}
+        if not ff:
+            entry["error"] = "ffmpeg not on PATH"
+        elif entry["frames"] == 0:
+            entry["error"] = "no frames captured"
+        else:
+            mp4.parent.mkdir(parents=True, exist_ok=True)
+            p = subprocess.run([ff, "-y", "-loglevel", "error", "-framerate", str(o.fps),
+                                "-i", str(frames / "f%05d.png"), "-c:v", "libx264",
+                                "-pix_fmt", "yuv420p", "-crf", "18", "-movflags", "+faststart",
+                                str(mp4)], capture_output=True, text=True)
+            if p.returncode == 0 and mp4.exists():
+                entry["mp4"] = str(mp4.relative_to(run_dir)).replace("\\", "/")
+                if not keep_frames:
+                    shutil.rmtree(frames, ignore_errors=True)
+            else:
+                entry["error"] = (p.stderr or "ffmpeg failed").strip()[:400]
+        out.append(entry)
+    return out
 
 
 def latest_run(sc_name: str, runs_root: Path | None = None) -> Path | None:
