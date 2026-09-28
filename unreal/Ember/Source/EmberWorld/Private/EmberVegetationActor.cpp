@@ -89,6 +89,8 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 	SpeciesMesh.Reset();
 	SpeciesMaterial.Reset();
 	IndexToSlot.Reset();
+	SlotFirstMesh.Reset();
+	SlotNumMeshes.Reset();
 	SlotHeightLineupM.Reset();
 	SlotCrownRatio.Reset();
 	GeneratedSpecies = 0;
@@ -104,18 +106,36 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 				Slot = SpeciesKeys.Add(Key);
 				SlotHeightLineupM.Add(FMath::Max(S.height_min_m, 0.55 * S.height_max_m));  // a mature tree
 				SlotCrownRatio.Add(S.crown_ratio);
-				UStaticMesh* Gen = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Ember/Generated/Veg/SM_%s.SM_%s"), *Key, *Key));
-				UMaterialInterface* Base = (Gen && VegMaster) ? VegMaster : Clay;
-				UStaticMesh* Mesh = Gen ? Gen : (IsBroadleaf(Key) ? Sphere : Cone);
-				if (!Mesh || !Base)
+				// Generated variants SM_<key>_v0..N (assets/generators/veg_species.py) with the
+				// species' own material instance; engine cone/sphere + clay as the fallback.
+				TArray<UStaticMesh*> Variants;
+				for (int32 V = 0; V < 16; ++V)
+				{
+					UStaticMesh* Gen = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Ember/Generated/Veg/SM_%s_v%d.SM_%s_v%d"), *Key, V, *Key, V));
+					if (!Gen) break;
+					Variants.Add(Gen);
+				}
+				UMaterialInterface* SpeciesMI = LoadObject<UMaterialInterface>(nullptr, *FString::Printf(TEXT("/Game/Ember/Generated/Veg/MI_Veg_%s.MI_Veg_%s"), *Key, *Key));
+				const bool bGen = Variants.Num() > 0 && (SpeciesMI || VegMaster);
+				UMaterialInterface* Base = bGen ? (SpeciesMI ? SpeciesMI : VegMaster) : Clay;
+				if (!bGen)
+				{
+					Variants = {IsBroadleaf(Key) ? Sphere : Cone};
+				}
+				if (!Variants[0] || !Base)
 				{
 					OutError = TEXT("no mesh/material for species ") + Key;
 					return false;
 				}
-				GeneratedSpecies += Gen ? 1 : 0;
-				SpeciesMesh.Add(Mesh);
+				GeneratedSpecies += bGen ? 1 : 0;
+				SlotFirstMesh.Add(SpeciesMesh.Num());
+				SlotNumMeshes.Add(Variants.Num());
+				for (UStaticMesh* M : Variants) SpeciesMesh.Add(M);
 				UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Base, this);
-				MID->SetVectorParameterValue(TEXT("Color"), SpeciesColor(Key));
+				if (!bGen)
+				{
+					MID->SetVectorParameterValue(TEXT("Color"), SpeciesColor(Key));
+				}
 				SpeciesMaterial.Add(MID);
 			}
 			IndexToSlot.Add(Slot);
@@ -140,8 +160,9 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 	const bool bSurface = H && Surface.build(R, Tile, *H.raster);
 
 	const int32 NS = SpeciesKeys.Num();
-	TArray<TArray<FTransform>> PerSpecies;
-	PerSpecies.SetNum(NS);
+	const int32 NM = SpeciesMesh.Num();
+	TArray<TArray<FTransform>> PerMesh;
+	PerMesh.SetNum(NM);
 	for (const emberworld::scatter::Instance& In : TS.instances)
 	{
 		if (In.species < 0 || In.species >= IndexToSlot.Num())
@@ -161,24 +182,30 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 			++NoSurfaceInstances;
 			continue;
 		}
-		PerSpecies[Slot].Add(FitInstance(Slot, In.height_m, In.radius_m, In.yaw_rad, Terrain->WorldToUE(In.x, In.y, Z)));
+		// Variant: a hash of the instance's position (render policy; Terrain's instance is untouched).
+		const uint64 VariantHash = emberworld::scatter::hash64({static_cast<uint64>(FMath::RoundToInt64(In.x * 100.0)),
+			static_cast<uint64>(FMath::RoundToInt64(In.y * 100.0)), 0x5EEDull});
+		const int32 Mesh = SlotFirstMesh[Slot] + static_cast<int32>(VariantHash % static_cast<uint64>(SlotNumMeshes[Slot]));
+		PerMesh[Mesh].Add(FitInstance(Mesh, In.height_m, In.radius_m, In.yaw_rad, Terrain->WorldToUE(In.x, In.y, Z)));
 	}
 
 	FVegTile& VT = Tiles.Add(VegKey(Tile));
 	VT.PerSpecies.Init(0, NS);
-	for (int32 S = 0; S < NS; ++S)
+	for (int32 Mi = 0; Mi < NM; ++Mi)
 	{
-		if (PerSpecies[S].Num() == 0)
+		if (PerMesh[Mi].Num() == 0)
 		{
 			continue;
 		}
+		int32 S = 0;
+		while (S + 1 < NS && SlotFirstMesh[S + 1] <= Mi) ++S;
 		UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
-		C->SetStaticMesh(SpeciesMesh[S]);
+		C->SetStaticMesh(SpeciesMesh[Mi]);
 		C->SetMaterial(0, SpeciesMaterial[S]);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetCastShadow(true);
 		C->SetMobility(EComponentMobility::Movable);
-		C->InstancingRandomSeed = static_cast<int32>((VegKey(Tile) * 31 + S) & 0x7FFFFFFF) | 1;  // wind phase: deterministic
+		C->InstancingRandomSeed = static_cast<int32>((VegKey(Tile) * 31 + Mi) & 0x7FFFFFFF) | 1;  // wind phase: deterministic
 		// Wind WPO moves the trees: without this the virtual shadow map cache keeps stale pages
 		// and crowns get saw-toothed self-shadows (seen in S_forest_teanaway ground_ridge).
 		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Always;
@@ -187,19 +214,19 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 		C->bAffectDistanceFieldLighting = false;
 		C->SetupAttachment(RootComponent);
 		C->RegisterComponent();
-		C->AddInstances(PerSpecies[S], /*bShouldReturnIndices=*/false, /*bWorldSpace=*/true);
+		C->AddInstances(PerMesh[Mi], /*bShouldReturnIndices=*/false, /*bWorldSpace=*/true);
 		VT.Components.Add(C);
-		VT.PerSpecies[S] = PerSpecies[S].Num();
+		VT.PerSpecies[S] += PerMesh[Mi].Num();
 	}
 	ScatterMs += (FPlatformTime::Seconds() - T0) * 1000.0;
 	return true;
 }
 
-FTransform AEmberVegetationActor::FitInstance(int32 Slot, double HeightM, double CrownRadiusM, double YawRad, FVector Loc) const
+FTransform AEmberVegetationActor::FitInstance(int32 Mesh, double HeightM, double CrownRadiusM, double YawRad, FVector Loc) const
 {
 	// Terrain's scatter v2 sizes every crown (0.5 x crown_ratio x height x 0.85..1.15): the mesh's
 	// bounds are fitted to that height and crown diameter, no render-side crown policy.
-	const FBoxSphereBounds B = SpeciesMesh[Slot]->GetBounds();
+	const FBoxSphereBounds B = SpeciesMesh[Mesh]->GetBounds();
 	const double MeshH = FMath::Max(1.0, 2.0 * B.BoxExtent.Z);
 	const double MeshW = FMath::Max(1.0, 2.0 * B.BoxExtent.X);
 	const double HeightCm = HeightM * 100.0;
@@ -266,9 +293,9 @@ void AEmberVegetationActor::SpawnLineup(double WorldX, double WorldY, double Row
 		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
 		if (I.Species >= 0)
 		{
-			C->SetStaticMesh(SpeciesMesh[I.Species]);
+			C->SetStaticMesh(SpeciesMesh[SlotFirstMesh[I.Species]]);
 			C->SetMaterial(0, SpeciesMaterial[I.Species]);
-			C->SetWorldTransform(FitInstance(I.Species, I.HeightM, 0.5 * I.WidthM, 0.0, Loc));
+			C->SetWorldTransform(FitInstance(SlotFirstMesh[I.Species], I.HeightM, 0.5 * I.WidthM, 0.0, Loc));
 		}
 		else
 		{

@@ -1,34 +1,37 @@
-"""Generator: vegetation species meshes v1 + their master material (EPIC_5_PLAN B3, B2 item 2).
+"""Generator: vegetation species meshes v2 + their materials (EPIC_5_PLAN B3 v2, HCP2 round 2).
 
-    /Game/Ember/Generated/M_Veg                    lerp(TrunkColor, Color, vertex alpha) x vertex
-                                                   colour RGB (shading/AO); Roughness (scalar);
-                                                   wind WPO (WindTime, WindStrength, WindDir)
-    /Game/Ember/Generated/Veg/SM_<palette key>     one Nanite static mesh per species in Terrain's
-                                                   pnw_conifer palette (keys must match exactly)
+    /Game/Ember/Generated/M_Veg                       master: lerp(TrunkColor, Color x per-tree
+                                                      tint, vertex alpha) x vertex RGB; two-sided;
+                                                      wind WPO (sway + per-tree lean + twig flutter)
+    /Game/Ember/Generated/Veg/MI_Veg_<key>            per species: Color / TrunkColor (treegen.COLORS)
+    /Game/Ember/Generated/Veg/SM_<key>_v<N>           per species x treegen.VARIANTS: Nanite mesh
 
-Meshes are built from GeometryScript primitives (stacked tier cones for firs, a clear bole and
-clumped ellipsoid crown for ponderosa, blob clusters for shrub, blade cones for bunchgrass),
-deterministically (fixed seeds), with vertex colours that darken the inner/lower crown. The
-runtime fits each mesh's bounds to the instance's height and crown radius, so only proportions
-matter here. Runs headless via `ember-dev regen-assets`.
+Geometry comes from treegen.py (pure Python growth-form models: trunk, branch whorls, droop,
+needle sprays / leaf clusters as opaque geometry) and is loaded with append_buffers_to_mesh.
+Nanite `Preserve Area` keeps sparse foliage from thinning at distance. Bark is a flat colour
+until licensed bark scans arrive. Runs headless via `ember-dev regen-assets`.
 """
 
-import math
-import random
+import os
+import sys
 
 import unreal
+
+_here = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.path.join(
+    unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir()), "..", "..", "assets",
+    "generators")
+sys.path.insert(0, _here)
+import treegen  # noqa: E402
 
 PATH = "/Game/Ember/Generated"
 VEG = f"{PATH}/Veg"
 eal = unreal.EditorAssetLibrary
 mel = unreal.MaterialEditingLibrary
-prim = unreal.GeometryScript_Primitives
 edits = unreal.GeometryScript_MeshEdits
 colors = unreal.GeometryScript_VertexColors
 normals = unreal.GeometryScript_Normals
 newasset = unreal.GeometryScript_NewAssetUtils
-
-H = 1000.0  # nominal tree height, cm (proportions only)
+tools = unreal.AssetToolsHelpers.get_asset_tools()
 
 
 def fresh(path):
@@ -36,101 +39,140 @@ def fresh(path):
         eal.delete_asset(path)
 
 
-# ------------------------------------------------------------------ material
+def srgb(hexcol):
+    c = [int(hexcol[i:i + 2], 16) / 255.0 for i in (0, 2, 4)]
+    lin = [x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+    return unreal.LinearColor(lin[0], lin[1], lin[2], 1.0)
+
+
+# ------------------------------------------------------------------ master material
 def build_material():
     full = f"{PATH}/M_Veg"
     fresh(full)
-    mat = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
-        "M_Veg", PATH, unreal.Material, unreal.MaterialFactoryNew())
+    mat = tools.create_asset("M_Veg", PATH, unreal.Material, unreal.MaterialFactoryNew())
 
     def link(src, out, dst, inp):
         if not mel.connect_material_expressions(src, out, dst, inp):
             raise RuntimeError(f"connect failed: {out!r} -> {inp!r}")
 
-    col = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -600, -100)
+    def custom(name, x, y, inputs, code):
+        c = mel.create_material_expression(mat, unreal.MaterialExpressionCustom, x, y)
+        c.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+        c.set_editor_property("description", name)
+        ins = []
+        for n in inputs:
+            ci = unreal.CustomInput()
+            ci.set_editor_property("input_name", n)
+            ins.append(ci)
+        c.set_editor_property("inputs", ins)
+        c.set_editor_property("code", code)
+        return c
+
+    col = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -900, -200)
     col.set_editor_property("parameter_name", "Color")
-    col.set_editor_property("default_value", unreal.LinearColor(0.05, 0.08, 0.04, 1.0))
+    col.set_editor_property("default_value", unreal.LinearColor(0.03, 0.06, 0.025, 1.0))
     trunk_col = mel.create_material_expression(
-        mat, unreal.MaterialExpressionVectorParameter, -600, -300)
+        mat, unreal.MaterialExpressionVectorParameter, -900, -400)
     trunk_col.set_editor_property("parameter_name", "TrunkColor")
-    trunk_col.set_editor_property("default_value",
-                                  unreal.LinearColor(0.06, 0.035, 0.02, 1.0))
-    vc = mel.create_material_expression(mat, unreal.MaterialExpressionVertexColor, -600, 100)
-    lerp = mel.create_material_expression(
-        mat, unreal.MaterialExpressionLinearInterpolate, -400, -150)
+    trunk_col.set_editor_property("default_value", unreal.LinearColor(0.06, 0.035, 0.02, 1.0))
+    vc = mel.create_material_expression(mat, unreal.MaterialExpressionVertexColor, -900, 100)
+    rnd = mel.create_material_expression(mat, unreal.MaterialExpressionPerInstanceRandom, -900, 0)
+
+    # Per-tree foliage tint: brightness and a little yellow-green shift, so no two neighbours
+    # match (PerInstanceRandom: constant over an instance, deterministic per component seed).
+    tint = custom("EmberTint", -650, -100, ["Rnd"], (
+        "float v = 0.84 + 0.32 * Rnd;\n"
+        "float y = frac(Rnd * 7.31) - 0.5;\n"
+        "return float3(v * (1.0 + 0.10 * y), v, v * (1.0 - 0.12 * y));\n"))
+    link(rnd, "", tint, "Rnd")
+    fol = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -450, -150)
+    link(col, "", fol, "A")
+    link(tint, "", fol, "B")
+    lerp = mel.create_material_expression(mat, unreal.MaterialExpressionLinearInterpolate,
+                                          -300, -250)
     link(trunk_col, "", lerp, "A")
-    link(col, "", lerp, "B")
+    link(fol, "", lerp, "B")
     link(vc, "A", lerp, "Alpha")          # vertex alpha: 0 = bark, 1 = foliage
-    mul = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -250, 0)
+    mul = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -150, -100)
     link(lerp, "", mul, "A")
-    link(vc, "", mul, "B")
+    link(vc, "", mul, "B")                # vertex RGB: shading / inner-crown darkening
     if not mel.connect_material_property(mul, "", unreal.MaterialProperty.MP_BASE_COLOR):
         raise RuntimeError("base colour")
+    # Needles and leaves transmit light: Two-Sided Foliage shading with a subsurface colour of
+    # the foliage tint (x alpha, so bark transmits nothing). Without it crowns render near-black.
+    sss_gain = mel.create_material_expression(mat, unreal.MaterialExpressionConstant, -300, 50)
+    sss_gain.set_editor_property("r", 0.6)
+    sss = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -150, 50)
+    link(fol, "", sss, "A")
+    link(sss_gain, "", sss, "B")
+    sss_a = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -50, 50)
+    link(sss, "", sss_a, "A")
+    link(vc, "A", sss_a, "B")
+    if not mel.connect_material_property(sss_a, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR):
+        raise RuntimeError("subsurface colour")
     rough = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -300, 200)
     rough.set_editor_property("parameter_name", "Roughness")
     rough.set_editor_property("default_value", 0.85)
     if not mel.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS):
         raise RuntimeError("roughness")
-    # Wind sway (world position offset). The runtime owns the clock (WindTime is set per frame
-    # by the harness: frozen for stills, frame/fps for orbits), so renders stay deterministic.
-    # Bend grows with height above the instance pivot squared (stiff bole, loose top); each
-    # tree gets its own phase from its position; a slow gust band travels downwind.
-    # Offset from the INSTANCE pivot in world units (ObjectPositionWS is the primitive's, not
-    # the instance's: with it, whole HISM tiles bent as one and self-shadowing tore).
-    lpos = mel.create_material_expression(mat, unreal.MaterialExpressionLocalPosition, -1100, 450)
+
+    # Wind (world position offset). The runtime owns the clock (WindTime: frozen for stills,
+    # frame/fps for orbits), so renders stay deterministic. Offsets are relative to the INSTANCE
+    # pivot (LocalPosition(instance) -> world): bend grows with height^2; per-tree phase and a
+    # static per-tree lean from PerInstanceRandom; a slow gust band travels downwind; foliage
+    # (vertex alpha) adds a fast small flutter, the motion that makes wind readable.
+    lpos = mel.create_material_expression(mat, unreal.MaterialExpressionLocalPosition, -1300, 450)
     lpos.set_editor_property("local_origin", unreal.LocalPositionOrigin.INSTANCE)
     lpos.set_editor_property("included_offsets", unreal.PositionIncludedOffsets.EXCLUDE_OFFSETS)
-    local = mel.create_material_expression(mat, unreal.MaterialExpressionTransform, -900, 450)
+    local = mel.create_material_expression(mat, unreal.MaterialExpressionTransform, -1100, 450)
     local.set_editor_property("transform_source_type",
                               unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_INSTANCE)
     local.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
     link(lpos, "", local, "")
-    wpos = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -900, 300)
+    wpos = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1100, 300)
     wpos.set_editor_property("world_position_shader_offset",
                              unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
-    opos = mel.create_material_expression(mat, unreal.MaterialExpressionSubtract, -700, 350)
+    opos = mel.create_material_expression(mat, unreal.MaterialExpressionSubtract, -900, 350)
     link(wpos, "", opos, "A")             # pivot = world position - (pivot -> vertex)
     link(local, "", opos, "B")
     params = {}
     for i, (name, default) in enumerate((("WindTime", 0.0), ("WindStrength", 6.0))):
         p = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter,
-                                           -900, 640 + 90 * i)
+                                           -1100, 640 + 90 * i)
         p.set_editor_property("parameter_name", name)
         p.set_editor_property("default_value", default)
         params[name] = p
-    wdir = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -900, 820)
+    wdir = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -1100, 820)
     wdir.set_editor_property("parameter_name", "WindDir")
     wdir.set_editor_property("default_value", unreal.LinearColor(1.0, 0.0, 0.0, 0.0))
-    wind = mel.create_material_expression(mat, unreal.MaterialExpressionCustom, -450, 500)
-    wind.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
-    wind.set_editor_property("description", "EmberWind")
-    ins = []
-    for n in ("Local", "Pivot", "Rnd", "T", "S", "D"):
-        ci = unreal.CustomInput()
-        ci.set_editor_property("input_name", n)
-        ins.append(ci)
-    wind.set_editor_property("inputs", ins)
-    wind.set_editor_property("code", (
-        "float h = max(Local.z, 0.0) / 1000.0;\n"                  # height above pivot, 10 m
+    wind = custom("EmberWind", -600, 500, ["Local", "Pivot", "Rnd", "A", "T", "S", "D"], (
+        "float h = max(Local.z, 0.0) / 1000.0;\n"                   # height above pivot, 10 m
         "float bend = S * h * h;\n"
-        "float2 p = Pivot.xy * 0.01;\n"                            # metres
-        "float ph = Rnd * 6.2831853;\n"                            # per-instance, exact
+        "float2 p = Pivot.xy * 0.01;\n"                             # metres
+        "float ph = Rnd * 6.2831853;\n"
         "float along = dot(p, D.xy);\n"
         "float gust = 0.5 + 0.5 * sin(T * 0.35 - along * 0.012);\n"
         "float sway = 0.55 + 0.45 * sin(T * 1.6 + ph) * (0.6 + 0.4 * gust);\n"
-        "return float3(D.xy * bend * sway * (0.7 + 0.6 * gust), -0.15 * bend * sway);\n"))
+        "float3 o = float3(D.xy * bend * sway * (0.7 + 0.6 * gust), -0.15 * bend * sway);\n"
+        "float la = frac(Rnd * 13.7) * 6.2831853;\n"               # static lean, 0..12 cm/(10 m)^2
+        "o.xy += float2(cos(la), sin(la)) * 12.0 * frac(Rnd * 3.3) * h * h;\n"
+        "float fp = dot(Local, float3(0.021, 0.017, 0.013)) + ph;\n"
+        "float fl = A * (S / 6.0) * (0.4 + 0.6 * gust) * (1.5 + 2.5 * h);\n"  # twig flutter, cm
+        "o += fl * float3(sin(T * 7.3 + fp) * D.x, sin(T * 6.1 + fp * 1.3) * D.y + "
+        "0.4 * sin(T * 8.7 + fp), 0.6 * sin(T * 9.1 + fp * 0.7));\n"
+        "return o;\n"))
     link(local, "", wind, "Local")
     link(opos, "", wind, "Pivot")
-    # Per-tree phase: PerInstanceRandom is constant over an instance (a hash of the computed
-    # pivot is not: float jitter between vertices flipped floor() and tore crowns apart).
-    rnd = mel.create_material_expression(mat, unreal.MaterialExpressionPerInstanceRandom, -900, 560)
     link(rnd, "", wind, "Rnd")
+    link(vc, "A", wind, "A")
     link(params["WindTime"], "", wind, "T")
     link(params["WindStrength"], "", wind, "S")
     link(wdir, "", wind, "D")
     if not mel.connect_material_property(wind, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET):
         raise RuntimeError("world position offset")
-    mat.set_editor_property("max_world_position_offset_displacement", 600.0)  # Nanite WPO bounds
+    mat.set_editor_property("two_sided", True)                  # foliage is single-layer sprays
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
+    mat.set_editor_property("max_world_position_offset_displacement", 700.0)  # Nanite WPO bounds
     mat.set_editor_property("used_with_instanced_static_meshes", True)
     mat.set_editor_property("used_with_nanite", True)
     mel.recompile_material(mat)
@@ -139,143 +181,58 @@ def build_material():
     return mat
 
 
-# ------------------------------------------------------------------ mesh helpers
-def opts():
-    return unreal.GeometryScriptPrimitiveOptions()
-
-
-def xf(x=0.0, y=0.0, z=0.0, yaw=0.0, sx=1.0, sy=1.0, sz=1.0):
-    return unreal.Transform(location=unreal.Vector(x, y, z), rotation=unreal.Rotator(0.0, 0.0, yaw),
-                            scale=unreal.Vector(sx, sy, sz))
-
-
-def part(builder, shade, foliage=True):
-    """Build a primitive into its own mesh and colour it: RGB grey = shading multiplier,
-    alpha = 1 foliage / 0 bark (M_Veg lerps TrunkColor -> Color by it)."""
-    m = unreal.DynamicMesh()
-    builder(m)
-    flags = unreal.GeometryScriptColorFlags()
-    for ch in ("red", "green", "blue", "alpha"):  # be explicit: alpha carries bark/foliage
-        flags.set_editor_property(ch, True)
-    rgba = unreal.LinearColor(shade, shade, shade, 1.0 if foliage else 0.0)
-    colors.set_mesh_constant_vertex_color(m, rgba, flags, False)
-    return m
-
-
-def add(target, piece):
-    edits.append_mesh(target, piece, unreal.Transform())
-
-
-def trunk(target, radius, height, shade=1.0):
-    add(target, part(lambda m: prim.append_cylinder(m, opts(), xf(), radius=radius, height=height,
-                                                    radial_steps=8, height_steps=1, capped=True),
-                     shade, foliage=False))
-
-
-def tier_crown(target, rng, base_z, top_z, r0, r1, tiers, overlap, droop=0.0):
-    """Stacked cones from base_z to top_z; radius tapers r0 -> r1; lower tiers darker."""
-    span = (top_z - base_z)
-    step = span / tiers
-    for i in range(tiers):
-        f = i / max(1, tiers - 1)
-        r = r0 + (r1 - r0) * f
-        z = base_z + i * step
-        h = step * overlap
-        shade = 0.55 + 0.45 * f + rng.uniform(-0.05, 0.05)
-        jitter = r * 0.06
-        add(target, part(lambda m, r=r, z=z, h=h, jitter=jitter: prim.append_cone(
-            m, opts(), xf(rng.uniform(-jitter, jitter), rng.uniform(-jitter, jitter), z - droop * r,
-                          yaw=rng.uniform(0, 360)),
-            base_radius=r, top_radius=r * 0.08, height=h, radial_steps=10, height_steps=1,
-            capped=True), shade))
-    # leader
-    add(target, part(lambda m: prim.append_cone(m, opts(), xf(0, 0, top_z - step * 0.2),
-                                                base_radius=r1 * 0.9, top_radius=0.5,
-                                                height=step * 1.2, radial_steps=8, height_steps=1,
-                                                capped=True), 1.0))
-
-
-def blobs(target, rng, count, cx, cy, cz, spread_xy, spread_z, r_min, r_max, squash,
-          shade_lo, shade_hi):
-    for _ in range(count):
-        a = rng.uniform(0, 2 * math.pi)
-        d = spread_xy * math.sqrt(rng.random())
-        x, y = cx + d * math.cos(a), cy + d * math.sin(a)
-        z = cz + rng.uniform(-spread_z, spread_z)
-        r = rng.uniform(r_min, r_max)
-        shade = shade_lo + (shade_hi - shade_lo) * ((z - (cz - spread_z)) / max(1e-6, 2 * spread_z))
-        add(target, part(lambda m, x=x, y=y, z=z, r=r: prim.append_sphere_lat_long(
-            m, opts(), xf(x, y, z, sz=squash), radius=r, steps_phi=6, steps_theta=10), shade))
-
-
-# ------------------------------------------------------------------ species
-def douglas_fir(m):
-    rng = random.Random(1)
-    trunk(m, H * 0.025, H * 0.30)
-    tier_crown(m, rng, base_z=H * 0.18, top_z=H * 0.95, r0=H * 0.20, r1=H * 0.04, tiers=8,
-               overlap=1.8, droop=0.15)
-
-
-def ponderosa(m):
-    rng = random.Random(2)
-    trunk(m, H * 0.03, H * 0.62)   # long clear bole
-    blobs(m, rng, 9, 0, 0, H * 0.78, H * 0.10, H * 0.14, H * 0.07, H * 0.11, 0.8, 0.55, 1.0)
-
-
-def grand_fir(m):
-    rng = random.Random(3)
-    trunk(m, H * 0.02, H * 0.25)
-    tier_crown(m, rng, base_z=H * 0.12, top_z=H * 0.97, r0=H * 0.13, r1=H * 0.03, tiers=11,
-               overlap=1.9, droop=0.05)
-
-
-def shrub(m):
-    rng = random.Random(4)
-    blobs(m, rng, 6, 0, 0, H * 0.28, H * 0.22, H * 0.08, H * 0.16, H * 0.24, 0.7, 0.55, 1.0)
-
-
-def bunchgrass(m):
-    rng = random.Random(5)
-    for _ in range(9):
-        a = rng.uniform(0, 360)
-        tilt = rng.uniform(8, 25)
-        h = H * rng.uniform(0.7, 1.0)
-        piece = part(lambda mm, h=h: prim.append_cone(mm, opts(), xf(), base_radius=H * 0.03,
-                                                      top_radius=0.5, height=h, radial_steps=5,
-                                                      height_steps=1, capped=True),
-                     rng.uniform(0.7, 1.0))
-        edits.append_mesh(m, piece, unreal.Transform(location=unreal.Vector(0, 0, 0),
-                                                     rotation=unreal.Rotator(tilt, 0.0, a),
-                                                     scale=unreal.Vector(1, 1, 1)))
-
-
-SPECIES = {
-    "pseudotsuga_menziesii": douglas_fir,
-    "pinus_ponderosa": ponderosa,
-    "abies_grandis": grand_fir,
-    "artemisia_shrub": shrub,
-    "bunchgrass": bunchgrass,
-}
-
-
-def build_mesh(key, builder, mat):
-    full = f"{VEG}/SM_{key}"
+def build_instance(key, master):
+    name = f"MI_Veg_{key}"
+    full = f"{VEG}/{name}"
     fresh(full)
-    m = unreal.DynamicMesh()
-    builder(m)
-    normals.recompute_normals(m, unreal.GeometryScriptCalculateNormalsOptions())
+    mi = tools.create_asset(name, VEG, unreal.MaterialInstanceConstant,
+                            unreal.MaterialInstanceConstantFactoryNew())
+    mel.set_material_instance_parent(mi, master)  # (set_editor_property left no parameters)
+    foliage, bark = treegen.COLORS[key]
+    for param, hexcol in (("Color", foliage), ("TrunkColor", bark)):
+        want = srgb(hexcol)
+        mel.set_material_instance_vector_parameter_value(mi, param, want)
+        got = mel.get_material_instance_vector_parameter_value(mi, param)
+        if abs(got.r - want.r) > 1e-4 or abs(got.g - want.g) > 1e-4:  # verify by reading back
+            raise RuntimeError(f"{name}: {param} not set (got {got})")
+    mel.update_material_instance(mi)
+    eal.save_asset(full, only_if_is_dirty=False)
+    unreal.log(f"EMBER_GENERATED {full}")
+    return mi
+
+
+# ------------------------------------------------------------------ meshes
+def build_mesh(key, variant, mi):
+    name = f"SM_{key}_v{variant}"
+    full = f"{VEG}/{name}"
+    fresh(full)
+    tm = treegen.build(key, variant)
+    buf = unreal.GeometryScriptSimpleMeshBuffers()
+    buf.set_editor_property("vertices", [unreal.Vector(*p) for p in tm.verts])
+    buf.set_editor_property("triangles", [unreal.IntVector(*t) for t in tm.tris])
+    buf.set_editor_property("vertex_colors", [unreal.LinearColor(*c) for c in tm.cols])
+    # The static mesh builder requires a UV channel (asserts NumUVs > 0). Cylindrical-ish
+    # planar UVs in metres - enough for a tiling bark texture later.
+    buf.set_editor_property("uv0", [unreal.Vector2D((v[0] + v[1]) / 100.0, v[2] / 100.0)
+                                    for v in tm.verts])
+    dm = unreal.DynamicMesh()
+    edits.append_buffers_to_mesh(dm, buf)
+    if dm.get_triangle_count() != len(tm.tris):
+        raise RuntimeError(f"{name}: {dm.get_triangle_count()} triangles, want {len(tm.tris)}")
+    normals.recompute_normals(dm, unreal.GeometryScriptCalculateNormalsOptions())
     o = unreal.GeometryScriptCreateNewStaticMeshAssetOptions()
     o.set_editor_property("enable_nanite", True)
     o.set_editor_property("enable_collision", False)
     o.set_editor_property("enable_recompute_normals", False)
-    sm, outcome = newasset.create_new_static_mesh_asset_from_mesh(m, full, o)
+    sm, outcome = newasset.create_new_static_mesh_asset_from_mesh(dm, full, o)
     if sm is None or outcome != unreal.GeometryScriptOutcomePins.SUCCESS:
         raise RuntimeError(f"create static mesh {full}: {outcome}")
-    sm.set_material(0, mat)
-    # The creation option alone left nanite_settings.enabled False (trees rendered as raster
-    # HISM through HCP1); set it explicitly (PostEditChange rebuilds) and check it after reload.
+    sm.set_material(0, mi)
+    # The creation option alone left nanite_settings.enabled False through HCP1; set it
+    # explicitly. Preserve Area: sparse foliage keeps its coverage as Nanite simplifies.
     ns = sm.get_editor_property("nanite_settings")
     ns.set_editor_property("enabled", True)
+    ns.set_editor_property("shape_preservation", unreal.NaniteShapePreservation.PRESERVE_AREA)
     sm.set_editor_property("nanite_settings", ns)
     # No mesh distance field / Lumen cards: instances never join the DF scene
     # (bAffectDistanceFieldLighting = false, VRAM), and building them at runtime in the uncooked
@@ -286,28 +243,34 @@ def build_mesh(key, builder, mat):
     bs.set_editor_property("max_lumen_mesh_cards", 0)
     lib.set_lod_build_settings(sm, 0, bs)
     eal.save_asset(full, only_if_is_dirty=False)
-    tris = m.get_triangle_count()
     unreal.log(f"EMBER_GENERATED {full}")
-    unreal.log(f"EMBER_VEG {key}: {tris} triangles")
+    unreal.log(f"EMBER_VEG {name}: {len(tm.tris)} triangles")
 
 
-mat = build_material()
-for k, fn in SPECIES.items():
-    build_mesh(k, fn, mat)
+# v1 assets (one mesh per species, five keys) are replaced by per-variant meshes.
+for old in ("pseudotsuga_menziesii", "pinus_ponderosa", "abies_grandis", "artemisia_shrub",
+            "bunchgrass"):
+    fresh(f"{VEG}/SM_{old}")
 
-# Verify the bark/foliage alpha survived into the built asset (it drives M_Veg's lerp).
-for k in SPECIES:
-    sm = unreal.load_asset(f"{VEG}/SM_{k}")
-    if not sm.get_editor_property("nanite_settings").get_editor_property("enabled"):
-        raise RuntimeError(f"SM_{k}: Nanite is not enabled")
+master = build_material()
+for k in treegen.SPECIES:
+    mi = build_instance(k, master)
+    for v in range(treegen.VARIANTS):
+        build_mesh(k, v, mi)
+
+# Verify what the renderer depends on survived into the built assets.
+for k in treegen.SPECIES:
+    sm = unreal.load_asset(f"{VEG}/SM_{k}_v0")
+    ns = sm.get_editor_property("nanite_settings")
+    if not ns.get_editor_property("enabled"):
+        raise RuntimeError(f"SM_{k}_v0: Nanite is not enabled")
     dm = unreal.DynamicMesh()
     unreal.GeometryScript_AssetUtils.copy_mesh_from_static_mesh(
         sm, dm, unreal.GeometryScriptCopyMeshFromAssetOptions(), unreal.GeometryScriptMeshReadLOD())
     res = colors.get_mesh_per_vertex_colors(dm)
-    color_list = next(r for r in res
-                      if type(r).__name__ == "GeometryScriptColorList")
-    lst = unreal.GeometryScript_List
-    arr = (lst.convert_color_list_to_array(color_list)
-           if hasattr(lst, "convert_color_list_to_array") else [])
+    color_list = next(r for r in res if type(r).__name__ == "GeometryScriptColorList")
+    arr = unreal.GeometryScript_List.convert_color_list_to_array(color_list)
     alphas = sorted({round(c.a, 2) for c in arr})
+    if not alphas or alphas[-1] < 0.99:
+        raise RuntimeError(f"SM_{k}_v0: foliage vertex alpha missing ({alphas[:6]})")
     unreal.log(f"EMBER_VEG {k}: {len(arr)} vertex colours, alpha values {alphas[:6]}")

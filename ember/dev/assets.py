@@ -13,7 +13,7 @@ import json
 import subprocess
 import time
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from ember.dev.ue import Engine, repo_root
@@ -27,17 +27,27 @@ CONTENT_PREFIX = "/Game/"
 class Generator:
     script: Path
     outputs: list[str]
+    depends: list[Path] = field(default_factory=list)  # modules the script imports
 
 
 def load_manifest(repo: Path) -> list[Generator]:
     with open(repo / GEN_DIR / "manifest.toml", "rb") as f:
         m = tomllib.load(f)
-    return [Generator(repo / GEN_DIR / g["script"], list(g["outputs"])) for g in m["generator"]]
+    return [Generator(repo / GEN_DIR / g["script"], list(g["outputs"]),
+                      [repo / GEN_DIR / d for d in g.get("depends", [])]) for g in m["generator"]]
 
 
 def _sha(p: Path) -> str:
     # Line-ending-normalised: the runner's working copy may be CRLF, CI's checkout is LF.
     return hashlib.sha256(p.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
+def gen_sha(g: Generator) -> str:
+    """The generator's input hash: its script, plus every declared dependency."""
+    if not g.depends:
+        return _sha(g.script)
+    parts = [_sha(g.script)] + [f"{d.name}:{_sha(d)}" for d in sorted(g.depends)]
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
 
 def asset_file(eng: Engine, asset: str) -> Path:
@@ -77,7 +87,7 @@ def regen(eng: Engine, repo: Path | None = None) -> dict:
         all_ok &= ok
         results.append({"script": g.script.name, "ok": ok, "error": why or ("" if present else
                         "output file missing"), "seconds": round(secs, 1),
-                        "script_sha256": _sha(g.script),
+                        "script_sha256": gen_sha(g),
                         "outputs": {a: str(asset_file(eng, a).relative_to(repo)).replace("\\", "/")
                                     for a in g.outputs}})
     if all_ok:
@@ -104,8 +114,8 @@ def check_lock(repo: Path | None = None, content_root: Path | None = None) -> li
         if entry is None:
             problems.append(f"{name}: not in lock (never generated)")
             continue
-        if entry["script_sha256"] != _sha(g.script):
-            problems.append(f"{name}: script changed since last regen")
+        if entry["script_sha256"] != gen_sha(g):
+            problems.append(f"{name}: script or a dependency changed since last regen")
         for rel in entry["outputs"].values():
             claimed.add(rel)
             if not (repo / rel).exists():

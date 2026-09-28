@@ -18,7 +18,7 @@ exposure_bias = -2.0
 [[bookmarks]]
 name = "lineup"
 target_frac = [0.599, 0.32]
-distance_m = 75
+distance_m = 150
 yaw_deg = 20
 pitch_deg = 4
 fov_deg = 60
@@ -27,7 +27,7 @@ sun = "afternoon"
 [[bookmarks]]
 name = "lineup_backlit"      # same row against a low sun: silhouette only
 target_frac = [0.599, 0.32]
-distance_m = 75
+distance_m = 150
 yaw_deg = 20
 pitch_deg = 4
 fov_deg = 60
@@ -44,9 +44,9 @@ bookmark = "lineup_backlit"
 [[assert]]
 fact = "instances.total"
 op = "=="
-value = 5
+value = 15
 
 [[assert]]
 fact = "instances.generated_species"
 op = "=="
-value = 5
+value = 15

@@ -281,7 +281,9 @@ Two-track note for agent teams: B (assets) and C (streaming) parallelize after H
   Frame/VRAM budget table per system (terrain, vegetation, fire/smoke, weather, post, headroom)
   enforced in evaluate as systems land.
 - Order: Terrain species + stand structure -> B3 v2 trees -> vegetation tiers + budgets -> wind
-  clip -> HCP2 re-bundle. D11 written alongside the tiers.
+  clip -> HCP2 re-bundle. D11 written alongside the tiers: `docs/viz/D11-lod-world-context.md`
+  (draft 2026-09-28, incl. Brad's modular-tree direction: trunk + 2-3 crown bands x 4-5 variants,
+  assembled per near-tier instance).
 
 ## 9. Notes for later epics
 

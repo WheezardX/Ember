@@ -227,7 +227,7 @@ def test_asset_lock_detects_stale_generator_and_unclaimed_asset(tmp_path: Path):
     (tmp_path / LOCK).write_text(json.dumps(lock))
     assert check_lock(tmp_path) == []
     (gen / "g.py").write_bytes(b"print('edited')\n")
-    assert any("script changed" in p for p in check_lock(tmp_path))
+    assert any("changed since last regen" in p for p in check_lock(tmp_path))
     (gen / "g.py").write_bytes(b"print('gen')\n")
     (out / "M_Hand.uasset").write_bytes(b"\x00")               # hand-made asset sneaks in
     assert any("no generator claims" in p for p in check_lock(tmp_path))
@@ -333,3 +333,40 @@ def test_water_levels_reservoir_ring_and_river():
     up, down = level[59, 115], level[59, 185]
     assert up - down > 5                        # the river's surface follows its gradient
     assert abs(up - dem[59, 115]) < 1.5 and abs(down - dem[59, 185]) < 1.5
+
+
+def test_treegen_species_build_deterministically_within_budget():
+    """B3 v2 growth-form trees: every species builds, deterministically, inside a triangle
+    budget, with foliage (alpha 1) and wood (alpha 0) both present, standing on the origin."""
+    import sys
+    repo = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(repo / "assets" / "generators"))
+    import treegen
+
+    for key in treegen.SPECIES:
+        a = treegen.build(key, 0)
+        b = treegen.build(key, 0)
+        assert a.verts == b.verts and a.tris == b.tris, key
+        assert 200 < len(a.tris) <= 120_000, (key, len(a.tris))
+        alphas = {c[3] for c in a.cols}
+        assert 1.0 in alphas and alphas <= {0.0, 1.0}, (key, alphas)   # foliage flagged
+        if key != "bunchgrass":
+            assert 0.0 in alphas, key                                  # ... and wood
+        lo, hi = a.bounds()
+        assert abs(lo[2]) < 1.0 and hi[2] > 0.5 * treegen.H, key
+        assert max(i for t in a.tris for i in t) < len(a.verts)
+        if treegen.VARIANTS > 1:
+            assert treegen.build(key, 1).verts != a.verts, key  # variants differ
+
+
+def test_manifest_lists_every_treegen_asset():
+    import sys
+    import tomllib
+    repo = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(repo / "assets" / "generators"))
+    import treegen
+
+    m = tomllib.loads((repo / "assets/generators/manifest.toml").read_text(encoding="utf-8"))
+    veg = next(g for g in m["generator"] if g["script"] == "veg_species.py")
+    assert veg["outputs"] == [f"/Game/Ember/Generated/{n}" for n in treegen.asset_names()]
+    assert veg["depends"] == ["treegen.py"]

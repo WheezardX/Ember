@@ -78,8 +78,8 @@ private:
 	};
 
 	bool LoadTile(const emberworld::TileEntry& Tile, FString& OutError);
-	/** Instance transform for a tree of this species slot / height / crown radius / yaw standing at Loc. */
-	FTransform FitInstance(int32 Slot, double HeightM, double CrownRadiusM, double YawRad, FVector Loc) const;
+	/** Instance transform for a tree drawn with SpeciesMesh[Mesh] at this height / crown radius / yaw. */
+	FTransform FitInstance(int32 Mesh, double HeightM, double CrownRadiusM, double YawRad, FVector Loc) const;
 	void UnloadTile(uint64 Key);
 	void RecomputeStats();
 
@@ -90,6 +90,8 @@ private:
 	emberworld::ScatterInput Input;
 	TArray<FString> SpeciesKeys;
 	TArray<int32> IndexToSlot;         // palette species index -> unique-key slot
+	TArray<int32> SlotFirstMesh;       // slot -> first of its variant meshes in SpeciesMesh
+	TArray<int32> SlotNumMeshes;       // slot -> number of variants
 	TArray<double> SlotHeightLineupM;  // lineup: a mature tree of the species
 	TArray<double> SlotCrownRatio;
 	TMap<uint64, FVegTile> Tiles;

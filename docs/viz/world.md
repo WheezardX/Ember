@@ -67,14 +67,21 @@ stair-step shorelines up close. U7 (hydro-flattening in Terrain) remains the dat
   (`instances.no_surface`); `instances.ungrounded` (a tile whose surface failed) must stay 0.
   Crowns are Terrain's (scatter v2 sizes them: 0.5 x (crown_base_m + crown_ratio x height));
   the mesh bounds are fitted to each instance's height and crown diameter.
-* **Meshes:** `assets/generators/veg_species.py` → one **Nanite** mesh per palette key
-  (`/Game/Ember/Generated/Veg/SM_<key>`) + `M_Veg` (bark/foliage via vertex alpha, wind WPO). The
-  generator sets `nanite_settings` explicitly and fails if it did not stick (GeometryScript's
-  `enable_nanite` alone left it off through HCP1), and builds no distance field / Lumen cards.
-  A key with no generated mesh falls back to an engine cone/sphere.
+* **Meshes (B3 v2):** `assets/generators/treegen.py` is a pure-Python growth-form model (trunk
+  taper and flare, branch whorls, branch angle / droop / upturn, crown profile, drooping leaders,
+  flat needle sprays, pine tufts, broadleaf branching and leaf clusters), one parameter set per
+  palette species (15). Foliage is opaque geometry, not alpha cards. `veg_species.py` loads each
+  species x `treegen.VARIANTS` (4) into Nanite meshes `SM_<key>_v<N>` (Preserve Area, no DF /
+  Lumen cards) with a per-species material instance `MI_Veg_<key>` (foliage and bark colour).
+  The renderer picks a variant per instance from a hash of its position. `M_Veg` is two-sided,
+  Two-Sided Foliage shading (needles transmit light), per-instance tint. Bark is a flat colour
+  until licensed bark scans arrive. Preview without UE: `treegen.build(key, variant)`; tests
+  check determinism, triangle budget and foliage/wood flags. Long-term variation plan (modular
+  crown sections): `D11-lod-world-context.md` §3.
 * **Wind (HCP2):** `M_Veg` world-position offset - bend ∝ (height above the instance pivot)²,
-  per-tree phase from `PerInstanceRandom` (fixed `InstancingRandomSeed` per component), a slow
-  gust band travelling downwind. The runtime owns the clock: stills freeze it (t = 0, so goldens
+  per-tree phase and a static per-tree lean from `PerInstanceRandom` (fixed
+  `InstancingRandomSeed` per component), a slow gust band travelling downwind, and a fast small
+  flutter on foliage (vertex alpha). The runtime owns the clock: stills freeze it (t = 0, so goldens
   stay deterministic), orbits/flyovers run t = frame / fps, the perf window runs real time.
   Tree components use `ShadowCacheInvalidationBehavior = Always` (moving WPO + cached shadow
   pages gave saw-toothed self-shadows).

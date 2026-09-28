@@ -54,4 +54,4 @@ value = 0
 [[assert]]
 fact = "instances.generated_species"
 op = "=="
-value = 5
+value = 15
