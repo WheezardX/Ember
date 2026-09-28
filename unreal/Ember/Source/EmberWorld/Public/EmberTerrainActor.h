@@ -5,6 +5,7 @@
 
 THIRD_PARTY_INCLUDES_START
 #include "emberworld/heightfield.h"
+#include "emberworld/look.h"
 #include "emberworld/region.h"
 THIRD_PARTY_INCLUDES_END
 
@@ -13,6 +14,7 @@ THIRD_PARTY_INCLUDES_END
 class UProceduralMeshComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
+class UTexture2D;
 
 /**
  * A Terrain tile-store region rendered as runtime meshes (EPIC_5_PLAN C2/C3, D4): one
@@ -48,6 +50,10 @@ public:
 	/** Base colour for the clay material. */
 	void SetBaseColor(const FLinearColor& Color);
 
+	/** Use a terrain look (viz/looks/*.toml) instead of clay. Call before LoadRegion. */
+	bool SetLook(const FString& LookPath, FString& OutError);
+	FString LookName = TEXT("clay");
+
 	const emberworld::Region* GetRegion() const { return Region.IsValid() ? Region.Get() : nullptr; }
 
 	/** World-metre bounds of the valid data (tiles can extend past the AOI). */
@@ -76,6 +82,15 @@ public:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> Material;
 
+	// Look mode: one albedo texture + material instance per section (index = section).
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTexture2D>> SectionTextures;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> SectionMaterials;
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> TerrainMaster;
+	double ComposeMs = 0.0;  // total CPU time spent composing albedo (facts)
+
 private:
 	struct FLoadedTile
 	{
@@ -88,7 +103,10 @@ private:
 	void UnloadTile(uint64 Key);
 	void RecomputeStats();
 
+	void BindLook(int32 Section, const emberworld::TileEntry& Tile);
+
 	TUniquePtr<emberworld::Region> Region;
+	TUniquePtr<emberworld::TerrainLook> Look;
 	emberworld::Frame Frame;
 	emberworld::Bounds DataExtent;
 	TMap<uint64, FLoadedTile> Loaded;

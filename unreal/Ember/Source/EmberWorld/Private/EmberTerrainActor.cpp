@@ -7,6 +7,8 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
+#include "Engine/Texture2D.h"
+#include "TextureResource.h"
 
 THIRD_PARTY_INCLUDES_START
 #include "emberworld/lod.h"
@@ -35,6 +37,10 @@ AEmberTerrainActor::AEmberTerrainActor()
 
 void AEmberTerrainActor::SetBaseColor(const FLinearColor& Color)
 {
+	if (Look.IsValid())
+	{
+		return;  // look mode owns every section's material; clay would overwrite it
+	}
 	if (!Material)
 	{
 		// Generated clay master (assets/generators/m_ember_gray.py); the engine's
@@ -59,6 +65,95 @@ void AEmberTerrainActor::SetBaseColor(const FLinearColor& Color)
 		}
 	}
 	Material->SetVectorParameterValue(TEXT("Color"), Color);
+}
+
+bool AEmberTerrainActor::SetLook(const FString& LookPath, FString& OutError)
+{
+	emberworld::LookResult L = emberworld::load_look(TCHAR_TO_UTF8(*LookPath));
+	if (!L.ok())
+	{
+		OutError = UTF8_TO_TCHAR(L.error.c_str());
+		return false;
+	}
+	TerrainMaster = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Ember/Generated/M_Terrain.M_Terrain"));
+	if (!TerrainMaster)
+	{
+		OutError = TEXT("M_Terrain missing: run ember-dev regen-assets");
+		return false;
+	}
+	Look = MakeUnique<emberworld::TerrainLook>(std::move(L.look));
+	LookName = UTF8_TO_TCHAR(Look->name.c_str());
+	return true;
+}
+
+void AEmberTerrainActor::BindLook(int32 Section, const emberworld::TileEntry& Tile)
+{
+	const double T0 = FPlatformTime::Seconds();
+	emberworld::LookInputs In;
+	std::string Err;
+	if (!emberworld::load_look_inputs(*Region, Tile, In, Err))
+	{
+		UE_LOG(LogEmberWorld, Warning, TEXT("look inputs z%d/x%d/y%d: %s"), Tile.lod, Tile.x, Tile.y, UTF8_TO_TCHAR(Err.c_str()));
+		return;
+	}
+	const emberworld::Albedo A = emberworld::compose_albedo(*Look, In);
+	// Full CPU mip chain + NeverStream: a single-mip transient texture sampled at distance
+	// returned garbage (black) — found while building HCP1 (worldcore build_mips).
+	const std::vector<emberworld::Albedo> Mips = emberworld::build_mips(A);
+	UTexture2D* Tex = UTexture2D::CreateTransient(A.width, A.height, PF_B8G8R8A8);
+	Tex->SRGB = true;
+	Tex->Filter = TF_Trilinear;
+	Tex->AddressX = TA_Clamp;
+	Tex->AddressY = TA_Clamp;
+	Tex->NeverStream = true;
+	FTexturePlatformData* PD = Tex->GetPlatformData();
+	for (size_t Level = 0; Level < Mips.size(); ++Level)
+	{
+		const emberworld::Albedo& M = Mips[Level];
+		if (Level > 0)
+		{
+			PD->Mips.Add(new FTexture2DMipMap(M.width, M.height));
+		}
+		FTexture2DMipMap& Mip = PD->Mips[Level];
+		void* Dst = Mip.BulkData.Lock(LOCK_READ_WRITE);
+		if (Level > 0)
+		{
+			Dst = Mip.BulkData.Realloc(M.bgra.size());
+		}
+		FMemory::Memcpy(Dst, M.bgra.data(), M.bgra.size());
+		Mip.BulkData.Unlock();
+	}
+	Tex->UpdateResource();
+
+	UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(TerrainMaster, this);
+	const double Full = Region->tile_px + 2.0 * Region->overlap_px;
+	MID->SetTextureParameterValue(TEXT("Albedo"), Tex);
+	MID->SetScalarParameterValue(TEXT("AlbedoScale"), Region->tile_px / Full);
+	MID->SetScalarParameterValue(TEXT("AlbedoOffset"), Region->overlap_px / Full);
+	Mesh->SetMaterial(Section, MID);
+	{
+		double Sum[3] = {0, 0, 0};
+		size_t N = 0;
+		for (size_t i = 0; i + 3 < A.bgra.size(); i += 4)
+		{
+			if (A.bgra[i + 3] == 0) continue;
+			Sum[0] += A.bgra[i + 2]; Sum[1] += A.bgra[i + 1]; Sum[2] += A.bgra[i];
+			++N;
+		}
+		UTexture* Bound = nullptr;
+		MID->GetTextureParameterValue(FMaterialParameterInfo(TEXT("Albedo")), Bound);
+		UE_LOG(LogEmberWorld, Log, TEXT("look z%d/x%d/y%d: mean sRGB (%.0f, %.0f, %.0f) over %llu px; bound=%s"),
+			Tile.lod, Tile.x, Tile.y, N ? Sum[0] / N : 0.0, N ? Sum[1] / N : 0.0, N ? Sum[2] / N : 0.0,
+			(unsigned long long)N, Bound == Tex ? TEXT("yes") : TEXT("NO"));
+	}
+	if (SectionTextures.Num() <= Section)
+	{
+		SectionTextures.SetNum(Section + 1);
+		SectionMaterials.SetNum(Section + 1);
+	}
+	SectionTextures[Section] = Tex;
+	SectionMaterials[Section] = MID;
+	ComposeMs += (FPlatformTime::Seconds() - T0) * 1000.0;
 }
 
 bool AEmberTerrainActor::LoadRegion(const FString& RegionDir, int32 FixedLod, FString& OutError)
@@ -138,7 +233,11 @@ bool AEmberTerrainActor::LoadTile(const emberworld::TileEntry& Tile, FString& Ou
 	const int32 Section = FreeSections.Num() ? FreeSections.Pop() : NextSection++;
 	Mesh->CreateMeshSection(Section, Verts, Tris, Normals, UV0, UV1, Empty, Empty,
 		TArray<FColor>(), TArray<FProcMeshTangent>(), /*bCreateCollision=*/false);
-	if (Material)
+	if (Look.IsValid())
+	{
+		BindLook(Section, Tile);
+	}
+	else if (Material)
 	{
 		Mesh->SetMaterial(Section, Material);
 	}
@@ -156,6 +255,11 @@ void AEmberTerrainActor::UnloadTile(uint64 Key)
 	if (const FLoadedTile* L = Loaded.Find(Key))
 	{
 		Mesh->ClearMeshSection(L->Section);
+		if (SectionTextures.IsValidIndex(L->Section))
+		{
+			SectionTextures[L->Section] = nullptr;
+			SectionMaterials[L->Section] = nullptr;
+		}
 		FreeSections.Add(L->Section);
 		Loaded.Remove(Key);
 	}

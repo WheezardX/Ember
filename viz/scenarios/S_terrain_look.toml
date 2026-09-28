@@ -2,14 +2,14 @@
 render_scenario_version = 1
 
 [scenario]
-name = "S_terrain_gray"
-description = "HCP0: teanaway_dev (1.44 km @ 10 m) gray-shaded, 3 bookmarks + 1440p perf window"
+name = "S_terrain_look"
+description = "B2: teanaway_dev with the default terrain look (FBFM40 classes, NDVI, canopy, slope rock)"
 world = "terrain:teanaway_dev"
 resolution = [2560, 1440]
 budget = "interactive"
-perf_frames = 300
+perf_frames = 120
 fixed_lod = 14       # the fixture: finest LOD everywhere, so tile/triangle asserts stay exact
-look = "clay"        # clay fixture: goldens independent of the terrain look
+look = "viz/looks/terrain_default.toml"
 exposure_bias = -2.0   # chosen by the HCP0 sweep (checkpoints/HCP0)
 
 [[bookmarks]]

@@ -56,6 +56,7 @@ private:
 	float ExposureBias = -2.f;
 	int32 FixedLod = -1;          // >= 0: load that LOD only (fixtures); -1: stream around the camera
 	double RefineFactor = 1.5;
+	FString LookPath = TEXT("clay");  // "clay" or an absolute viz/looks/*.toml path
 	TArray<FBookmark> Bookmarks;
 	TArray<FCapture> Captures;
 

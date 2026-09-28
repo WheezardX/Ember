@@ -79,6 +79,7 @@ class ScenarioMeta(_Strict):
     exposure_bias: float = -2.0  # manual exposure EV100 bias (captures must not auto-expose)
     fixed_lod: int | None = None  # load one LOD everywhere (fixtures); None = stream (C3)
     lod_refine_factor: float = 1.5  # streaming: refine while distance < factor * tile span
+    look: str = "viz/looks/terrain_default.toml"  # repo-relative look file, or "clay"
 
 
 class RenderScenario(_Strict):

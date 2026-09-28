@@ -22,7 +22,8 @@ ember-dev regen-assets --check    # engine-free: lock current? no unclaimed asse
 
 | Asset | Generator | Parameters | Used by |
 |---|---|---|---|
-| `/Game/Ember/Generated/M_EmberGray` | `m_ember_gray.py` | `Color` (vector, 0.35 gray), `Roughness` (scalar, 0.9) | `AEmberTerrainActor` (Phase 0 clay terrain; debug material after B2) |
+| `/Game/Ember/Generated/M_EmberGray` | `m_ember_gray.py` | `Color` (vector, 0.35 gray), `Roughness` (scalar, 0.9) | `AEmberTerrainActor` clay mode (`look = "clay"`: fixtures, debugging) |
+| `/Game/Ember/Generated/M_Terrain` | `m_terrain.py` | `Albedo` (texture, per tile), `AlbedoScale`/`AlbedoOffset` (UV0 → texture, skips the apron), `DetailStrength` (0.10), `DetailScale` (0.004 /cm), `Roughness` (0.92) | `AEmberTerrainActor` look mode: albedo composed per tile by `worldcore/look.cpp` from `viz/looks/*.toml` |
 
 ## Writing a generator
 
@@ -41,6 +42,13 @@ unreal.log(f"EMBER_GENERATED {FULL}")
 ```
 
 Add it to `manifest.toml`, run `ember-dev regen-assets`, commit script + asset + lock together.
+
+**Pin names are not what the editor UI suggests.** `connect_material_expressions` returns
+`False` on a wrong pin name instead of raising, so a graph can "generate fine" with a node
+silently disconnected (M_Terrain's detail noise did, until checked). Wrap every connection in a
+raising helper (see `m_terrain.py: link()`), and look pins up with
+`MaterialEditingLibrary.get_material_expression_input_names(expr)` — e.g. Noise's position pin is
+`"World Position"`, TextureSample's UV pin is `"UVs"`.
 
 ## Escape hatch (plan §3)
 

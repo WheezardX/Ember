@@ -60,6 +60,7 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 		FixedLod = Lod;
 	}
 	J->TryGetNumberField(TEXT("lod_refine_factor"), RefineFactor);
+	J->TryGetStringField(TEXT("look"), LookPath);
 	double Ev = 0;
 	if (J->TryGetNumberField(TEXT("exposure_bias"), Ev))
 	{
@@ -245,6 +246,11 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		Terrain = GetWorld()->SpawnActor<AEmberTerrainActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
 		Terrain->RefineFactor = RefineFactor;
+		if (LookPath != TEXT("clay") && !Terrain->SetLook(LookPath, Err))
+		{
+			Finish(2, TEXT("look: ") + Err);
+			return;
+		}
 		if (!Terrain->LoadRegion(WorldDir, FixedLod, Err))
 		{
 			Finish(2, TEXT("world load failed: ") + Err);

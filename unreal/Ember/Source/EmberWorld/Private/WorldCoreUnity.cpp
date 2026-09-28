@@ -9,4 +9,5 @@ THIRD_PARTY_INCLUDES_START
 #include "src/scatter.cpp"
 #include "src/veg.cpp"
 #include "src/lod.cpp"
+#include "src/look.cpp"
 THIRD_PARTY_INCLUDES_END

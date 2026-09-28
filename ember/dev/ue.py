@@ -157,6 +157,13 @@ def _git_sha(repo: Path) -> str:
         return "unknown"
 
 
+def _look_ref(look: str) -> str:
+    """"clay" passes through; a look file resolves to an absolute path (repo-relative input)."""
+    if look == "clay":
+        return look
+    return (repo_root() / look).resolve().as_posix()
+
+
 def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0) -> Path:
     s = sc.spec
     plan = {
@@ -170,6 +177,7 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "exposure_bias": exposure_bias,
         "fixed_lod": s.scenario.fixed_lod,
         "lod_refine_factor": s.scenario.lod_refine_factor,
+        "look": _look_ref(s.scenario.look),
         "bookmarks": [b.model_dump() for b in s.bookmarks],
         "captures": [c.model_dump() for c in s.captures],
     }

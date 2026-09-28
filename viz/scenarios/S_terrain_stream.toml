@@ -8,6 +8,7 @@ world = "terrain:teanaway_dev"
 resolution = [2560, 1440]
 budget = "interactive"
 perf_frames = 120
+look = "clay"        # clay fixture: goldens independent of the terrain look
 exposure_bias = -2.0
 lod_refine_factor = 1.5
 

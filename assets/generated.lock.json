@@ -8,6 +8,12 @@
       "outputs": {
         "/Game/Ember/Generated/M_EmberGray": "unreal/Ember/Content/Ember/Generated/M_EmberGray.uasset"
       }
+    },
+    "m_terrain.py": {
+      "script_sha256": "55bbb52ff952d194b932db37e9af58323f2e36c0a6063885b2996a722a652f22",
+      "outputs": {
+        "/Game/Ember/Generated/M_Terrain": "unreal/Ember/Content/Ember/Generated/M_Terrain.uasset"
+      }
     }
   }
 }
