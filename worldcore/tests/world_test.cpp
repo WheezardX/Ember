@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -321,4 +322,50 @@ TEST_CASE("region: null optional fields (Terrain writes \"mesh\": null without g
     auto rr = load_region(root.string());
     REQUIRE_MESSAGE(rr, rr.error);
     CHECK(rr.region->tiles[0].mesh_glb.empty());
+}
+
+TEST_CASE("heightfield: water layer fills DEM holes as a lakebed and builds a flat surface") {
+    // Region whose DEM has a nodata "lake" in the middle of tile (5,0,0).
+    auto lake = [](double x, double y) {
+        const double dx = x - 500040.0, dy = y - 5200040.0;
+        return (dx * dx + dy * dy < 20.0 * 20.0) ? -9999.0 : 700.0 + 0.02 * (x - 500000.0);
+    };
+    const auto root = testutil::write_synth_region("water", lake);
+    auto rr = load_region(root.string());
+    REQUIRE(rr);
+    const Region& R = *rr.region;
+    const TileEntry& t = *R.find(5, 0, 0);
+    auto hr = read_tiff(R.path(t.height_tif));
+    REQUIRE(hr);
+    const Frame fr = region_frame(R);
+    auto dry = build_tile_mesh(R, t, *hr.raster, fr);
+    REQUIRE(dry.ok());
+    CHECK(dry.mesh.nodata_corners > 0);  // the hole, without water
+
+    // Water raster: level 699 m on the hole pixels, nodata elsewhere.
+    Raster w = *hr.raster;
+    for (int y = 0; y < w.height; ++y)
+        for (int x = 0; x < w.width; ++x) {
+            const bool hole = hr.raster->is_nodata(hr.raster->at(x, y));
+            const float v = hole ? 699.0f : -9999.0f;
+            std::memcpy(&w.data[(static_cast<size_t>(y) * w.width + x) * 4], &v, 4);
+        }
+    MeshOptions opt;
+    opt.water = &w;
+    auto wet = build_tile_mesh(R, t, *hr.raster, fr, opt);
+    REQUIRE(wet.ok());
+    CHECK(wet.mesh.nodata_corners == 0);                     // no more holes
+    CHECK(wet.mesh.min_z <= 699.0 - opt.bed_depth_m + 1e-6); // lakebed below the surface
+
+    auto surf = build_water_mesh(R, t, w, fr);
+    REQUIRE(surf.ok());
+    CHECK(surf.mesh.surface_triangles > 0);
+    for (const auto& p : surf.mesh.positions)
+        CHECK(p.z == doctest::Approx(static_cast<float>((699.0 - fr.anchor_z) * 100.0)));
+    // every water vertex sits above the lakebed terrain under it
+    SurfaceSampler s;
+    REQUIRE(s.build(R, t, *hr.raster, &w));
+    double zb = 0;
+    REQUIRE(s.height_at(500040.0, 5200040.0, zb));
+    CHECK(zb < 699.0);
 }

@@ -177,6 +177,8 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		Tiles->SetNumberField(TEXT("last_stream_ms"), T->LastStreamMs);
 		Tiles->SetStringField(TEXT("look"), T->LookName);
 		Tiles->SetNumberField(TEXT("compose_ms"), T->ComposeMs);
+		Tiles->SetNumberField(TEXT("water_tiles"), T->WaterTilesLoaded);
+		Tiles->SetNumberField(TEXT("water_triangles"), static_cast<double>(T->WaterTriangles));
 		TSharedRef<FJsonObject> H = MakeShared<FJsonObject>();
 		for (const auto& KV : T->LodHistogram)
 		{

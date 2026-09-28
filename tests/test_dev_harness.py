@@ -255,3 +255,31 @@ def test_orbit_validation():
     with pytest.raises(ValueError):
         RenderScenario.model_validate({**base, "orbits": [{"name": "o", "bookmark": "a",
                                                            "frames": 1}]})
+
+
+def test_water_levels_reservoir_ring_and_river():
+    from ember.dev.water import NODATA, derive_levels
+
+    h, w = 120, 200
+    dem = np.full((h, w), 900.0, dtype=np.float32)
+    fb = np.full((h, w), 165, dtype=np.int32)
+    # Reservoir: full-pool extent classed water; interior is a DEM hole (no LiDAR returns);
+    # an exposed "bathtub ring" of lakebed returns sits 1-8 m above the true water line (500).
+    yy, xx = np.mgrid[0:h, 0:w]
+    lake = (yy - 60) ** 2 + (xx - 50) ** 2 < 30 ** 2
+    fb[lake] = 98
+    core = (yy - 60) ** 2 + (xx - 50) ** 2 < 24 ** 2
+    dem[lake & ~core] = 500.0 + ((((yy - 60) ** 2 + (xx - 50) ** 2) ** 0.5 - 24) * 1.3)[lake & ~core]
+    dem[core] = NODATA
+    # River: a 3-cell channel of water returns at a 1 % grade (Cle Elum is < 1 %), x 110..190.
+    river = (yy >= 58) & (yy <= 60) & (xx >= 110) & (xx < 190)
+    fb[river] = 98
+    dem[river] = (760.0 - (xx - 110) * 0.1)[river]
+    level, bodies = derive_levels(dem, NODATA, fb)
+    assert len(bodies) == 2
+    lk = level[60, 50]
+    assert abs(lk - 500.0) < 2.5, lk            # water line, not the median of the ring
+    assert np.isfinite(level[core]).all()       # the hole is covered
+    up, down = level[59, 115], level[59, 185]
+    assert up - down > 5                        # the river's surface follows its gradient
+    assert abs(up - dem[59, 115]) < 1.5 and abs(down - dem[59, 185]) < 1.5

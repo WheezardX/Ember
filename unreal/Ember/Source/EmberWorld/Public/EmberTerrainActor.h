@@ -50,6 +50,9 @@ public:
 	/** Base colour for the clay material. */
 	void SetBaseColor(const FLinearColor& Color);
 
+	/** Water layer dir (ember-dev water: <dir>/z{lod}/x{x}/y{y}/water_level.tif). Before LoadRegion. */
+	bool SetWaterDir(const FString& Dir, FString& OutError);
+
 	/** Use a terrain look (viz/looks/*.toml) instead of clay. Call before LoadRegion. */
 	bool SetLook(const FString& LookPath, FString& OutError);
 	FString LookName = TEXT("clay");
@@ -79,6 +82,16 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UProceduralMeshComponent> Mesh;
 
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UProceduralMeshComponent> WaterMesh;  // section index == terrain section index
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> WaterMaterial;
+
+	// Water facts
+	int32 WaterTilesLoaded = 0;
+	int64 WaterTriangles = 0;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> Material;
 
@@ -97,6 +110,7 @@ private:
 		int32 Section = 0;
 		int32 Lod = 0;
 		int64 Triangles = 0, SkirtTriangles = 0, NodataCorners = 0;
+		int64 WaterTriangles = 0;
 	};
 
 	bool LoadTile(const emberworld::TileEntry& Tile, FString& OutError);
@@ -107,6 +121,7 @@ private:
 
 	TUniquePtr<emberworld::Region> Region;
 	TUniquePtr<emberworld::TerrainLook> Look;
+	FString WaterDir;
 	emberworld::Frame Frame;
 	emberworld::Bounds DataExtent;
 	TMap<uint64, FLoadedTile> Loaded;

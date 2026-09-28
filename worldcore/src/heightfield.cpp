@@ -36,6 +36,33 @@ bool corner_height(const Raster& h, int col, int row, double& out) {
     return true;
 }
 
+// Water at the corner between pixels (col-1..col, row-1..row): lowest level among them.
+bool corner_water(const Raster* w, int col, int row, double& level) {
+    if (!w) return false;
+    bool any = false;
+    for (int ry = row - 1; ry <= row; ++ry)
+        for (int rx = col - 1; rx <= col; ++rx) {
+            if (rx < 0 || ry < 0 || rx >= w->width || ry >= w->height) continue;
+            const double v = w->at(rx, ry);
+            if (w->is_nodata(v) || !std::isfinite(v)) continue;
+            level = any ? std::min(level, v) : v;
+            any = true;
+        }
+    return any;
+}
+
+// Corner height with the water rule applied (see MeshOptions::water).
+bool corner_height_w(const Raster& h, const Raster* w, double bed, int col, int row, double& out) {
+    double v = 0, lvl = 0;
+    const bool land = corner_height(h, col, row, v);
+    if (corner_water(w, col, row, lvl)) {
+        out = land ? std::min(v, lvl - bed) : lvl - bed;
+        return true;
+    }
+    if (land) out = v;
+    return land;
+}
+
 }  // namespace
 
 MeshResult build_tile_mesh(const Region& region, const TileEntry& tile, const Raster& height,
@@ -68,7 +95,7 @@ MeshResult build_tile_mesh(const Region& region, const TileEntry& tile, const Ra
         for (int i = -1; i <= tp + 1; ++i) {
             double v;
             const size_t k = static_cast<size_t>(j + 1) * E + (i + 1);
-            if (corner_height(height, i + ov, j + ov, v)) {
+            if (corner_height_w(height, opt.water, opt.bed_depth_m, i + ov, j + ov, v)) {
                 z[k] = v;
                 valid[k] = 1;
             }
@@ -246,7 +273,8 @@ bool data_extent(const Region& region, Bounds& out, std::string& error) {
 
 namespace emberworld {
 
-bool SurfaceSampler::build(const Region& region, const TileEntry& tile, const Raster& height) {
+bool SurfaceSampler::build(const Region& region, const TileEntry& tile, const Raster& height,
+                           const Raster* water, double bed_depth_m) {
     const int tp = region.tile_px, ov = region.overlap_px;
     if (height.width != tp + 2 * ov || height.height != tp + 2 * ov) return false;
     content_ = tile.content;
@@ -257,7 +285,7 @@ bool SurfaceSampler::build(const Region& region, const TileEntry& tile, const Ra
     for (int j = 0; j < n_; ++j)
         for (int i = 0; i < n_; ++i) {
             double v;
-            if (corner_height(height, i + ov, j + ov, v)) {
+            if (corner_height_w(height, water, bed_depth_m, i + ov, j + ov, v)) {
                 z_[static_cast<size_t>(j) * n_ + i] = v;
                 valid_[static_cast<size_t>(j) * n_ + i] = 1;
             }
@@ -277,6 +305,46 @@ bool SurfaceSampler::height_at(double wx, double wy, double& out_z) const {
     const double bot = z_[a + n_] + (z_[a + n_ + 1] - z_[a + n_]) * tx;
     out_z = top + (bot - top) * ty;
     return true;
+}
+
+}  // namespace emberworld
+
+namespace emberworld {
+
+MeshResult build_water_mesh(const Region& region, const TileEntry& tile, const Raster& level,
+                            const Frame& frame, double lift_m) {
+    MeshResult res;
+    const int tp = region.tile_px, ov = region.overlap_px;
+    if (level.width != tp + 2 * ov || level.height != tp + 2 * ov) {
+        res.error = "water raster size does not match the tile grid";
+        return res;
+    }
+    const double px = tile.content.width() / tp;
+    TileMesh& m = res.mesh;
+    m.min_z = 1e300;
+    m.max_z = -1e300;
+    for (int j = 0; j < tp; ++j)
+        for (int i = 0; i < tp; ++i) {
+            const double lv = level.at(i + ov, j + ov);
+            if (level.is_nodata(lv) || !std::isfinite(lv)) continue;
+            const double z = lv + lift_m;
+            const double x0 = tile.content.min_x + i * px, x1 = x0 + px;
+            const double y0 = tile.content.max_y - j * px, y1 = y0 - px;  // north edge, south edge
+            const uint32_t a = static_cast<uint32_t>(m.positions.size());
+            const double xs[4] = {x0, x1, x0, x1}, ys[4] = {y0, y0, y1, y1};  // a b / c d
+            for (int k = 0; k < 4; ++k) {
+                m.positions.push_back(frame.to_ue(xs[k], ys[k], z));
+                m.normals.push_back({0.0f, 0.0f, 1.0f});
+                m.uv0.push_back({static_cast<float>(xs[k] / 100.0), static_cast<float>(-ys[k] / 100.0)});
+                m.uv1.push_back({0.0f, 0.0f});
+            }
+            // same front-face rule as the terrain (see build_tile_mesh)
+            m.indices.insert(m.indices.end(), {a, a + 2, a + 1, a + 1, a + 2, a + 3});
+            m.surface_triangles += 2;
+            m.min_z = std::min(m.min_z, z);
+            m.max_z = std::max(m.max_z, z);
+        }
+    return res;
 }
 
 }  // namespace emberworld

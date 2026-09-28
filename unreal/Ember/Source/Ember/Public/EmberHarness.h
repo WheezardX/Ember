@@ -52,7 +52,7 @@ private:
 		FString Bookmark;
 		int32 WarmupFrames = 30;
 	};
-	enum class EState : uint8 { Idle, LoadWorld, Position, Warmup, Shoot, WaitShot, OrbitStart, OrbitWarmup, OrbitShoot, OrbitWait, Perf, Done };
+	enum class EState : uint8 { Idle, LoadWorld, Position, Warmup, Shoot, WaitShot, OrbitStart, OrbitWarmup, OrbitShoot, OrbitWait, PerfWarmup, Perf, Done };
 
 	bool LoadPlan(const FString& Path, FString& OutError);
 	bool PlaceCamera(const FBookmark& B, FString& OutError);
@@ -69,7 +69,10 @@ private:
 	double RefineFactor = 1.5;
 	FString LookPath = TEXT("clay");
 	bool bVegetation = false;
-	double VegRadiusM = 1500.0;  // "clay" or an absolute viz/looks/*.toml path
+	double VegRadiusM = 1500.0;
+	TArray<FString> ExecCmds;
+	FString WaterDir;
+	FString PerfBookmark;  // "clay" or an absolute viz/looks/*.toml path
 	TArray<FBookmark> Bookmarks;
 	TArray<FCapture> Captures;
 	TArray<FOrbit> Orbits;

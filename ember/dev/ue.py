@@ -164,6 +164,14 @@ def _look_ref(look: str) -> str:
     return (repo_root() / look).resolve().as_posix()
 
 
+def _water_dir(sc: LoadedScenario) -> str | None:
+    """store/render/<region>/water if the scenario wants water and the layer exists."""
+    if not sc.spec.scenario.water:
+        return None
+    d = repo_root() / "store" / "render" / sc.world_path.name / "water"
+    return d.as_posix() if (d / "index.json").exists() else None
+
+
 def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0) -> Path:
     s = sc.spec
     plan = {
@@ -181,6 +189,7 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "vegetation": s.scenario.vegetation,
         "veg_radius_m": s.scenario.veg_radius_m,
         "exec_cmds": list(s.scenario.exec_cmds),
+        "water_dir": _water_dir(sc),
         "perf_bookmark": s.scenario.perf_bookmark,
         "bookmarks": [b.model_dump() for b in s.bookmarks],
         "captures": [c.model_dump() for c in s.captures],

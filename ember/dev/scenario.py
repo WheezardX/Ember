@@ -93,6 +93,7 @@ class ScenarioMeta(_Strict):
     vegetation: bool = False    # C4: instance the Terrain-conformant scatter near the camera
     veg_radius_m: float = 1500.0
     exec_cmds: list[str] = Field(default_factory=list)  # console commands after world load
+    water: bool = True           # use store/render/<region>/water (ember-dev water) if present
     perf_bookmark: str | None = None  # camera pose for the perf window (default: last pose)
 
 

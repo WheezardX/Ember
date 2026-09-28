@@ -31,6 +31,26 @@ a validity-aware blur, so 10 m categories read as organic patches (texels across
 compose identically — tested) and a full CPU mip chain. Tuning the look is a TOML edit.
 `look = "clay"` in a scenario uses the flat `M_EmberGray` instead (fixtures).
 
+## Water (HCP1 follow-up; stopgap for upstream U7)
+
+LiDAR drops returns over water and Terrain fills voids only up to 5 px, so lakes are DEM nodata:
+holes in the mesh. `ember-dev water <region>` derives a water layer once per region into
+Ember's store (`store/render/<region>/water/`; Ember never writes into Terrain's store):
+
+* **bodies:** 8-connected FBFM40 water (98) plus DEM holes inside the AOI;
+* **level:** 10th percentile of the body's **own** LiDAR water returns per 5-cell block over its
+  3×3-block neighbourhood (~150 m), then filled and smoothed. The low percentile finds a
+  reservoir's water line rather than its exposed drawdown ring (Kachess: 683.1 m against a
+  689 m full pool). "Local" makes rivers follow their gradient (Cle Elum: 664 m at the lake,
+  731 m upriver). Bodies with no returns take their shoreline's 10th percentile;
+* **per tile, per LOD:** `water_level.tif` on the tile's apron grid.
+
+The terrain mesh drops corners touching water to 1 m below the level (the lakebed closes holes
+and never z-fights LiDAR water returns). A flat `M_Water` surface is drawn per water pixel.
+Scenario field `water = true` (default) uses the layer when present. Three Queens: 51 bodies,
+115 tiles; near-black hole pixels in the top-down view went from 1.68 % to 0. Known: 10 m
+stair-step shorelines up close. U7 (hydro-flattening in Terrain) remains the data fix.
+
 ## Vegetation (C4, B3)
 
 * **Placement is Terrain's, exactly.** `worldcore/scatter.cpp` ports `terrain/veg` bit-for-bit:

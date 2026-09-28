@@ -22,3 +22,7 @@ outputs = [
   "/Game/Ember/Generated/Veg/SM_artemisia_shrub",
   "/Game/Ember/Generated/Veg/SM_bunchgrass",
 ]
+
+[[generator]]
+script = "m_water.py"
+outputs = ["/Game/Ember/Generated/M_Water"]

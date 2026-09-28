@@ -64,6 +64,16 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetStringField(TEXT("look"), LookPath);
 	J->TryGetBoolField(TEXT("vegetation"), bVegetation);
 	J->TryGetNumberField(TEXT("veg_radius_m"), VegRadiusM);
+	J->TryGetStringField(TEXT("perf_bookmark"), PerfBookmark);
+	J->TryGetStringField(TEXT("water_dir"), WaterDir);
+	const TArray<TSharedPtr<FJsonValue>>* Cmds = nullptr;
+	if (J->TryGetArrayField(TEXT("exec_cmds"), Cmds))
+	{
+		for (const TSharedPtr<FJsonValue>& V : *Cmds)
+		{
+			ExecCmds.Add(V->AsString());
+		}
+	}
 	double Ev = 0;
 	if (J->TryGetNumberField(TEXT("exposure_bias"), Ev))
 	{
@@ -257,11 +267,21 @@ void AEmberHarness::NextPhase()
 	{
 		State = EState::OrbitStart;
 	}
-	else if (PerfFrames > 0 && State != EState::Perf)
+	else if (PerfFrames > 0 && State != EState::Perf && State != EState::PerfWarmup)
 	{
-		FramesLeft = PerfFrames;
-		if (Facts) Facts->BeginPerfWindow();
-		State = EState::Perf;
+		// Optional perf pose; settle (streaming, TSR) before the measured window.
+		if (!PerfBookmark.IsEmpty())
+		{
+			const FBookmark* B = Bookmarks.FindByPredicate([&](const FBookmark& X) { return X.Name == PerfBookmark; });
+			FString Err;
+			if (!B || !PlaceCamera(*B, Err))
+			{
+				Finish(2, TEXT("perf bookmark: ") + (B ? Err : PerfBookmark));
+				return;
+			}
+		}
+		FramesLeft = 60;
+		State = EState::PerfWarmup;
 	}
 	else
 	{
@@ -300,6 +320,11 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		Terrain = GetWorld()->SpawnActor<AEmberTerrainActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
 		Terrain->RefineFactor = RefineFactor;
+		if (!WaterDir.IsEmpty() && !Terrain->SetWaterDir(WaterDir, Err))
+		{
+			Finish(2, TEXT("water: ") + Err);
+			return;
+		}
 		if (LookPath != TEXT("clay") && !Terrain->SetLook(LookPath, Err))
 		{
 			Finish(2, TEXT("look: ") + Err);
@@ -320,6 +345,11 @@ void AEmberHarness::Tick(float DeltaSeconds)
 				Finish(2, TEXT("vegetation: ") + Err);
 				return;
 			}
+		}
+		for (const FString& Cmd : ExecCmds)
+		{
+			UE_LOG(LogEmberHarness, Display, TEXT("exec: %s"), *Cmd);
+			GEngine->Exec(GetWorld(), *Cmd);
 		}
 		CaptureIndex = 0;
 		OrbitIndex = 0;
@@ -459,6 +489,15 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		NextPhase();
 		return;
 	}
+
+	case EState::PerfWarmup:
+		if (--FramesLeft <= 0)
+		{
+			FramesLeft = PerfFrames;
+			if (Facts) Facts->BeginPerfWindow();
+			State = EState::Perf;
+		}
+		return;
 
 	case EState::Perf:
 		if (--FramesLeft <= 0)

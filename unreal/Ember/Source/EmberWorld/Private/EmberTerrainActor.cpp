@@ -9,6 +9,7 @@
 #include "ProceduralMeshComponent.h"
 #include "Engine/Texture2D.h"
 #include "TextureResource.h"
+#include "Misc/Paths.h"
 
 THIRD_PARTY_INCLUDES_START
 #include "emberworld/lod.h"
@@ -33,6 +34,10 @@ AEmberTerrainActor::AEmberTerrainActor()
 	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Mesh->SetCastShadow(true);
 	RootComponent = Mesh;
+	WaterMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Water"));
+	WaterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WaterMesh->SetCastShadow(false);
+	WaterMesh->SetupAttachment(Mesh);
 }
 
 void AEmberTerrainActor::SetBaseColor(const FLinearColor& Color)
@@ -65,6 +70,18 @@ void AEmberTerrainActor::SetBaseColor(const FLinearColor& Color)
 		}
 	}
 	Material->SetVectorParameterValue(TEXT("Color"), Color);
+}
+
+bool AEmberTerrainActor::SetWaterDir(const FString& Dir, FString& OutError)
+{
+	WaterMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Ember/Generated/M_Water.M_Water"));
+	if (!WaterMaterial)
+	{
+		OutError = TEXT("M_Water missing: run ember-dev regen-assets");
+		return false;
+	}
+	WaterDir = Dir;
+	return true;
 }
 
 bool AEmberTerrainActor::SetLook(const FString& LookPath, FString& OutError)
@@ -203,7 +220,27 @@ bool AEmberTerrainActor::LoadRegion(const FString& RegionDir, int32 FixedLod, FS
 
 bool AEmberTerrainActor::LoadTile(const emberworld::TileEntry& Tile, FString& OutError)
 {
-	emberworld::MeshResult M = emberworld::load_tile_mesh(*Region, Tile, Frame);
+	// Water layer for this tile (optional): lakebed rule for the terrain + a flat surface.
+	emberworld::MeshOptions Opt;
+	TOptional<emberworld::Raster> Water;
+	if (!WaterDir.IsEmpty())
+	{
+		const FString WPath = WaterDir / FString::Printf(TEXT("z%d/x%d/y%d/water_level.tif"), Tile.lod, Tile.x, Tile.y);
+		if (FPaths::FileExists(WPath))
+		{
+			emberworld::TiffResult WR = emberworld::read_tiff(TCHAR_TO_UTF8(*WPath));
+			if (WR)
+			{
+				Water = MoveTemp(*WR.raster);
+				Opt.water = &Water.GetValue();
+			}
+			else
+			{
+				UE_LOG(LogEmberWorld, Warning, TEXT("water %s: %s"), *WPath, UTF8_TO_TCHAR(WR.error.message.c_str()));
+			}
+		}
+	}
+	emberworld::MeshResult M = emberworld::load_tile_mesh(*Region, Tile, Frame, Opt);
 	if (!M.ok())
 	{
 		OutError = FString::Printf(TEXT("tile z%d/x%d/y%d: %s"), Tile.lod, Tile.x, Tile.y, UTF8_TO_TCHAR(M.error.c_str()));
@@ -241,7 +278,33 @@ bool AEmberTerrainActor::LoadTile(const emberworld::TileEntry& Tile, FString& Ou
 	{
 		Mesh->SetMaterial(Section, Material);
 	}
+	int64 WaterTris = 0;
+	if (Water.IsSet())
+	{
+		emberworld::MeshResult WM = emberworld::build_water_mesh(*Region, Tile, Water.GetValue(), Frame);
+		if (WM.ok() && WM.mesh.surface_triangles > 0)
+		{
+			TArray<FVector> WV, WN;
+			TArray<FVector2D> WUV, WEmpty;
+			TArray<int32> WT;
+			for (size_t i = 0; i < WM.mesh.positions.size(); ++i)
+			{
+				WV.Emplace(WM.mesh.positions[i].x, WM.mesh.positions[i].y, WM.mesh.positions[i].z);
+				WN.Emplace(0.0, 0.0, 1.0);
+				WUV.Emplace(WM.mesh.uv0[i].u, WM.mesh.uv0[i].v);
+			}
+			for (uint32 Idx : WM.mesh.indices)
+			{
+				WT.Add(static_cast<int32>(Idx));
+			}
+			WaterMesh->CreateMeshSection(Section, WV, WT, WN, WUV, WEmpty, WEmpty, WEmpty,
+				TArray<FColor>(), TArray<FProcMeshTangent>(), false);
+			WaterMesh->SetMaterial(Section, WaterMaterial);
+			WaterTris = WM.mesh.surface_triangles;
+		}
+	}
 	FLoadedTile& L = Loaded.Add(TileKey(Tile));
+	L.WaterTriangles = WaterTris;
 	L.Section = Section;
 	L.Lod = Tile.lod;
 	L.Triangles = TM.surface_triangles;
@@ -255,6 +318,10 @@ void AEmberTerrainActor::UnloadTile(uint64 Key)
 	if (const FLoadedTile* L = Loaded.Find(Key))
 	{
 		Mesh->ClearMeshSection(L->Section);
+		if (L->Section < WaterMesh->GetNumSections())
+		{
+			WaterMesh->ClearMeshSection(L->Section);
+		}
 		if (SectionTextures.IsValidIndex(L->Section))
 		{
 			SectionTextures[L->Section] = nullptr;
@@ -269,9 +336,13 @@ void AEmberTerrainActor::RecomputeStats()
 {
 	TilesLoaded = Loaded.Num();
 	Triangles = SkirtTriangles = NodataCorners = 0;
+	WaterTilesLoaded = 0;
+	WaterTriangles = 0;
 	LodHistogram.Reset();
 	for (const auto& KV : Loaded)
 	{
+		WaterTilesLoaded += KV.Value.WaterTriangles > 0 ? 1 : 0;
+		WaterTriangles += KV.Value.WaterTriangles;
 		Triangles += KV.Value.Triangles;
 		SkirtTriangles += KV.Value.SkirtTriangles;
 		NodataCorners += KV.Value.NodataCorners;

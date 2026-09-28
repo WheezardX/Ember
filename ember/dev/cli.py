@@ -249,6 +249,24 @@ def hillshade_compare(name: str, capture: str = typer.Option("topdown", "--captu
     typer.echo(f"  footprint {res['footprint_m']} m, camera {res['camera_height_m']} m up")
 
 
+@app.command()
+def water(region: str = typer.Argument(..., help="Terrain region, e.g. three_queens_2026"),
+          ) -> None:
+    """Derive the water layer (bodies + per-tile levels) for a Terrain region -> Ember store."""
+    from ember.dev import water as W
+    from ember.dev.scenario import terrain_store_root
+
+    region_dir = terrain_store_root() / region
+    out = W.render_store(ue.repo_root(), region) / "water"
+    idx = W.build(region_dir, out)
+    big = sorted(idx["bodies"], key=lambda b: -b["cells"])[:5]
+    typer.secho(f"water {region}: {len(idx['bodies'])} bodies, {len(idx['tiles'])} tiles -> {out}",
+                fg=typer.colors.GREEN)
+    for b in big:
+        typer.echo(f"  body {b['id']}: {b['cells']} cells ({b['holes']} holes), "
+                   f"level {b['level_m']} m via {b['method']}")
+
+
 @app.command("regen-assets")
 def regen_assets(check: bool = typer.Option(False, "--check",
                                            help="Engine-free: is the lock current?")) -> None:

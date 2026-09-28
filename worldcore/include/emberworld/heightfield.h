@@ -44,7 +44,13 @@ struct MeshOptions {
     double skirt_depth_m = -1.0;  // < 0: max(4 * pixel size, 1 m) — Terrain's own rule
     bool skirts = true;
     bool flip_winding = false;    // default winding is UE's (see heightfield.cpp); flip for others
+    // Water layer (ember-dev water): same raster grid as the height tile, level in metres,
+    // nodata elsewhere. Corners touching water drop to (level - bed_depth_m): lakes stop being
+    // holes (DEM nodata, upstream U7) and the water surface never z-fights LiDAR water returns.
+    const Raster* water = nullptr;
+    double bed_depth_m = 1.0;
 };
+
 
 struct TileMesh {
     std::vector<Vec3f> positions;
@@ -74,6 +80,12 @@ EMBERWORLD_CORE_API MeshResult build_tile_mesh(const Region& region, const TileE
 EMBERWORLD_CORE_API MeshResult load_tile_mesh(const Region& region, const TileEntry& tile, const Frame& frame,
                           const MeshOptions& opt = {});
 
+// Flat water surface for one tile: a quad per content pixel with a water level, at the level
+// (+ lift_m). uv0 = world metres / 100 (for wave detail later). UE frame + winding.
+EMBERWORLD_CORE_API MeshResult build_water_mesh(const Region& region, const TileEntry& tile,
+                                                const Raster& level, const Frame& frame,
+                                                double lift_m = 0.0);
+
 // Bilinear-free ground height at a world point from the finest LOD's corner rule (for camera
 // targets / probes). Returns false outside the region or on read failure.
 EMBERWORLD_CORE_API bool sample_height(const Region& region, double wx, double wy, double& out_z);
@@ -84,7 +96,8 @@ EMBERWORLD_CORE_API bool sample_height(const Region& region, double wx, double w
 // cell value, which floats/sinks by metres on slopes).
 class EMBERWORLD_CORE_API SurfaceSampler {
 public:
-    bool build(const Region& region, const TileEntry& tile, const Raster& height);
+    bool build(const Region& region, const TileEntry& tile, const Raster& height,
+               const Raster* water = nullptr, double bed_depth_m = 1.0);
     // World metres in, metres out; false outside the tile content or on invalid corners.
     bool height_at(double wx, double wy, double& out_z) const;
 

@@ -25,6 +25,12 @@
         "/Game/Ember/Generated/Veg/SM_artemisia_shrub": "unreal/Ember/Content/Ember/Generated/Veg/SM_artemisia_shrub.uasset",
         "/Game/Ember/Generated/Veg/SM_bunchgrass": "unreal/Ember/Content/Ember/Generated/Veg/SM_bunchgrass.uasset"
       }
+    },
+    "m_water.py": {
+      "script_sha256": "aad25e140321bdcc83c14194a6a7f7ad780426c0bda2cc6eed12ede298a06cb8",
+      "outputs": {
+        "/Game/Ember/Generated/M_Water": "unreal/Ember/Content/Ember/Generated/M_Water.uasset"
+      }
     }
   }
 }
