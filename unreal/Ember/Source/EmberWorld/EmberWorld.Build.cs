@@ -14,7 +14,8 @@ public class EmberWorld : ModuleRules
 		PublicIncludePaths.Add(Path.Combine(Repo, "worldcore", "include"));
 		PrivateIncludePaths.Add(Path.Combine(Repo, "worldcore"));
 		PrivateIncludePaths.Add(Path.Combine(Repo, "sim", "third_party"));
-		bEnableExceptions = true;  // nlohmann/json inside the core
+		bEnableExceptions = true;  // nlohmann/json + toml++ inside the core
+		FPSemantics = FPSemanticsMode.Precise;  // scatter port must match CPython doubles exactly (C4)
 		PublicDefinitions.Add("EMBERWORLD_CORE_API=EMBERWORLD_API");  // export core symbols from this DLL
 
 		PublicDependencyModuleNames.AddRange(new string[] {

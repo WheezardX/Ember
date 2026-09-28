@@ -17,7 +17,8 @@ if(MSVC)
   add_compile_options(/W4 /permissive- /utf-8 /Zc:__cplusplus /EHsc /wd4996)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS NOMINMAX)
 else()
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  # The scatter port must evaluate doubles exactly like CPython: no FMA contraction.
+  add_compile_options(-Wall -Wextra -Wpedantic -ffp-contract=off -fno-fast-math)
 endif()
 
 file(GLOB CORE_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)

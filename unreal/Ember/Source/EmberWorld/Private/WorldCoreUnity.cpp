@@ -6,4 +6,6 @@ THIRD_PARTY_INCLUDES_START
 #include "src/tiff.cpp"
 #include "src/region.cpp"
 #include "src/heightfield.cpp"
+#include "src/scatter.cpp"
+#include "src/veg.cpp"
 THIRD_PARTY_INCLUDES_END

@@ -1,0 +1,49 @@
+# PNW conifer species palette (provisional pack, pre-Epic-7).
+# Maps LANDFIRE EVT code ranges to weighted species tiers. Weights are integers
+# (deterministic pick). `key` is a mesh/asset key UE resolves later. Heights are
+# clamp bounds; actual height comes from CH/CHM where available.
+name = "pnw_conifer"
+schema_version = 1
+default_group = "shrub_grass"
+
+# Forest / woodland (LANDFIRE EVT 7xxx). Teanaway sample codes: 7018, 7045, 7053...
+[[groups]]
+name = "conifer_forest"
+evt_min = 7000
+evt_max = 7999
+  [[groups.species]]
+  key = "pseudotsuga_menziesii"   # Douglas-fir
+  weight = 5
+  height_min_m = 8.0
+  height_max_m = 55.0
+  radius_m = 2.5
+  [[groups.species]]
+  key = "pinus_ponderosa"         # Ponderosa pine
+  weight = 4
+  height_min_m = 8.0
+  height_max_m = 45.0
+  radius_m = 2.2
+  [[groups.species]]
+  key = "abies_grandis"           # Grand fir
+  weight = 2
+  height_min_m = 6.0
+  height_max_m = 50.0
+  radius_m = 2.0
+
+# Shrub / grass fallback (everything not forest, incl. the default).
+[[groups]]
+name = "shrub_grass"
+evt_min = 0
+evt_max = 6999
+  [[groups.species]]
+  key = "artemisia_shrub"         # sagebrush/shrub
+  weight = 6
+  height_min_m = 0.3
+  height_max_m = 2.5
+  radius_m = 0.8
+  [[groups.species]]
+  key = "bunchgrass"
+  weight = 3
+  height_min_m = 0.1
+  height_max_m = 0.8
+  radius_m = 0.4
