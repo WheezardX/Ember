@@ -16,6 +16,13 @@ std::string slashes(std::string s) {
     return s;
 }
 
+// Optional string field: absent OR explicit null -> "" (Terrain writes "mesh": null when glTF
+// tile export is off; nlohmann's value() throws on null).
+std::string str_or_empty(const nlohmann::json& j, const char* key) {
+    auto it = j.find(key);
+    return (it == j.end() || it->is_null()) ? std::string{} : it->get<std::string>();
+}
+
 Bounds bounds_of(const nlohmann::json& a) {
     Bounds b;
     b.min_x = a.at(0).get<double>();
@@ -99,17 +106,17 @@ RegionResult load_region(const std::string& dir_in) {
             e.y = t.at("y").get<int>();
             e.content = bounds_of(t.at("content_bounds"));
             e.apron = bounds_of(t.at("apron_bounds"));
-            e.height_tif = slashes(t.value("height_tif", ""));
-            e.heightmap_png = slashes(t.value("heightmap", ""));
-            e.mesh_glb = slashes(t.value("mesh", ""));
-            e.hash = t.value("hash", "");
+            e.height_tif = slashes(str_or_empty(t, "height_tif"));
+            e.heightmap_png = slashes(str_or_empty(t, "heightmap"));
+            e.mesh_glb = slashes(str_or_empty(t, "mesh"));
+            e.hash = str_or_empty(t, "hash");
             r.tiles.push_back(std::move(e));
         }
         if (j.contains("layers")) {
             for (const auto& [name, lj] : j.at("layers").items()) {
                 Layer l;
                 l.name = name;
-                l.unit = lj.value("unit", "");
+                l.unit = str_or_empty(lj, "unit");
                 l.categorical = lj.value("categorical", false);
                 for (const auto& t : lj.at("tiles")) {
                     LayerTile lt;
@@ -117,7 +124,7 @@ RegionResult load_region(const std::string& dir_in) {
                     lt.x = t.at("x").get<int>();
                     lt.y = t.at("y").get<int>();
                     lt.path = slashes(t.at("path").get<std::string>());
-                    lt.hash = t.value("hash", "");
+                    lt.hash = str_or_empty(t, "hash");
                     l.tiles.push_back(std::move(lt));
                 }
                 r.layers.emplace(name, std::move(l));

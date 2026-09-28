@@ -302,3 +302,23 @@ TEST_CASE("heightfield: SurfaceSampler matches mesh vertices at corners and inte
     CHECK(zm == doctest::Approx(0.5 * (z0 + z1)));
     CHECK_FALSE(s.height_at(t.content.min_x - 5.0, t.content.max_y - 20.0, zm));
 }
+
+TEST_CASE("region: null optional fields (Terrain writes \"mesh\": null without glTF tiles) load") {
+    const auto root = testutil::write_synth_region("nullmesh", hill);
+    const auto mpath = root / "manifest.json";
+    std::string text;
+    {
+        std::ifstream f(mpath);
+        text.assign(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
+    }
+    const std::string needle = "\"hash\":\"h\"}";
+    for (size_t at = text.find(needle); at != std::string::npos; at = text.find(needle, at + 1))
+        text.replace(at, needle.size(), "\"hash\":\"h\",\"mesh\":null,\"heightmap\":null}");
+    {
+        std::ofstream f(mpath);
+        f << text;
+    }
+    auto rr = load_region(root.string());
+    REQUIRE_MESSAGE(rr, rr.error);
+    CHECK(rr.region->tiles[0].mesh_glb.empty());
+}

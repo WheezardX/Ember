@@ -188,18 +188,24 @@ bool read_instances_npy(const std::string& path, std::vector<NpyRow>& rows, std:
 
 }  // namespace
 
-TEST_CASE("scatter: teanaway_dev per-tile scatter == Terrain's instances.npy, exactly") {
-    if (!fs::exists(teanaway_dir() + "/veg/instances.npy")) {
-        MESSAGE("teanaway_dev veg not found - skipped");
+std::string store_region(const char* name) {
+    if (const char* s = std::getenv("EMBER_TERRAIN_STORE")) return std::string(s) + "/" + name;
+    return std::string(EMBERWORLD_REPO_DIR) + "/../Terrain/store/" + name;
+}
+
+// Per-tile C++ scatter over every finest tile == Terrain's whole-AOI veg/instances.npy, exactly
+// (positions bit-equal, float32 attributes bit-equal), compared as sets.
+void check_region_oracle(const char* name) {
+    const std::string dir = store_region(name);
+    if (!fs::exists(dir + "/veg/instances.npy")) {
+        MESSAGE(std::string(name) << " veg not found - skipped");
         return;
     }
-    auto rr = load_region(teanaway_dir());
+    auto rr = load_region(dir);
     REQUIRE_MESSAGE(rr, rr.error);
     const Region& R = *rr.region;
     auto si = load_scatter_input(R);
     REQUIRE_MESSAGE(si.ok(), si.error);
-    CHECK(si.input.height_layer == "canopy_chm");
-    CHECK(si.input.params.candidates_per_cell == 12);
     auto pr = load_palette(resolve_palette(R, si.input.palette_ref));
     REQUIRE_MESSAGE(pr.ok(), pr.error);
 
@@ -212,7 +218,8 @@ TEST_CASE("scatter: teanaway_dev per-tile scatter == Terrain's instances.npy, ex
     std::vector<NpyRow> want;
     std::string err;
     REQUIRE_MESSAGE(read_instances_npy(R.path("veg/instances.npy"), want, err), err);
-    REQUIRE(got.size() == want.size());  // 74,595
+    MESSAGE(std::string(name) << ": " << got.size() << " C++ instances vs " << want.size() << " Terrain");
+    REQUIRE(got.size() == want.size());
 
     std::sort(got.begin(), got.end(), [](const Instance& a, const Instance& b) {
         return std::tie(a.x, a.y) < std::tie(b.x, b.y);
@@ -234,4 +241,12 @@ TEST_CASE("scatter: teanaway_dev per-tile scatter == Terrain's instances.npy, ex
                            << ", h " << w.height << ")");
     }
     CHECK(mismatches == 0);
+}
+
+TEST_CASE("scatter: teanaway_dev per-tile scatter == Terrain's instances.npy, exactly") {
+    check_region_oracle("teanaway_dev");  // 74,595 instances, candidates_per_cell 12
+}
+
+TEST_CASE("scatter: three_queens_2026 per-tile scatter == Terrain's instances.npy, exactly") {
+    check_region_oracle("three_queens_2026");  // ~5.86 M instances, candidates_per_cell 4
 }
