@@ -42,8 +42,10 @@ private:
 	{
 		FString Name;
 		FString Bookmark;          // start pose: target, distance, pitch, fov, sun, start yaw
+		FString ToBookmark;        // non-empty: flyover, pose interpolated Bookmark -> ToBookmark
 		double Degrees = 360.0;
 		int32 Frames = 240;
+		int32 Fps = 30;            // wind clock during the orbit: t = frame / fps
 		int32 WarmupFrames = 30;
 	};
 	struct FCapture
@@ -70,7 +72,12 @@ private:
 	FString LookPath = TEXT("clay");
 	bool bVegetation = false;
 	double VegRadiusM = 1500.0;
+	double WindStrength = 6.0;
+	double WindFromDeg = 270.0;
+	bool bVegLineup = false;
+	double PerfWindTime = 0.0;
 	TArray<FString> ExecCmds;
+	TArray<FString> PerfExecCmds;  // run as the perf window opens (e.g. ProfileGPU)
 	FString WaterDir;
 	FString PerfBookmark;  // "clay" or an absolute viz/looks/*.toml path
 	TArray<FBookmark> Bookmarks;

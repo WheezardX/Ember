@@ -60,17 +60,58 @@ stair-step shorelines up close. U7 (hydro-flattening in Terrain) remains the dat
   canonical rasters) and the union equals Terrain's whole-AOI scatter.
 * **Render policies (not conformance):** trees are grounded on the rendered surface
   (`SurfaceSampler`, bilinear over the mesh's corner heights) instead of Terrain's raw DEM-cell z,
-  which floats/sinks by metres on slopes; conifer crowns are at least 0.3 × height because the
-  palette's constant `radius_m` makes tall trees needles (HCP2 review item).
-* **Meshes:** `assets/generators/veg_species.py` → one Nanite mesh per palette key
-  (`/Game/Ember/Generated/Veg/SM_<key>`) + `M_Veg` (bark/foliage via vertex alpha). A key with no
-  generated mesh falls back to an engine cone/sphere.
+  which floats/sinks by metres on slopes. Instances with no rendered surface under them (Terrain
+  scatters over fuels outside the DEM's AOI mask, z = 0 - upstream U8) are dropped and counted
+  (`instances.no_surface`); `instances.ungrounded` (a tile whose surface failed) must stay 0.
+  Conifer crown diameter is at least `ConiferCrownRatio` (0.23) × height: calibrated so the
+  rendered crown cover matches LANDFIRE CC (0.30 rendered +12 points too dense; see
+  `ember-dev forest-report`).
+* **Meshes:** `assets/generators/veg_species.py` → one **Nanite** mesh per palette key
+  (`/Game/Ember/Generated/Veg/SM_<key>`) + `M_Veg` (bark/foliage via vertex alpha, wind WPO). The
+  generator sets `nanite_settings` explicitly and fails if it did not stick (GeometryScript's
+  `enable_nanite` alone left it off through HCP1), and builds no distance field / Lumen cards.
+  A key with no generated mesh falls back to an engine cone/sphere.
+* **Wind (HCP2):** `M_Veg` world-position offset - bend ∝ (height above the instance pivot)²,
+  per-tree phase from `PerInstanceRandom` (fixed `InstancingRandomSeed` per component), a slow
+  gust band travelling downwind. The runtime owns the clock: stills freeze it (t = 0, so goldens
+  stay deterministic), orbits/flyovers run t = frame / fps, the perf window runs real time.
+  Tree components use `ShadowCacheInvalidationBehavior = Always` (moving WPO + cached shadow
+  pages gave saw-toothed self-shadows).
 * **Streaming:** `AEmberVegetationActor` instances finest tiles within `veg_radius_m` of the
-  camera, one HISM per species per tile. Facts: `instances.total`, `by_species`,
-  `generated_species`, `ungrounded`, `scatter_ms`.
+  camera, one ISM per species per tile (Nanite culls; HISM's CPU cluster tree cost 4× the load
+  time for nothing). Trees are kept out of the distance-field scene
+  (`bAffectDistanceFieldLighting = false`, ~0.9 GB VRAM at 1.45 M instances).
+  Facts: `instances.total`, `by_species`, `generated_species`, `ungrounded`, `no_surface`,
+  `scatter_ms`.
+* **Silhouettes:** `veg_lineup = true` replaces the scatter with one tree per species at its
+  palette mid height in a row across the first capture's view, plus a 1.8 m post
+  (`S_veg_lineup`).
 
-Measured (teanaway_dev, 1440p, RTX 4080 SUPER): terrain only p95 3.9 ms; with all 74,595 trees
-(generated meshes) p95 6.3 ms, 954 MB VRAM.
+**Rendering path.** The project targets **SM6** (`DefaultEngine.ini` `TargetedRHIs`). Until HCP2
+it silently ran at SM5 - no Nanite, cascaded shadows - so HCP0/HCP1 perf numbers are SM5
+numbers. Terrain captures were unchanged by the switch except low-sun self-shadowing, which
+virtual shadow maps resolve better.
+
+Measured (1440p, RTX 4080 SUPER):
+
+| scene | instances | frame p50 / p95 | GPU | VRAM |
+|---|---|---|---|---|
+| teanaway_dev, SM5 raster trees (HCP1) | 74,595 | - / 6.3 ms | - | 954 MB |
+| Three Queens `forest_oblique`, SM5 raster | 1,448,096 | 18.3 / 19.5 ms | 17.7 ms | 2.06 GB |
+| same, SM6 + Nanite, DF on, pool 512 MB | 1,448,096 | 5.0 / 14.6 ms | 8.8 ms | 4.65 GB |
+| same, final (ISM, no DF, pool 128 MB) | 1,448,096 | 4.2 / 10.0 ms | 8.3 ms | 3.2-3.4 GB |
+
+Open: ~7 render-thread hitches of 35-180 ms per 300 frames with the forest loaded (waits on the
+RHI/GPU fence inside `UpdatePrimitive`; absent without vegetation). Needs an Insights capture;
+scheduled with the async tile-compose work before HCP6.
+
+## Forest statistics (`ember-dev forest-report <region>`)
+
+From Terrain's own scatter output (`veg/instances.npy`, the conformance oracle) and the rasters it
+was scattered from: species shares vs palette weights, trees per cell by CC bin vs the accept
+rule (`candidates_per_cell × CC`), per-species heights vs CHM, and the rendered crown cover
+(Poisson overlap of crown discs per cell under the render crown policy) vs LANDFIRE CC. Writes
+`runs/dev/forest/<region>/forest_report.{json,png}`.
 
 ## Scenario fields (render scenario v1 additions)
 
@@ -80,11 +121,24 @@ lod_refine_factor = 1.5
 look = "viz/looks/terrain_default.toml"   # or "clay"
 vegetation = true
 veg_radius_m = 1500
+wind_strength = 6.0       # crown-top sway (cm) of a 10 m tree; grows with height^2
+wind_from_deg = 270       # compass direction the wind blows from
+veg_lineup = false        # silhouette sheet instead of the scatter
+perf_exec_cmds = []       # console commands as the perf window opens (e.g. "ProfileGPU")
 
 [[orbits]]                # review-bundle MP4 (not diffed); frames captured each tick
 name = "orbit_oblique"
 bookmark = "oblique_nw"   # start pose; yaw advances `degrees` over `frames`
 degrees = 360
 frames = 240
-fps = 30
+fps = 30                  # also the wind clock: t = frame / fps
+
+[[orbits]]                # flyover: every pose field eased from bookmark to to_bookmark
+name = "density_flyover"
+bookmark = "fly_a"
+to_bookmark = "fly_b"
+frames = 450
 ```
+
+The harness keeps every camera 3 m above the rendered surface (flyovers cross ridges).
+`perf.json` carries `frame_ms_series`, `game_ms_series` and `gpu_ms_series` for the window.

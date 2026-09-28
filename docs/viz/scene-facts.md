@@ -26,7 +26,9 @@ nor a VLM ever has to count from pixels.
     "total": 14, "loaded": 9, "triangles": 41472, "skirt_triangles": 5760,
     "nodata_corners": 16416, "load_ms": 8.4, "lod_histogram": { "14": 9 }
   },
-  "instances": { "total": 0, "by_species": {} },           // C4 (scatter) fills this
+  "instances": { "total": 0, "enabled": true, "tiles": 0, "radius_m": 4000,
+                 "scatter_ms": 0.0, "ungrounded": 0, "no_surface": 0,
+                 "generated_species": 5, "by_species": {} },  // vegetation (world.md)
   "environment": { "sun": "noon", "sun_azimuth_deg": 180, "sun_elevation_deg": 58,
                    "exposure_bias": -2 },
   "render": {
@@ -39,7 +41,8 @@ nor a VLM ever has to count from pixels.
     "frames": 300, "frame_ms_avg": 3.74, "frame_ms_p50": 2.76, "frame_ms_p95": 3.49,
     "frame_ms_max": 274.7, "game_ms_avg": 1.94, "render_ms_avg": 2.93,
     "gpu_ms_avg": 2.47, "gpu_ms_p95": 3.00, "fps_avg": 267.3,
-    "draw_calls_avg": 86.1, "primitives_avg": 237233
+    "draw_calls_avg": 86.1, "primitives_avg": 237233,
+    "frame_ms_series": [], "game_ms_series": [], "gpu_ms_series": []  // perf window only
   }
 }
 ```

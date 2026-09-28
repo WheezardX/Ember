@@ -202,6 +202,7 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		Inst->SetNumberField(TEXT("radius_m"), It->RadiusM);
 		Inst->SetNumberField(TEXT("scatter_ms"), It->ScatterMs);
 		Inst->SetNumberField(TEXT("ungrounded"), static_cast<double>(It->UngroundedInstances));
+		Inst->SetNumberField(TEXT("no_surface"), static_cast<double>(It->NoSurfaceInstances));
 		Inst->SetNumberField(TEXT("generated_species"), It->GeneratedSpecies);
 		for (const auto& KV : It->BySpecies)
 		{
@@ -278,6 +279,19 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 	Perf->SetNumberField(TEXT("fps_avg"), Avg(Fm) > 0 ? 1000.0 / Avg(Fm) : 0.0);
 	Perf->SetNumberField(TEXT("draw_calls_avg"), N ? DrawSum / N : 0.0);
 	Perf->SetNumberField(TEXT("primitives_avg"), N ? PrimSum / N : 0.0);
+	if (WindowStart != INDEX_NONE)
+	{
+		// Per-frame series of the measured window (spike patterns; bundle perf CSVs).
+		auto Series = [](const TArray<float>& V)
+		{
+			TArray<TSharedPtr<FJsonValue>> A;
+			for (float x : V) A.Add(MakeShared<FJsonValueNumber>(FMath::RoundToDouble(x * 100.0) / 100.0));
+			return A;
+		};
+		Perf->SetArrayField(TEXT("frame_ms_series"), Series(Fm));
+		Perf->SetArrayField(TEXT("game_ms_series"), Series(Gm));
+		Perf->SetArrayField(TEXT("gpu_ms_series"), Series(Gp));
+	}
 	F->SetObjectField(TEXT("perf"), Perf);
 	return F;
 }

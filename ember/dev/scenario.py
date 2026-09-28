@@ -60,9 +60,12 @@ class Capture(_Strict):
 
 
 class Orbit(_Strict):
-    """A camera orbit around a bookmark's target, captured every frame -> MP4 (review bundles)."""
+    """A camera orbit around a bookmark's target, captured every frame -> MP4 (review bundles).
+    With `to_bookmark` it is a flyover instead: every pose field is interpolated from
+    `bookmark` to `to_bookmark` (yaw the short way round) and `degrees` is ignored."""
     name: str
     bookmark: str               # start pose; yaw advances by `degrees` over `frames`
+    to_bookmark: str | None = None
     degrees: float = 360.0
     frames: int = Field(default=240, gt=1, le=3600)
     fps: int = 30
@@ -92,7 +95,15 @@ class ScenarioMeta(_Strict):
     look: str = "viz/looks/terrain_default.toml"  # repo-relative look file, or "clay"
     vegetation: bool = False    # C4: instance the Terrain-conformant scatter near the camera
     veg_radius_m: float = 1500.0
+    # Wind sway (M_Veg world-position offset). Strength = crown-top sway in cm for a 10 m tree
+    # (grows with height^2); from = compass direction the wind blows FROM. Stills use a frozen
+    # wind clock (t = 0) so goldens stay pixel-deterministic; orbits/flyovers run it at frame/fps.
+    wind_strength: float = 6.0
+    wind_from_deg: float = 270.0
+    veg_lineup: bool = False    # B3 silhouette sheet: one tree per species at the first capture's
+    #                             target (row across the view) + a 1.8 m post, no scattered trees
     exec_cmds: list[str] = Field(default_factory=list)  # console commands after world load
+    perf_exec_cmds: list[str] = Field(default_factory=list)  # as the perf window opens
     water: bool = True           # use store/render/<region>/water (ember-dev water) if present
     perf_bookmark: str | None = None  # camera pose for the perf window (default: last pose)
 
@@ -126,8 +137,9 @@ class RenderScenario(_Strict):
         if self.scenario.perf_bookmark is not None and self.scenario.perf_bookmark not in names:
             raise ValueError(f"perf_bookmark {self.scenario.perf_bookmark!r} is not a bookmark")
         for o in self.orbits:
-            if o.bookmark not in names:
-                raise ValueError(f"orbit {o.name!r} references unknown bookmark {o.bookmark!r}")
+            for b in (o.bookmark, o.to_bookmark):
+                if b is not None and b not in names:
+                    raise ValueError(f"orbit {o.name!r} references unknown bookmark {b!r}")
         for a in self.asserts:
             if a.capture is not None and a.capture not in caps:
                 raise ValueError(f"assert on {a.fact!r} references unknown capture {a.capture!r}")

@@ -1,7 +1,8 @@
 #include "EmberVegetationActor.h"
 
 #include "Camera/PlayerCameraManager.h"
-#include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -20,6 +21,12 @@ DEFINE_LOG_CATEGORY_STATIC(LogEmberVeg, Log, All);
 
 namespace
 {
+// Conifer crown diameter >= this x height. Calibrated so the rendered crown cover (Poisson overlap
+// of crown discs per 10 m cell) matches LANDFIRE CC over Three Queens: 0.30 rendered +12 points
+// too dense (+18 at CC 60-80 %), 0.23 gives +0.4 mean (`ember-dev forest-report`, which keeps
+// its own copy of this constant - tests/test_dev_harness.py checks they agree).
+constexpr double ConiferCrownRatio = 0.23;
+
 uint64 VegKey(const emberworld::TileEntry& T)
 {
 	return (uint64(uint32(T.x) & 0xFFFFFF) << 24) | uint64(uint32(T.y) & 0xFFFFFF);
@@ -86,7 +93,7 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 			// Render policy (not part of scatter conformance): Terrain's palette radius is a
 			// constant, so tall trees fitted to it become needles. Crowns are at least this
 			// fraction of height (conifers) / wider than tall (shrub, grass).
-			SpeciesMinCrownRatio.Add(bConifer ? 0.30 : 1.2);
+			SpeciesMinCrownRatio.Add(bConifer ? ConiferCrownRatio : 1.2);
 			UStaticMesh* Gen = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Ember/Generated/Veg/SM_%s.SM_%s"), *Key, *Key));
 			UMaterialInterface* Base = (Gen && VegMaster) ? VegMaster : Clay;
 			UStaticMesh* Mesh = Gen ? Gen : (bConifer ? Cone : Sphere);
@@ -130,22 +137,19 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 			continue;
 		}
 		double Z = In.z;
-		if (!bSurface || !Surface.height_at(In.x, In.y, Z))
+		if (!bSurface)
 		{
-			Z = In.z;
-			++UngroundedInstances;
+			++UngroundedInstances;  // the tile's surface failed to build: Terrain's z (an error)
 		}
-		const UStaticMesh* M = SpeciesMesh[In.species];
-		const FBoxSphereBounds B = M->GetBounds();
-		const double MeshH = FMath::Max(1.0, 2.0 * B.BoxExtent.Z);
-		const double MeshW = FMath::Max(1.0, 2.0 * B.BoxExtent.X);
-		const double HeightCm = In.height_m * 100.0;
-		const double CrownCm = FMath::Max(2.0 * In.radius_m * 100.0 * FMath::Clamp(In.scale, 0.5, 1.5),
-			HeightCm * SpeciesMinCrownRatio[In.species]);
-		const FVector Scale(CrownCm / MeshW, CrownCm / MeshW, HeightCm / MeshH);
-		FVector Loc = Terrain->WorldToUE(In.x, In.y, Z);
-		Loc.Z -= (B.Origin.Z - B.BoxExtent.Z) * Scale.Z;  // mesh bottom on the ground
-		PerSpecies[In.species].Emplace(FRotator(0.0, FMath::RadiansToDegrees(In.yaw_rad), 0.0), Loc, Scale);
+		else if (!Surface.height_at(In.x, In.y, Z))
+		{
+			// Render policy: nothing to stand on (Terrain scatters over fuels outside the DEM's AOI
+			// mask with z = 0 - upstream U8). Dropped, counted, never drawn underground.
+			++NoSurfaceInstances;
+			continue;
+		}
+		PerSpecies[In.species].Add(FitInstance(In.species, In.height_m, In.radius_m, In.scale, In.yaw_rad,
+			Terrain->WorldToUE(In.x, In.y, Z)));
 	}
 
 	FVegTile& VT = Tiles.Add(VegKey(Tile));
@@ -156,12 +160,19 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 		{
 			continue;
 		}
-		UHierarchicalInstancedStaticMeshComponent* C = NewObject<UHierarchicalInstancedStaticMeshComponent>(this);
+		UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
 		C->SetStaticMesh(SpeciesMesh[S]);
 		C->SetMaterial(0, SpeciesMaterial[S]);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetCastShadow(true);
 		C->SetMobility(EComponentMobility::Movable);
+		C->InstancingRandomSeed = static_cast<int32>((VegKey(Tile) * 31 + S) & 0x7FFFFFFF) | 1;  // wind phase: deterministic
+		// Wind WPO moves the trees: without this the virtual shadow map cache keeps stale pages
+		// and crowns get saw-toothed self-shadows (seen in S_forest_teanaway ground_ridge).
+		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Always;
+		// Trees stay out of the distance-field scene: ~1.4 M DF objects cost ~0.9 GB VRAM (4.23 -> 3.32 GB
+		// at the S_tq_forest perf pose, D8 budget 4 GB). Lumen still sees them via screen traces.
+		C->bAffectDistanceFieldLighting = false;
 		C->SetupAttachment(RootComponent);
 		C->RegisterComponent();
 		C->AddInstances(PerSpecies[S], /*bShouldReturnIndices=*/false, /*bWorldSpace=*/true);
@@ -172,11 +183,106 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 	return true;
 }
 
+FTransform AEmberVegetationActor::FitInstance(int32 Species, double HeightM, double InRadiusM, double Scale, double YawRad, FVector Loc) const
+{
+	const FBoxSphereBounds B = SpeciesMesh[Species]->GetBounds();
+	const double MeshH = FMath::Max(1.0, 2.0 * B.BoxExtent.Z);
+	const double MeshW = FMath::Max(1.0, 2.0 * B.BoxExtent.X);
+	const double HeightCm = HeightM * 100.0;
+	const double CrownCm = FMath::Max(2.0 * InRadiusM * 100.0 * FMath::Clamp(Scale, 0.5, 1.5),
+		HeightCm * SpeciesMinCrownRatio[Species]);
+	const FVector S(CrownCm / MeshW, CrownCm / MeshW, HeightCm / MeshH);
+	Loc.Z -= (B.Origin.Z - B.BoxExtent.Z) * S.Z;  // mesh bottom on the ground
+	return FTransform(FRotator(0.0, FMath::RadiansToDegrees(YawRad), 0.0), Loc, S);
+}
+
+void AEmberVegetationActor::SetWind(double StrengthCm, double FromDeg)
+{
+	// Trees lean downwind. Compass heading h -> UE (X east, Y south): (sin h, -cos h).
+	const double To = FMath::DegreesToRadians(FromDeg + 180.0);
+	const FLinearColor Dir(FMath::Sin(To), -FMath::Cos(To), 0.0, 0.0);
+	for (UMaterialInstanceDynamic* M : SpeciesMaterial)
+	{
+		M->SetScalarParameterValue(TEXT("WindStrength"), static_cast<float>(StrengthCm));
+		M->SetVectorParameterValue(TEXT("WindDir"), Dir);
+	}
+}
+
+void AEmberVegetationActor::SetWindTime(double Seconds)
+{
+	for (UMaterialInstanceDynamic* M : SpeciesMaterial)
+	{
+		M->SetScalarParameterValue(TEXT("WindTime"), static_cast<float>(Seconds));
+	}
+}
+
+void AEmberVegetationActor::SpawnLineup(double WorldX, double WorldY, double RowDeg)
+{
+	bLineup = true;
+	for (const auto& KV : Tiles)
+	{
+		for (UInstancedStaticMeshComponent* C : KV.Value.Components)
+		{
+			if (C) C->DestroyComponent();
+		}
+	}
+	Tiles.Reset();
+	const double Rh = FMath::DegreesToRadians(RowDeg);
+	const FVector2D Dir(FMath::Sin(Rh), FMath::Cos(Rh));  // world metres, x east / y north
+	struct FItem { int32 Species; double HeightM; double WidthM; };
+	TArray<FItem> Items;
+	int32 Si = 0;
+	for (const emberworld::scatter::Group& G : Palette.groups)
+	{
+		for (const emberworld::scatter::Species& S : G.species)
+		{
+			const double H = 0.5 * (S.height_min_m + S.height_max_m);
+			Items.Add({Si++, H, FMath::Max(2.0 * S.radius_m, H * SpeciesMinCrownRatio[Si - 1])});
+		}
+	}
+	Items.Add({-1, 1.8, 0.4});  // the post
+	const double Gap = 4.0;
+	double Total = -Gap;
+	for (const FItem& I : Items) Total += I.WidthM + Gap;
+	double At = -0.5 * Total;
+	UMaterialInterface* Clay = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Ember/Generated/M_EmberGray.M_EmberGray"));
+	for (const FItem& I : Items)
+	{
+		const double Off = At + 0.5 * I.WidthM;
+		At += I.WidthM + Gap;
+		const double Wx = WorldX + Dir.X * Off, Wy = WorldY + Dir.Y * Off;
+		double Wz = 0.0;
+		Terrain->GroundHeightAt(Wx, Wy, Wz);
+		const FVector Loc = Terrain->WorldToUE(Wx, Wy, Wz);
+		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+		if (I.Species >= 0)
+		{
+			C->SetStaticMesh(SpeciesMesh[I.Species]);
+			C->SetMaterial(0, SpeciesMaterial[I.Species]);
+			C->SetWorldTransform(FitInstance(I.Species, I.HeightM, 0.0, 1.0, 0.0, Loc));
+		}
+		else
+		{
+			C->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder")));
+			C->SetMaterial(0, Clay);
+			C->SetWorldTransform(FTransform(FRotator::ZeroRotator, Loc + FVector(0, 0, 90.0), FVector(0.4, 0.4, 1.8)));
+		}
+		C->SetMobility(EComponentMobility::Movable);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Always;
+		C->SetupAttachment(RootComponent);
+		C->RegisterComponent();
+		LineupParts.Add(C);
+	}
+	InstancesTotal = Items.Num() - 1;
+	UE_LOG(LogEmberVeg, Log, TEXT("vegetation lineup: %d species + post"), Items.Num() - 1);
+}
+
 void AEmberVegetationActor::UnloadTile(uint64 Key)
 {
 	if (FVegTile* VT = Tiles.Find(Key))
 	{
-		for (UHierarchicalInstancedStaticMeshComponent* C : VT->Components)
+		for (UInstancedStaticMeshComponent* C : VT->Components)
 		{
 			if (C)
 			{
@@ -262,7 +368,7 @@ void AEmberVegetationActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	const APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
-	if (!bInitialised || !PC || !PC->PlayerCameraManager)
+	if (!bInitialised || bLineup || !PC || !PC->PlayerCameraManager)
 	{
 		return;
 	}

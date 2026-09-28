@@ -267,6 +267,32 @@ def water(region: str = typer.Argument(..., help="Terrain region, e.g. three_que
                    f"level {b['level_m']} m via {b['method']}")
 
 
+@app.command("forest-report")
+def forest_report(region: str = typer.Argument(..., help="Terrain region, e.g. three_queens_2026"),
+                  out: str = typer.Option(None, "--out",
+                                          help="Output dir (default runs/dev/forest/<region>)."),
+                  as_json: bool = typer.Option(False, "--json")) -> None:
+    """Species / density / height / crown-cover statistics of a region's scatter (HCP2)."""
+    from ember.dev import forest
+    from ember.dev.scenario import terrain_store_root
+
+    out_dir = Path(out) if out else ue.repo_root() / "runs" / "dev" / "forest" / region
+    rep = forest.write(terrain_store_root() / region, out_dir)
+    if as_json:
+        _emit(rep, True)
+        return
+    typer.secho(f"forest {region}: {rep['instances']:,} trees, {rep['instances_per_ha']}/ha, "
+                f"{rep['outside_dem_mask']:,} outside the DEM mask -> {out_dir}",
+                fg=typer.colors.GREEN)
+    for s in rep["species"]:
+        typer.echo(f"  {s['key']:<24} {s['count']:>9,}  share {s['share_of_group']} "
+                   f"(expected {s['expected_share']})  mean H {s['height_m']['mean']} m")
+    for d in rep["density_by_cc"]:
+        typer.echo(f"  CC {d['cc_pct'][0]:>2}-{d['cc_pct'][1]:<3}% {d['trees_per_ha']:>6}/ha "
+                   f"(exp {d['expected_trees_per_cell'] * 100:.0f})  cover rendered "
+                   f"{d['rendered_crown_cover_pct']}% vs LANDFIRE {d['landfire_cc_pct']}%")
+
+
 @app.command("regen-assets")
 def regen_assets(check: bool = typer.Option(False, "--check",
                                            help="Engine-free: is the lock current?")) -> None:

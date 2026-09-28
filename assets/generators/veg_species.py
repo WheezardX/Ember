@@ -1,7 +1,8 @@
 """Generator: vegetation species meshes v1 + their master material (EPIC_5_PLAN B3, B2 item 2).
 
     /Game/Ember/Generated/M_Veg                    lerp(TrunkColor, Color, vertex alpha) x vertex
-                                                   colour RGB (shading/AO); Roughness (scalar)
+                                                   colour RGB (shading/AO); Roughness (scalar);
+                                                   wind WPO (WindTime, WindStrength, WindDir)
     /Game/Ember/Generated/Veg/SM_<palette key>     one Nanite static mesh per species in Terrain's
                                                    pnw_conifer palette (keys must match exactly)
 
@@ -70,6 +71,66 @@ def build_material():
     rough.set_editor_property("default_value", 0.85)
     if not mel.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS):
         raise RuntimeError("roughness")
+    # Wind sway (world position offset). The runtime owns the clock (WindTime is set per frame
+    # by the harness: frozen for stills, frame/fps for orbits), so renders stay deterministic.
+    # Bend grows with height above the instance pivot squared (stiff bole, loose top); each
+    # tree gets its own phase from its position; a slow gust band travels downwind.
+    # Offset from the INSTANCE pivot in world units (ObjectPositionWS is the primitive's, not
+    # the instance's: with it, whole HISM tiles bent as one and self-shadowing tore).
+    lpos = mel.create_material_expression(mat, unreal.MaterialExpressionLocalPosition, -1100, 450)
+    lpos.set_editor_property("local_origin", unreal.LocalPositionOrigin.INSTANCE)
+    lpos.set_editor_property("included_offsets", unreal.PositionIncludedOffsets.EXCLUDE_OFFSETS)
+    local = mel.create_material_expression(mat, unreal.MaterialExpressionTransform, -900, 450)
+    local.set_editor_property("transform_source_type",
+                              unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_INSTANCE)
+    local.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
+    link(lpos, "", local, "")
+    wpos = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -900, 300)
+    wpos.set_editor_property("world_position_shader_offset",
+                             unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)
+    opos = mel.create_material_expression(mat, unreal.MaterialExpressionSubtract, -700, 350)
+    link(wpos, "", opos, "A")             # pivot = world position - (pivot -> vertex)
+    link(local, "", opos, "B")
+    params = {}
+    for i, (name, default) in enumerate((("WindTime", 0.0), ("WindStrength", 6.0))):
+        p = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter,
+                                           -900, 640 + 90 * i)
+        p.set_editor_property("parameter_name", name)
+        p.set_editor_property("default_value", default)
+        params[name] = p
+    wdir = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -900, 820)
+    wdir.set_editor_property("parameter_name", "WindDir")
+    wdir.set_editor_property("default_value", unreal.LinearColor(1.0, 0.0, 0.0, 0.0))
+    wind = mel.create_material_expression(mat, unreal.MaterialExpressionCustom, -450, 500)
+    wind.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    wind.set_editor_property("description", "EmberWind")
+    ins = []
+    for n in ("Local", "Pivot", "Rnd", "T", "S", "D"):
+        ci = unreal.CustomInput()
+        ci.set_editor_property("input_name", n)
+        ins.append(ci)
+    wind.set_editor_property("inputs", ins)
+    wind.set_editor_property("code", (
+        "float h = max(Local.z, 0.0) / 1000.0;\n"                  # height above pivot, 10 m
+        "float bend = S * h * h;\n"
+        "float2 p = Pivot.xy * 0.01;\n"                            # metres
+        "float ph = Rnd * 6.2831853;\n"                            # per-instance, exact
+        "float along = dot(p, D.xy);\n"
+        "float gust = 0.5 + 0.5 * sin(T * 0.35 - along * 0.012);\n"
+        "float sway = 0.55 + 0.45 * sin(T * 1.6 + ph) * (0.6 + 0.4 * gust);\n"
+        "return float3(D.xy * bend * sway * (0.7 + 0.6 * gust), -0.15 * bend * sway);\n"))
+    link(local, "", wind, "Local")
+    link(opos, "", wind, "Pivot")
+    # Per-tree phase: PerInstanceRandom is constant over an instance (a hash of the computed
+    # pivot is not: float jitter between vertices flipped floor() and tore crowns apart).
+    rnd = mel.create_material_expression(mat, unreal.MaterialExpressionPerInstanceRandom, -900, 560)
+    link(rnd, "", wind, "Rnd")
+    link(params["WindTime"], "", wind, "T")
+    link(params["WindStrength"], "", wind, "S")
+    link(wdir, "", wind, "D")
+    if not mel.connect_material_property(wind, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET):
+        raise RuntimeError("world position offset")
+    mat.set_editor_property("max_world_position_offset_displacement", 600.0)  # Nanite WPO bounds
     mat.set_editor_property("used_with_instanced_static_meshes", True)
     mat.set_editor_property("used_with_nanite", True)
     mel.recompile_material(mat)
@@ -211,6 +272,19 @@ def build_mesh(key, builder, mat):
     if sm is None or outcome != unreal.GeometryScriptOutcomePins.SUCCESS:
         raise RuntimeError(f"create static mesh {full}: {outcome}")
     sm.set_material(0, mat)
+    # The creation option alone left nanite_settings.enabled False (trees rendered as raster
+    # HISM through HCP1); set it explicitly (PostEditChange rebuilds) and check it after reload.
+    ns = sm.get_editor_property("nanite_settings")
+    ns.set_editor_property("enabled", True)
+    sm.set_editor_property("nanite_settings", ns)
+    # No mesh distance field / Lumen cards: instances never join the DF scene
+    # (bAffectDistanceFieldLighting = false, VRAM), and building them at runtime in the uncooked
+    # -game process stalled the render thread every ~40 frames (UpdatePrimitive fence waits).
+    lib = unreal.EditorStaticMeshLibrary
+    bs = lib.get_lod_build_settings(sm, 0)
+    bs.set_editor_property("distance_field_resolution_scale", 0.0)
+    bs.set_editor_property("max_lumen_mesh_cards", 0)
+    lib.set_lod_build_settings(sm, 0, bs)
     eal.save_asset(full, only_if_is_dirty=False)
     tris = m.get_triangle_count()
     unreal.log(f"EMBER_GENERATED {full}")
@@ -224,6 +298,8 @@ for k, fn in SPECIES.items():
 # Verify the bark/foliage alpha survived into the built asset (it drives M_Veg's lerp).
 for k in SPECIES:
     sm = unreal.load_asset(f"{VEG}/SM_{k}")
+    if not sm.get_editor_property("nanite_settings").get_editor_property("enabled"):
+        raise RuntimeError(f"SM_{k}: Nanite is not enabled")
     dm = unreal.DynamicMesh()
     unreal.GeometryScript_AssetUtils.copy_mesh_from_static_mesh(
         sm, dm, unreal.GeometryScriptCopyMeshFromAssetOptions(), unreal.GeometryScriptMeshReadLOD())

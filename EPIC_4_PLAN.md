@@ -281,6 +281,15 @@ Linux leg of the determinism matrix, which only runs in CI.
       fill stops at 5 px, so lakes are DEM nodata -> holes in every mesh. Three Queens: 23,856
       interior nodata cells, 99.3 % FBFM40 water (Kachess hole 190 ha). Fill each water body
       (FBFM40 98 / NHD) with its shoreline elevation (flat surface) before tiling. Found at HCP1.
+- [ ] U8 (Epic 2, veg scatter) — scatter runs over fuels/canopy outside the DEM's AOI mask and
+      emits those trees with z = 0 (Three Queens: 24,074 of 5,861,933, all in border-connected
+      DEM nodata). Skip cells whose DEM is nodata (or mask fuels to the AOI) so the instance set
+      is what can stand on the terrain. Ember drops them (`instances.no_surface`). Found at HCP2.
+- [ ] U9 (Epic 2, veg scatter spec - question, not a bug) — every tree in a cell takes the cell's
+      CHM canopy-top height (±15 %, clamped to the species range): all three conifers average
+      33-34 m over Three Queens, there is no understory, and the re-clamp piles 270 k ponderosa at
+      exactly 45 m. Consider a stand-structure height draw (dominant/co-dominant/suppressed)
+      under the CHM ceiling. Surfaced at HCP2 (`ember-dev forest-report`).
 
 **Model-quality candidates noted, deliberately not tuned (would be fitting one fire)**
 - [ ] CP5: RH/T→moisture response too strong relative to wind for timber (model grows fastest

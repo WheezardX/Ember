@@ -64,6 +64,9 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetStringField(TEXT("look"), LookPath);
 	J->TryGetBoolField(TEXT("vegetation"), bVegetation);
 	J->TryGetNumberField(TEXT("veg_radius_m"), VegRadiusM);
+	J->TryGetNumberField(TEXT("wind_strength"), WindStrength);
+	J->TryGetNumberField(TEXT("wind_from_deg"), WindFromDeg);
+	J->TryGetBoolField(TEXT("veg_lineup"), bVegLineup);
 	J->TryGetStringField(TEXT("perf_bookmark"), PerfBookmark);
 	J->TryGetStringField(TEXT("water_dir"), WaterDir);
 	const TArray<TSharedPtr<FJsonValue>>* Cmds = nullptr;
@@ -72,6 +75,13 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 		for (const TSharedPtr<FJsonValue>& V : *Cmds)
 		{
 			ExecCmds.Add(V->AsString());
+		}
+	}
+	if (J->TryGetArrayField(TEXT("perf_exec_cmds"), Cmds))
+	{
+		for (const TSharedPtr<FJsonValue>& V : *Cmds)
+		{
+			PerfExecCmds.Add(V->AsString());
 		}
 	}
 	double Ev = 0;
@@ -115,6 +125,8 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 			FOrbit Or;
 			Or.Name = O->GetStringField(TEXT("name"));
 			Or.Bookmark = O->GetStringField(TEXT("bookmark"));
+			O->TryGetStringField(TEXT("to_bookmark"), Or.ToBookmark);
+			O->TryGetNumberField(TEXT("fps"), Or.Fps);
 			Or.Degrees = O->GetNumberField(TEXT("degrees"));
 			Or.Frames = O->GetIntegerField(TEXT("frames"));
 			Or.WarmupFrames = O->GetIntegerField(TEXT("warmup_frames"));
@@ -193,7 +205,14 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 	Terrain->GroundHeightAt(Wx, Wy, Wz);
 	const FVector Target = Terrain->WorldToUE(Wx, Wy, Wz);
 	const FRotator Rot(B.PitchDeg, B.YawDeg - 90.0, 0.0);  // compass -> UE yaw (X = east)
-	const FVector Loc = Target - Rot.Vector() * (B.DistanceM * 100.0);
+	FVector Loc = Target - Rot.Vector() * (B.DistanceM * 100.0);
+	// Never inside the ground (flyovers cross ridges): keep 3 m over the rendered surface.
+	const emberworld::Frame& F = Terrain->GetFrame();
+	double Gz = 0.0;
+	if (Terrain->GroundHeightAt(F.anchor_x + Loc.X / 100.0, F.anchor_y - Loc.Y / 100.0, Gz))
+	{
+		Loc.Z = FMath::Max(Loc.Z, Terrain->WorldToUE(0.0, 0.0, Gz + 3.0).Z);
+	}
 
 	if (!Camera)
 	{
@@ -297,8 +316,31 @@ bool AEmberHarness::PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutEr
 		OutError = TEXT("orbit ") + O.Name + TEXT(": unknown bookmark ") + O.Bookmark;
 		return false;
 	}
+	const double T = static_cast<double>(Frame) / FMath::Max(1, O.Frames - (O.ToBookmark.IsEmpty() ? 0 : 1));
 	FBookmark At = *B;
-	At.YawDeg = B->YawDeg + O.Degrees * (static_cast<double>(Frame) / FMath::Max(1, O.Frames));
+	if (O.ToBookmark.IsEmpty())
+	{
+		At.YawDeg = B->YawDeg + O.Degrees * T;
+	}
+	else
+	{
+		const FBookmark* E = Bookmarks.FindByPredicate([&](const FBookmark& X) { return X.Name == O.ToBookmark; });
+		if (!E || E->bFrac != B->bFrac)
+		{
+			OutError = TEXT("flyover ") + O.Name + TEXT(": bad to_bookmark ") + O.ToBookmark;
+			return false;
+		}
+		const double S = FMath::SmoothStep(0.0, 1.0, T);  // ease in/out
+		At.Target = FMath::Lerp(B->Target, E->Target, S);
+		At.DistanceM = FMath::Lerp(B->DistanceM, E->DistanceM, S);
+		At.YawDeg = B->YawDeg + FMath::FindDeltaAngleDegrees(B->YawDeg, E->YawDeg) * S;
+		At.PitchDeg = FMath::Lerp(B->PitchDeg, E->PitchDeg, S);
+		At.FovDeg = FMath::Lerp(B->FovDeg, E->FovDeg, S);
+	}
+	if (Vegetation)
+	{
+		Vegetation->SetWindTime(static_cast<double>(Frame) / FMath::Max(1, O.Fps));
+	}
 	return PlaceCamera(At, OutError);
 }
 
@@ -345,6 +387,20 @@ void AEmberHarness::Tick(float DeltaSeconds)
 				Finish(2, TEXT("vegetation: ") + Err);
 				return;
 			}
+			Vegetation->SetWind(WindStrength, WindFromDeg);
+			Vegetation->SetWindTime(0.0);
+			if (bVegLineup)
+			{
+				const FBookmark* B = Captures.Num() ? Bookmarks.FindByPredicate([&](const FBookmark& X) { return X.Name == Captures[0].Bookmark; }) : nullptr;
+				if (!B || !B->bFrac)
+				{
+					Finish(2, TEXT("veg_lineup needs a first capture with a target_frac bookmark"));
+					return;
+				}
+				const emberworld::Bounds E = Terrain->GetDataExtent();
+				// Row across the view: perpendicular to the camera's compass heading.
+				Vegetation->SpawnLineup(E.min_x + B->Target.X * E.width(), E.max_y - B->Target.Y * E.height(), B->YawDeg + 90.0);
+			}
 		}
 		for (const FString& Cmd : ExecCmds)
 		{
@@ -370,6 +426,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		{
 			Finish(2, Err);
 			return;
+		}
+		if (Vegetation)
+		{
+			Vegetation->SetWindTime(0.0);  // stills: frozen wind clock (pixel-deterministic goldens)
 		}
 		FramesLeft = FMath::Max(1, C.WarmupFrames);
 		State = EState::Warmup;
@@ -495,11 +555,21 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		{
 			FramesLeft = PerfFrames;
 			if (Facts) Facts->BeginPerfWindow();
+			for (const FString& Cmd : PerfExecCmds)
+			{
+				UE_LOG(LogEmberHarness, Display, TEXT("perf exec: %s"), *Cmd);
+				GEngine->Exec(GetWorld(), *Cmd);
+			}
 			State = EState::Perf;
 		}
 		return;
 
 	case EState::Perf:
+		if (Vegetation)
+		{
+			PerfWindTime += DeltaSeconds;  // perf measures the real sway cost
+			Vegetation->SetWindTime(PerfWindTime);
+		}
 		if (--FramesLeft <= 0)
 		{
 			if (Facts)

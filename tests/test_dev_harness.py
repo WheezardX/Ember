@@ -255,6 +255,67 @@ def test_orbit_validation():
     with pytest.raises(ValueError):
         RenderScenario.model_validate({**base, "orbits": [{"name": "o", "bookmark": "a",
                                                            "frames": 1}]})
+    fly = RenderScenario.model_validate(
+        {**base, "bookmarks": base["bookmarks"] + [{"name": "b", "target_frac": [0.6, 0.5],
+                                                     "distance_m": 10}],
+         "orbits": [{"name": "f", "bookmark": "a", "to_bookmark": "b"}]})
+    assert fly.orbits[0].to_bookmark == "b"
+    with pytest.raises(ValueError, match="unknown bookmark"):
+        RenderScenario.model_validate({**base, "orbits": [{"name": "f", "bookmark": "a",
+                                                           "to_bookmark": "zz"}]})
+
+
+def test_crown_ratio_matches_renderer():
+    """forest-report's crown-cover check must use the renderer's crown policy."""
+    import re
+
+    from ember.dev.forest import CONIFER_CROWN_RATIO
+    repo = Path(__file__).resolve().parents[1]
+    src = (repo / "unreal/Ember/Source/EmberWorld/Private/EmberVegetationActor.cpp").read_text()
+    m = re.search(r"constexpr double ConiferCrownRatio = ([0-9.]+);", src)
+    assert m and float(m.group(1)) == CONIFER_CROWN_RATIO
+
+
+def test_forest_report_synthetic(tmp_path: Path):
+    """Density vs the accept rule, species shares, crown cover and outside-mask counting."""
+    rasterio = pytest.importorskip("rasterio")
+    from rasterio.transform import from_origin
+
+    from ember.dev import forest
+
+    region = tmp_path / "store" / "reg"
+    (region / "veg").mkdir(parents=True)
+    (region / "fuels").mkdir()
+    (region / "canopy").mkdir()
+    tr = from_origin(0.0, 20.0, 10.0, 10.0)            # 2 x 2 cells of 10 m
+    cc = np.array([[50.0, 50.0], [0.0, -9999.0]], dtype=np.float32)
+    chm = np.full((2, 2), 30.0, dtype=np.float32)
+    for name, arr in (("fuels/cc.tif", cc), ("canopy/chm.tif", chm)):
+        with rasterio.open(region / name, "w", driver="GTiff", height=2, width=2, count=1,
+                           dtype="float32", crs="EPSG:32610", transform=tr, nodata=-9999.0) as w:
+            w.write(arr, 1)
+    species = "".join(f'[[groups.species]]\nkey = "{k}"\nweight = {w}\nheight_min_m = 1.0\n'
+                      f'height_max_m = 50.0\nradius_m = 1.0\n' for k, w in (("a", 3), ("b", 1)))
+    (region / "pal.toml").write_text(
+        'name = "t"\n[[groups]]\nname = "conifer_forest"\nevt_min = 0\nevt_max = 9\n' + species,
+        encoding="utf-8")
+    (region / "veg/scatter.input.json").write_text(json.dumps({   # Terrain writes backslashes
+        "palette": "pal.toml", "candidates_per_cell": 4, "cell_size_m": 10.0,
+        "rasters": {"cc": "fuels\\cc.tif", "height": "canopy\\chm.tif"}}), encoding="utf-8")
+    dt = [("x", "f8"), ("y", "f8"), ("z", "f4"), ("species", "u2"), ("height", "f4"),
+          ("yaw", "f4"), ("scale", "f4"), ("radius", "f4")]
+    rows = [(2, 18, 900, 0, 30, 0, 1, 1), (5, 15, 900, 0, 30, 0, 1, 1),   # cell (0,0): 2 trees
+            (12, 18, 900, 1, 30, 0, 1, 1), (15, 15, 900, 0, 30, 0, 1, 1),  # cell (0,1): 2 trees
+            (15, 5, 0, 0, 30, 0, 1, 1)]                                    # outside the DEM mask
+    np.save(region / "veg/instances.npy", np.array(rows, dtype=dt))
+    rep, _ = forest.report(region)
+    assert rep["instances"] == 5 and rep["outside_dem_mask"] == 1
+    b = rep["density_by_cc"]
+    assert len(b) == 1 and b[0]["trees_per_cell"] == 2.0 and b[0]["expected_trees_per_cell"] == 2.0
+    assert [s["share_of_group"] for s in rep["species"]] == [0.8, 0.2]
+    assert [s["expected_share"] for s in rep["species"]] == [0.75, 0.25]
+    # two 30 m conifers per 100 m2 cell: crown 0.23 x 30 = 6.9 m -> 1 - exp(-2 x 37.4 / 100)
+    assert b[0]["rendered_crown_cover_pct"] == pytest.approx(52.7, abs=0.2)
 
 
 def test_water_levels_reservoir_ring_and_river():
