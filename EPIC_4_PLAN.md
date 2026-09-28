@@ -274,6 +274,9 @@ Linux leg of the determinism matrix, which only runs in CI.
 - [ ] U4 (Epic 3, weather) — done as `ember weather --start/--hours`; consider making the
       refresh path accept a window too.
 - [ ] U5 (Epic 1, story 1.2) — structures layer (observer reports `-1` until it exists).
+- [ ] U6 (Epics 1–2, all ingest stages) — bounded-memory, chunked, resumable ingest; peak RAM
+      must not scale with incident size (Three Queens peaked 13.4 GB and was killed once).
+      Design: `docs/upstream/U6-bounded-memory-ingest.md` (filed from Epic 5, 2026-09-27).
 
 **Model-quality candidates noted, deliberately not tuned (would be fitting one fire)**
 - [ ] CP5: RH/T→moisture response too strong relative to wind for timber (model grows fastest
