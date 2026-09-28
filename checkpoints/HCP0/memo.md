@@ -1,6 +1,6 @@
 # HCP0 — The loop closes
 
-**Status:** awaiting Brad's sign-off (plan §5: no HCP auto-passes).
+**Status:** SIGNED OFF by Brad, 2026-09-27 (Q1: yes). See the resolution at the end.
 **Date:** 2026-09-27 · **Engine:** UE 5.8.3 (CL 58210709) · **Runner:** dev box, RTX 4080 SUPER
 **What you're judging:** the agent workflow itself. Do you trust the harness enough to review
 bundles like this instead of screens?
@@ -98,3 +98,16 @@ B2 terrain master material (slope/aspect/landcover/greenness blending from store
 LOD rings with skirts across LODs, C3 camera-driven streaming, orbit-MP4 capture mode (G1-lite),
 H1 budgets on every verdict (already on), the bigger bakes, then the HCP1 bundle: dawn/noon/dusk
 orbits, a bookmark sheet, side-by-side against Epic 1 hillshades, and a perf CSV.
+
+## Resolution (2026-09-27)
+
+1. **Gate:** Brad signed off; bundles replace screens.
+2. **Datasets:** Teanaway is not required. Brad wants to iterate on different fires to exercise
+   different data. Proposal sent: Jolly Mountain + BIG GRASS, with teanaway_dev kept as the fast
+   golden fixture.
+3. **Dark slot drainage:** checked against Google Maps satellite and a hillshade of the source
+   DEM. The AOI is Suncadia above Cle Elum/Roslyn (Skyline Ridge, Horizon Ridge Rd, Carry
+   Canyon, Deer Creek Rd). The slot is a real forested N-S draw about 6-9 m deep along
+   ~-120.925, not a DEM artifact. It reads as a dark "slot" because the afternoon sun (az 245°,
+   el 35°) shadows its east-facing wall, which then gets only blue skylight on flat gray clay.
+   This should resolve with real materials and vegetation in Phase 1; re-check at HCP1.
