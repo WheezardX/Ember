@@ -1,0 +1,233 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_tq_terrain",
+  "run_dir": "C:\\Projects\\Ember\\runs\\viz\\S_tq_terrain\\20260927-215253",
+  "evaluated_utc": "2026-09-28T04:59:54Z",
+  "pass": true,
+  "summary": {
+    "captures": 5,
+    "match": 0,
+    "new": 5,
+    "mismatch": 0,
+    "missing": 0,
+    "checks": 12,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "overview_s",
+      "bookmark": "overview_s",
+      "image": "captures\\overview_s.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "fire_oblique_w",
+      "bookmark": "fire_oblique_w",
+      "image": "captures\\fire_oblique_w.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "kachess_lake",
+      "bookmark": "kachess_lake",
+      "image": "captures\\kachess_lake.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "cooper_lake",
+      "bookmark": "cooper_lake",
+      "image": "captures\\cooper_lake.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "alpine_nw",
+      "bookmark": "alpine_nw",
+      "image": "captures\\alpine_nw.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    }
+  ],
+  "orbits": [
+    {
+      "name": "orbit_dawn",
+      "frames": 300,
+      "mp4": "orbits/orbit_dawn.mp4",
+      "error": ""
+    },
+    {
+      "name": "orbit_noon",
+      "frames": 300,
+      "mp4": "orbits/orbit_noon.mp4",
+      "error": ""
+    },
+    {
+      "name": "orbit_dusk",
+      "frames": 300,
+      "mp4": "orbits/orbit_dusk.mp4",
+      "error": ""
+    }
+  ],
+  "checks": [
+    {
+      "kind": "assert",
+      "name": "tiles.streaming",
+      "capture": "overview_s",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.look",
+      "capture": "overview_s",
+      "ok": true,
+      "actual": "terrain_default",
+      "expected": "== 'terrain_default'"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.streaming",
+      "capture": "fire_oblique_w",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.look",
+      "capture": "fire_oblique_w",
+      "ok": true,
+      "actual": "terrain_default",
+      "expected": "== 'terrain_default'"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.streaming",
+      "capture": "kachess_lake",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.look",
+      "capture": "kachess_lake",
+      "ok": true,
+      "actual": "terrain_default",
+      "expected": "== 'terrain_default'"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.streaming",
+      "capture": "cooper_lake",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.look",
+      "capture": "cooper_lake",
+      "ok": true,
+      "actual": "terrain_default",
+      "expected": "== 'terrain_default'"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.streaming",
+      "capture": "alpine_nw",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "tiles.look",
+      "capture": "alpine_nw",
+      "ok": true,
+      "actual": "terrain_default",
+      "expected": "== 'terrain_default'"
+    },
+    {
+      "kind": "budget",
+      "name": "perf__frame_ms_p95_max",
+      "capture": "perf",
+      "ok": true,
+      "actual": 10.074898719787598,
+      "expected": "<= 16.7"
+    },
+    {
+      "kind": "budget",
+      "name": "render__vram_mb_max",
+      "capture": "perf",
+      "ok": true,
+      "actual": 1347.87109375,
+      "expected": "<= 4096"
+    }
+  ],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_tq_terrain",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_tq_terrain.toml",
+    "world": "C:\\Projects\\Terrain\\store\\three_queens_2026",
+    "started": "20260927-215253",
+    "seconds": 399.8,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "f714b46+dirty",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_tq_terrain/20260927-215253/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_tq_terrain\\20260927-215253\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ],
+    "orbits": [
+      {
+        "name": "orbit_dawn",
+        "frames": 300,
+        "mp4": "orbits/orbit_dawn.mp4",
+        "error": ""
+      },
+      {
+        "name": "orbit_noon",
+        "frames": 300,
+        "mp4": "orbits/orbit_noon.mp4",
+        "error": ""
+      },
+      {
+        "name": "orbit_dusk",
+        "frames": 300,
+        "mp4": "orbits/orbit_dusk.mp4",
+        "error": ""
+      }
+    ]
+  }
+}

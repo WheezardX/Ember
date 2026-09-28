@@ -1,0 +1,19 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_terrain_look",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 41.902721703052521,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_terrain_look/20260927-220310/captures/overview_n.png",
+		"C:/Projects/Ember/runs/viz/S_terrain_look/20260927-220310/facts/overview_n.json",
+		"C:/Projects/Ember/runs/viz/S_terrain_look/20260927-220310/captures/oblique_nw.png",
+		"C:/Projects/Ember/runs/viz/S_terrain_look/20260927-220310/facts/oblique_nw.json",
+		"C:/Projects/Ember/runs/viz/S_terrain_look/20260927-220310/captures/low_morning.png",
+		"C:/Projects/Ember/runs/viz/S_terrain_look/20260927-220310/facts/low_morning.json",
+		"C:/Projects/Ember/runs/viz/S_terrain_look/20260927-220310/facts/orbit_orbit_oblique.json",
+		"C:/Projects/Ember/runs/viz/S_terrain_look/20260927-220310/frames/orbit_oblique",
+		"C:/Projects/Ember/runs/viz/S_terrain_look/20260927-220310/facts/perf.json"
+	]
+}

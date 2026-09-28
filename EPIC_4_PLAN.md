@@ -277,6 +277,10 @@ Linux leg of the determinism matrix, which only runs in CI.
 - [ ] U6 (Epics 1–2, all ingest stages) — bounded-memory, chunked, resumable ingest; peak RAM
       must not scale with incident size (Three Queens peaked 13.4 GB and was killed once).
       Design: `docs/upstream/U6-bounded-memory-ingest.md` (filed from Epic 5, 2026-09-27).
+- [ ] U7 (Epic 1, DEM finalize) — hydro-flatten water bodies: LiDAR drops water returns and void
+      fill stops at 5 px, so lakes are DEM nodata -> holes in every mesh. Three Queens: 23,856
+      interior nodata cells, 99.3 % FBFM40 water (Kachess hole 190 ha). Fill each water body
+      (FBFM40 98 / NHD) with its shoreline elevation (flat surface) before tiling. Found at HCP1.
 
 **Model-quality candidates noted, deliberately not tuned (would be fitting one fire)**
 - [ ] CP5: RH/T→moisture response too strong relative to wind for timber (model grows fastest

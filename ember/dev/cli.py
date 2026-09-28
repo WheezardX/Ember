@@ -235,6 +235,20 @@ def bundle(hcp: str, runs: list[str] = typer.Option(..., "--run",
     typer.secho(f"bundle {hcp}: {len(index)} runs -> {out}", fg=typer.colors.GREEN)
 
 
+@app.command("hillshade-compare")
+def hillshade_compare(name: str, capture: str = typer.Option("topdown", "--capture"),
+                      run: str = typer.Option(None, "--run")) -> None:
+    """Top-down render vs Terrain's derived hillshade, side by side (HCP1)."""
+    from ember.dev.hillshade import compare
+
+    sc = _sc(name)
+    run_dir = _resolve_run(name, run)
+    res = compare(run_dir, capture, sc.world_path / "derived" / "hillshade.cog.tif",
+                  run_dir / f"hillshade_compare_{capture}.png")
+    typer.secho(f"hillshade compare -> {res['out']}", fg=typer.colors.GREEN)
+    typer.echo(f"  footprint {res['footprint_m']} m, camera {res['camera_height_m']} m up")
+
+
 @app.command("regen-assets")
 def regen_assets(check: bool = typer.Option(False, "--check",
                                            help="Engine-free: is the lock current?")) -> None:

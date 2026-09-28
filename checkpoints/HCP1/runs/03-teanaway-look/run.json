@@ -1,0 +1,43 @@
+{
+  "format": "ember-viz-run",
+  "version": 1,
+  "scenario": "S_terrain_look",
+  "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_terrain_look.toml",
+  "world": "C:\\Projects\\Terrain\\store\\teanaway_dev",
+  "started": "20260927-220310",
+  "seconds": 51.9,
+  "process_exit_code": 0,
+  "exit_code": 0,
+  "error": "",
+  "git": "f714b46+dirty",
+  "engine": {
+    "pinned": "5.8.3",
+    "installed": "5.8.3"
+  },
+  "command": [
+    "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+    "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+    "-game",
+    "-RenderOffscreen",
+    "-unattended",
+    "-nosplash",
+    "-nosound",
+    "-NoLoadingScreen",
+    "-windowed",
+    "-ResX=2560",
+    "-ResY=1440",
+    "-EmberRun=C:/Projects/Ember/runs/viz/S_terrain_look/20260927-220310/plan.json",
+    "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_terrain_look\\20260927-220310\\log\\Ember.log",
+    "-log",
+    "-NoVerifyGC",
+    "-ExecCmds=DisableAllScreenMessages"
+  ],
+  "orbits": [
+    {
+      "name": "orbit_oblique",
+      "frames": 90,
+      "mp4": "orbits/orbit_oblique.mp4",
+      "error": ""
+    }
+  ]
+}

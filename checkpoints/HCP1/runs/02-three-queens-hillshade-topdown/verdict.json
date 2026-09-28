@@ -1,0 +1,66 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_tq_hillshade",
+  "run_dir": "C:\\Projects\\Ember\\runs\\viz\\S_tq_hillshade\\20260927-220047",
+  "evaluated_utc": "2026-09-28T05:02:39Z",
+  "pass": true,
+  "summary": {
+    "captures": 1,
+    "match": 0,
+    "new": 1,
+    "mismatch": 0,
+    "missing": 0,
+    "checks": 0,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "topdown",
+      "bookmark": "topdown",
+      "image": "captures\\topdown.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    }
+  ],
+  "orbits": [],
+  "checks": [],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_tq_hillshade",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_tq_hillshade.toml",
+    "world": "C:\\Projects\\Terrain\\store\\three_queens_2026",
+    "started": "20260927-220047",
+    "seconds": 34.6,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "f714b46+dirty",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_tq_hillshade/20260927-220047/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_tq_hillshade\\20260927-220047\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ],
+    "orbits": []
+  }
+}

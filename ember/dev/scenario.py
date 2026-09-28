@@ -92,6 +92,8 @@ class ScenarioMeta(_Strict):
     look: str = "viz/looks/terrain_default.toml"  # repo-relative look file, or "clay"
     vegetation: bool = False    # C4: instance the Terrain-conformant scatter near the camera
     veg_radius_m: float = 1500.0
+    exec_cmds: list[str] = Field(default_factory=list)  # console commands after world load
+    perf_bookmark: str | None = None  # camera pose for the perf window (default: last pose)
 
 
 class RenderScenario(_Strict):
@@ -120,6 +122,8 @@ class RenderScenario(_Strict):
                 raise ValueError(f"capture {c.name!r} references unknown bookmark {c.bookmark!r}")
             if c.t_s is not None and self.scenario.replay is None:
                 raise ValueError(f"capture {c.name!r} sets t_s but the scenario has no replay")
+        if self.scenario.perf_bookmark is not None and self.scenario.perf_bookmark not in names:
+            raise ValueError(f"perf_bookmark {self.scenario.perf_bookmark!r} is not a bookmark")
         for o in self.orbits:
             if o.bookmark not in names:
                 raise ValueError(f"orbit {o.name!r} references unknown bookmark {o.bookmark!r}")

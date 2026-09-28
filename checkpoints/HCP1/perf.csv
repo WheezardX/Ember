@@ -1,0 +1,4 @@
+scenario,region,resolution,frames,frame_ms_p50,frame_ms_p95,gpu_ms_avg,gpu_ms_p95,fps_avg,draw_calls_avg,primitives_avg,vram_mb,tiles_loaded,lod_histogram,tree_instances,budget_frame_ms_p95,budget_vram_mb,within_budget,run
+S_tq_terrain,three_queens_2026,2560x1440,300,2.65,10.07,3.37,3.51,266.5,454,13161041,1348,69,"{""13"": 27, ""14"": 36, ""12"": 6}",0,16.7,4096,True,runs/viz/S_tq_terrain\20260927-215253\
+S_terrain_look,teanaway_dev,2560x1440,120,2.76,3.2,2.44,2.58,359.2,77,190001,902,9,"{""14"": 9}",0,16.7,4096,True,runs/viz/S_terrain_look\20260927-220310\
+S_forest_teanaway,teanaway_dev,2560x1440,180,5.35,6.68,4.97,5.47,140.3,271,285647,954,9,"{""14"": 9}",74595,16.7,4096,True,runs/viz/S_forest_teanaway\20260927-195124\

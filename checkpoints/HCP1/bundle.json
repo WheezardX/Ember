@@ -1,0 +1,56 @@
+{
+  "hcp": "HCP1",
+  "runs": [
+    {
+      "label": "three-queens-terrain",
+      "dir": "01-three-queens-terrain",
+      "source": "runs\\viz\\S_tq_terrain\\20260927-215253",
+      "pass": true,
+      "summary": {
+        "captures": 5,
+        "match": 0,
+        "new": 5,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 12,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "three-queens-hillshade-topdown",
+      "dir": "02-three-queens-hillshade-topdown",
+      "source": "runs\\viz\\S_tq_hillshade\\20260927-220047",
+      "pass": true,
+      "summary": {
+        "captures": 1,
+        "match": 0,
+        "new": 1,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 0,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "teanaway-look",
+      "dir": "03-teanaway-look",
+      "source": "runs\\viz\\S_terrain_look\\20260927-220310",
+      "pass": true,
+      "summary": {
+        "captures": 3,
+        "match": 3,
+        "new": 0,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 11,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    }
+  ]
+}

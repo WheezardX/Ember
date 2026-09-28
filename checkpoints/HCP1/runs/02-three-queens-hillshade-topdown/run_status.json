@@ -1,0 +1,12 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_tq_hillshade",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 12.785554297268391,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_tq_hillshade/20260927-220047/captures/topdown.png",
+		"C:/Projects/Ember/runs/viz/S_tq_hillshade/20260927-220047/facts/topdown.json"
+	]
+}

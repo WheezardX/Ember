@@ -1,0 +1,30 @@
+# HCP1 side-by-side vs Terrain's own hillshade (derived/hillshade.cog.tif, gdaldem defaults:
+# light from azimuth 315, altitude 45). Near-orthographic top-down (88 km up, 20-degree FOV:
+# relief/altitude parallax < 2%), clay material, same sun, fog + atmosphere off, finest LOD
+# everywhere. `ember-dev hillshade-compare S_tq_hillshade` builds the comparison image.
+render_scenario_version = 1
+
+[scenario]
+name = "S_tq_hillshade"
+description = "HCP1: top-down clay render lit like gdaldem's hillshade, for a side-by-side with Terrain's"
+world = "terrain:three_queens_2026"
+resolution = [2560, 1440]
+budget = "batch"
+fixed_lod = 14
+look = "clay"
+exposure_bias = -2.0
+exec_cmds = ["ShowFlag.Fog 0", "ShowFlag.Atmosphere 0"]
+
+[[bookmarks]]
+name = "topdown"
+target_frac = [0.5, 0.5]
+distance_m = 88000
+yaw_deg = 0               # image up = north
+pitch_deg = -89.9
+fov_deg = 20
+sun = "315,45"
+
+[[captures]]
+name = "topdown"
+bookmark = "topdown"
+warmup_frames = 60

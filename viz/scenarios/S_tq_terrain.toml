@@ -1,0 +1,145 @@
+# HCP1 "Terrain reads true" — Three Queens 2026 (Kittitas County, WA), 10 m, 16.8 x 18.3 km.
+# Terrain only (HCP1 judges materials, lighting, scale; trees are HCP2). Streaming LODs + the
+# default look. Bookmarks aim at real features (Kachess Lake, Cooper Lake, the NW alpine high
+# point, the fire's centroid). Orbits: dawn / noon / dusk around the fire.
+render_scenario_version = 1
+
+[scenario]
+name = "S_tq_terrain"
+description = "HCP1: Three Queens terrain, default look, streaming LODs, 5 bookmarks + dawn/noon/dusk orbits"
+world = "terrain:three_queens_2026"
+resolution = [2560, 1440]
+budget = "interactive"
+perf_frames = 300
+perf_bookmark = "fire_oblique_w"
+look = "viz/looks/terrain_default.toml"
+lod_refine_factor = 1.5
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "overview_s"            # the whole AOI from the south
+target_frac = [0.507, 0.488]
+distance_m = 16000
+yaw_deg = 0
+pitch_deg = -38
+fov_deg = 55
+sun = "noon"
+
+[[bookmarks]]
+name = "fire_oblique_w"        # the burn area from the west, afternoon
+target_frac = [0.507, 0.488]
+distance_m = 6500
+yaw_deg = 90
+pitch_deg = -24
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "kachess_lake"          # Kachess Lake (595 ha) looking NNW up the valley
+target_frac = [0.372, 0.792]
+distance_m = 4500
+yaw_deg = 335
+pitch_deg = -18
+fov_deg = 55
+sun = "morning"
+
+[[bookmarks]]
+name = "cooper_lake"           # Cooper Lake and the ridge above it
+target_frac = [0.628, 0.335]
+distance_m = 2800
+yaw_deg = 300
+pitch_deg = -16
+fov_deg = 60
+sun = "morning"
+
+[[bookmarks]]
+name = "alpine_nw"             # the NW alpine terrain (AOI high point 2,126 m)
+target_frac = [0.12, 0.08]
+distance_m = 4000
+yaw_deg = 315
+pitch_deg = -14
+fov_deg = 55
+sun = "dusk"
+
+[[bookmarks]]
+name = "orbit_dawn"
+target_frac = [0.507, 0.488]
+distance_m = 11000
+yaw_deg = 0
+pitch_deg = -28
+fov_deg = 55
+sun = "dawn"
+
+[[bookmarks]]
+name = "orbit_noon"
+target_frac = [0.507, 0.488]
+distance_m = 11000
+yaw_deg = 0
+pitch_deg = -28
+fov_deg = 55
+sun = "noon"
+
+[[bookmarks]]
+name = "orbit_dusk"
+target_frac = [0.507, 0.488]
+distance_m = 11000
+yaw_deg = 0
+pitch_deg = -28
+fov_deg = 55
+sun = "dusk"
+
+[[captures]]
+name = "overview_s"
+bookmark = "overview_s"
+warmup_frames = 45
+
+[[captures]]
+name = "fire_oblique_w"
+bookmark = "fire_oblique_w"
+warmup_frames = 45
+
+[[captures]]
+name = "kachess_lake"
+bookmark = "kachess_lake"
+warmup_frames = 45
+
+[[captures]]
+name = "cooper_lake"
+bookmark = "cooper_lake"
+warmup_frames = 45
+
+[[captures]]
+name = "alpine_nw"
+bookmark = "alpine_nw"
+warmup_frames = 45
+
+[[orbits]]
+name = "orbit_dawn"
+bookmark = "orbit_dawn"
+degrees = 360
+frames = 300
+fps = 30
+
+[[orbits]]
+name = "orbit_noon"
+bookmark = "orbit_noon"
+degrees = 360
+frames = 300
+fps = 30
+
+[[orbits]]
+name = "orbit_dusk"
+bookmark = "orbit_dusk"
+degrees = 360
+frames = 300
+fps = 30
+
+[[assert]]
+fact = "tiles.streaming"
+op = "=="
+value = true
+
+[[assert]]
+fact = "tiles.look"
+op = "=="
+value = "terrain_default"
