@@ -1,0 +1,20 @@
+[doctest] doctest version is "2.4.11"
+[doctest] run with "--help" for options
+===============================================================================
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(264):
+TEST CASE:  scatter: teanaway_dev per-tile scatter == Terrain's instances.npy, exactly
+
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(239): MESSAGE: teanaway_dev: 24814 C++ instances vs 24814 Terrain
+
+===============================================================================
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(268):
+TEST CASE:  scatter: three_queens_2026 per-tile scatter == Terrain's instances.npy, exactly
+
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(239): MESSAGE: three_queens_2026: 5856630 C++ instances vs 5856630 Terrain
+
+===============================================================================
+[doctest] test cases:    7 |    7 passed | 0 failed | 21 skipped
+[doctest] assertions: 1776 | 1776 passed | 0 failed |
+[doctest] Status: SUCCESS!
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(239): MESSAGE: teanaway_dev: 24814 C++ instances vs 24814 Terrain
+C:\Projects\Ember\worldcore\tests\scatter_test.cpp(239): MESSAGE: three_queens_2026: 5856630 C++ instances vs 5856630 Terrain
