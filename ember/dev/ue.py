@@ -280,6 +280,11 @@ def encode_orbits(sc: LoadedScenario, run_dir: Path, keep_frames: bool = False) 
                                 str(mp4)], capture_output=True, text=True)
             if p.returncode == 0 and mp4.exists():
                 entry["mp4"] = str(mp4.relative_to(run_dir)).replace("\\", "/")
+                cam = frames / "camera.csv"   # the harness's per-frame camera path
+                if cam.exists():
+                    shutil.copyfile(cam, mp4.with_suffix(".camera.csv"))
+                    entry["camera_csv"] = str(mp4.with_suffix(".camera.csv").relative_to(
+                        run_dir)).replace("\\", "/")
                 if not keep_frames:
                     shutil.rmtree(frames, ignore_errors=True)
             else:

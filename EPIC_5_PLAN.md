@@ -285,6 +285,13 @@ Two-track note for agent teams: B (assets) and C (streaming) parallelize after H
   (draft 2026-09-28; tree source / variation strategy is OPEN: more generated variants, modular
   crown sections (Brad's suggestion, not a decision), or SpeedTree / library trees via B4).
 
+## 8d. HCP2 signed off (Brad, 2026-09-28, round 2)
+
+"The wind sway looks excellent. The forest looks really good now ... I think we're good for trees
+for now. We'll come back to the variation issue another time." Flyover vertical jitter fixed
+(smoothed altitude). Next direction: the ground plane - better terrain texturing plus ground
+cover (low vegetation, rocks, duff); it will need its own line in the budget.
+
 ## 9. Notes for later epics
 
 - **Epic 6:** C1 readers, F3 shell, camera rigs, and the state player are its foundation; the command-issuing UI plugs into Epic 4's suppression schema on top of this scene. National cartographic view is new work there, not a HCP5 overlay retrofit.

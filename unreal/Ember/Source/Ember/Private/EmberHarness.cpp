@@ -188,23 +188,17 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 		OutError = TEXT("no region loaded");
 		return false;
 	}
-	// Bookmarks address the valid data (the AOI), not the tile grid's padded extent.
-	const emberworld::Bounds E = Terrain->GetDataExtent();
 	double Wx, Wy;
-	if (B.bFrac)
+	BookmarkTargetXY(B, Wx, Wy);
+	double Wz = R->heightmap.z_min;
+	if (B.TargetZ > TNumericLimits<double>::Lowest())
 	{
-		Wx = E.min_x + B.Target.X * E.width();
-		Wy = E.max_y - B.Target.Y * E.height();
+		Wz = B.TargetZ;
 	}
 	else
 	{
-		// Cells are finest-LOD pixels, x east / y south from the data extent's NW corner.
-		const double Px = R->tiles_at(R->finest_lod())[0]->content.width() / R->tile_px;
-		Wx = E.min_x + (B.Target.X + 0.5) * Px;
-		Wy = E.max_y - (B.Target.Y + 0.5) * Px;
+		Terrain->GroundHeightAt(Wx, Wy, Wz);
 	}
-	double Wz = R->heightmap.z_min;
-	Terrain->GroundHeightAt(Wx, Wy, Wz);
 	const FVector Target = Terrain->WorldToUE(Wx, Wy, Wz);
 	const FRotator Rot(B.PitchDeg, B.YawDeg - 90.0, 0.0);  // compass -> UE yaw (X = east)
 	FVector Loc = Target - Rot.Vector() * (B.DistanceM * 100.0);
@@ -310,7 +304,112 @@ void AEmberHarness::NextPhase()
 	}
 }
 
+void AEmberHarness::BookmarkTargetXY(const FBookmark& B, double& Wx, double& Wy) const
+{
+	// Bookmarks address the valid data (the AOI), not the tile grid's padded extent.
+	const emberworld::Region* R = Terrain->GetRegion();
+	const emberworld::Bounds E = Terrain->GetDataExtent();
+	if (B.bFrac)
+	{
+		Wx = E.min_x + B.Target.X * E.width();
+		Wy = E.max_y - B.Target.Y * E.height();
+	}
+	else
+	{
+		// Cells are finest-LOD pixels, x east / y south from the data extent's NW corner.
+		const double Px = R->tiles_at(R->finest_lod())[0]->content.width() / R->tile_px;
+		Wx = E.min_x + (B.Target.X + 0.5) * Px;
+		Wy = E.max_y - (B.Target.Y + 0.5) * Px;
+	}
+}
+
+void AEmberHarness::PrepareFlyoverHeights(const FOrbit& O)
+{
+	FlyZ.Reset();
+	if (O.ToBookmark.IsEmpty() || !Terrain || !Terrain->GetRegion())
+	{
+		return;
+	}
+	// Ground under the aim point and under the camera, every frame (read from the region's tiles
+	// on disk, independent of what is streamed).
+	const int32 N = FMath::Max(2, O.Frames);
+	TArray<double> Aim, Need;
+	Aim.SetNum(N);
+	Need.SetNum(N);
+	const double Floor = Terrain->GetRegion()->heightmap.z_min;
+	for (int32 F = 0; F < N; ++F)
+	{
+		FBookmark P;
+		FString Err;
+		if (!OrbitPose(O, F, P, Err))
+		{
+			FlyZ.Reset();
+			return;
+		}
+		double Wx, Wy, Gt = Floor, Gc = Floor;
+		BookmarkTargetXY(P, Wx, Wy);
+		Terrain->GroundHeightAt(Wx, Wy, Gt);
+		const double Pitch = FMath::DegreesToRadians(P.PitchDeg);
+		const double Back = P.DistanceM * FMath::Cos(Pitch);
+		const double Yaw = FMath::DegreesToRadians(P.YawDeg);
+		Terrain->GroundHeightAt(Wx - Back * FMath::Sin(Yaw), Wy - Back * FMath::Cos(Yaw), Gc);
+		Aim[F] = Gt;
+		// Aim height that keeps the camera 30 m over the ground beneath it.
+		Need[F] = Gc + 30.0 + P.DistanceM * FMath::Sin(Pitch);
+	}
+	// Moving average of the aim ground (+-3 s), raised to the moving max of the clearance need,
+	// then smoothed again: slow, continuous altitude changes only.
+	const int32 W = FMath::Clamp(O.Fps * 3, 5, N / 2);
+	auto Window = [&](const TArray<double>& In, bool bMax)
+	{
+		TArray<double> Out;
+		Out.SetNum(N);
+		for (int32 F = 0; F < N; ++F)
+		{
+			double Acc = bMax ? TNumericLimits<double>::Lowest() : 0.0;
+			int32 Count = 0;
+			// Full window everywhere, ends padded with the end values: a window truncated at the
+			// path's start moves at half speed, and the climb rate doubled when it began to slide.
+			for (int32 K = F - W; K <= F + W; ++K)
+			{
+				const double V = In[FMath::Clamp(K, 0, N - 1)];
+				Acc = bMax ? FMath::Max(Acc, V) : Acc + V;
+				++Count;
+			}
+			Out[F] = bMax ? Acc : Acc / Count;
+		}
+		return Out;
+	};
+	const TArray<double> Smooth = Window(Aim, false);
+	const TArray<double> Clear = Window(Need, true);
+	TArray<double> Base;
+	Base.SetNum(N);
+	for (int32 F = 0; F < N; ++F)
+	{
+		Base[F] = FMath::Max(Smooth[F], Clear[F]);
+	}
+	FlyZ = Window(Window(Window(Base, true), false), false);  // box x box: no kinks in the climb rate
+}
+
 bool AEmberHarness::PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutError)
+{
+	FBookmark At;
+	if (!OrbitPose(O, Frame, At, OutError))
+	{
+		return false;
+	}
+	if (FlyZ.IsValidIndex(Frame))
+	{
+		At.TargetZ = FlyZ[Frame];
+	}
+	if (Vegetation)
+	{
+		Vegetation->SetWindTime(static_cast<double>(Frame) / FMath::Max(1, O.Fps));
+	}
+	return PlaceCamera(At, OutError);
+}
+
+bool AEmberHarness::OrbitPose(const FOrbit& O, int32 Frame, FBookmark& At, FString& OutError) const
 {
 	const FBookmark* B = Bookmarks.FindByPredicate([&](const FBookmark& X) { return X.Name == O.Bookmark; });
 	if (!B)
@@ -319,7 +418,7 @@ bool AEmberHarness::PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutEr
 		return false;
 	}
 	const double T = static_cast<double>(Frame) / FMath::Max(1, O.Frames - (O.ToBookmark.IsEmpty() ? 0 : 1));
-	FBookmark At = *B;
+	At = *B;
 	if (O.ToBookmark.IsEmpty())
 	{
 		At.YawDeg = B->YawDeg + O.Degrees * T;
@@ -339,11 +438,7 @@ bool AEmberHarness::PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutEr
 		At.PitchDeg = FMath::Lerp(B->PitchDeg, E->PitchDeg, S);
 		At.FovDeg = FMath::Lerp(B->FovDeg, E->FovDeg, S);
 	}
-	if (Vegetation)
-	{
-		Vegetation->SetWindTime(static_cast<double>(Frame) / FMath::Max(1, O.Fps));
-	}
-	return PlaceCamera(At, OutError);
+	return true;
 }
 
 void AEmberHarness::Tick(float DeltaSeconds)
@@ -489,6 +584,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 	{
 		const FOrbit& O = Orbits[OrbitIndex];
 		OrbitFrame = 0;
+		PrepareFlyoverHeights(O);
 		if (!PlaceOrbitFrame(O, 0, Err))
 		{
 			Finish(2, Err);
@@ -536,6 +632,11 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			Finish(2, TEXT("failed to write ") + Png);
 			return;
 		}
+		if (Camera)
+		{
+			const FVector L = Camera->GetActorLocation();
+			OrbitPath += FString::Printf(TEXT("%d,%.1f,%.1f,%.1f\n"), OrbitFrame, L.X, L.Y, L.Z);
+		}
 		if (++OrbitFrame < O.Frames)
 		{
 			// Move now; the next tick requests the frame rendered from the new pose.
@@ -547,6 +648,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			State = EState::OrbitShoot;
 			return;
 		}
+		// Camera path (UE cm) per frame: review / smoothness checks.
+		FFileHelper::SaveStringToFile(TEXT("frame,x_cm,y_cm,z_cm\n") + OrbitPath,
+			*(OutDir / TEXT("frames") / O.Name / TEXT("camera.csv")));
+		OrbitPath.Reset();
 		UE_LOG(LogEmberHarness, Display, TEXT("Orbit %s: %d frames"), *O.Name, O.Frames);
 		Written.Add(OutDir / TEXT("frames") / O.Name);
 		++OrbitIndex;

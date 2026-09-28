@@ -149,5 +149,9 @@ to_bookmark = "fly_b"
 frames = 450
 ```
 
-The harness keeps every camera 3 m above the rendered surface (flyovers cross ridges).
+The harness keeps every camera 3 m above the rendered surface. Flyovers fly a smoothed altitude:
+the ground under the aim point and under the camera is sampled for every frame, averaged over
++-3 s (raised where needed to keep 30 m of clearance) and smoothed twice, so the camera holds
+height like a drone instead of tracing the 10 m ground (HCP2: "jittery in the vertical").
+Each orbit writes its per-frame camera path next to the MP4 (`orbits/<name>.camera.csv`).
 `perf.json` carries `frame_ms_series`, `game_ms_series` and `gpu_ms_series` for the window.

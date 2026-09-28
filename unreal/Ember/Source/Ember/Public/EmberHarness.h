@@ -37,6 +37,7 @@ private:
 		FVector2D Target = FVector2D(0.5, 0.5);
 		double DistanceM = 1000, YawDeg = 0, PitchDeg = -30, FovDeg = 60;
 		FString Sun = TEXT("noon");
+		double TargetZ = TNumericLimits<double>::Lowest();  // > Lowest: aim height override (m)
 	};
 	struct FOrbit
 	{
@@ -62,6 +63,14 @@ private:
 	void Finish(int32 ExitCode, const FString& Error);
 	void NextPhase();                                  // captures -> orbits -> perf -> finish
 	bool PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutError);
+	/** The pose of an orbit/flyover frame (before any height override). */
+	bool OrbitPose(const FOrbit& O, int32 Frame, FBookmark& Out, FString& OutError) const;
+	void BookmarkTargetXY(const FBookmark& B, double& Wx, double& Wy) const;
+	/** Flyovers: a smooth aim height per frame so the camera holds altitude like a drone instead
+	 * of tracing every 10 m bump of the ground under the aim point. */
+	void PrepareFlyoverHeights(const FOrbit& O);
+	TArray<double> FlyZ;
+	FString OrbitPath;  // camera.csv rows for the orbit being captured
 
 	// plan
 	FString Scenario, WorldDir, OutDir;
