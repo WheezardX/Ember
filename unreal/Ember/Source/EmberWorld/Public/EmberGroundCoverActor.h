@@ -41,6 +41,7 @@ private:
 	{
 		TArray<TObjectPtr<UInstancedStaticMeshComponent>> Components;
 		bool bPending = false;  // some ground was not loaded yet: rebuild on a later update
+		int32 Attempts = 0;     // pending rebuilds tried (capped: a cell may never get the finest LOD)
 		int64 Count = 0;
 	};
 

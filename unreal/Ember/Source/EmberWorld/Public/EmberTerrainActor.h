@@ -47,7 +47,7 @@ public:
 	 * Ground-plane weights {litter, grass, rock, shrub} at a world point (region CRS metres), from
 	 * the finest loaded tile's composed ground mix (look [ground]). False where no tile covers it.
 	 */
-	bool GroundMixAt(double WorldX, double WorldY, float OutW[4]) const;
+	bool GroundMixAt(double WorldX, double WorldY, float OutW[4], int32* OutLod = nullptr) const;
 
 	/** Region-CRS metres -> UE world location. */
 	FVector WorldToUE(double X, double Y, double Z) const;

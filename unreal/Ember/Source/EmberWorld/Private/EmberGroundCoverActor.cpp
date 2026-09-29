@@ -85,20 +85,29 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 {
 	ClearCell(Cell);
 	const double X0 = Key.X * CellM, Y0 = Key.Y * CellM;
+	// A cell is final only when every sample came from the finest LOD: a coarse tile's mix (all
+	// that may be loaded when the camera arrives) differs, and placement must not depend on
+	// streaming timing (the goldens caught a shrub that moved between runs).
 	bool bMissing = false;
+	const int32 Finest = Terrain->GetRegion() ? Terrain->GetRegion()->finest_lod() : 0;
 	std::vector<emberworld::CoverInstance> Out;
 	emberworld::scatter_cover(Rules, X0, Y0, X0 + CellM, Y0 + CellM,
 		[&](double X, double Y, std::array<float, 4>& W) {
 			float M[4];
-			if (!Terrain->GroundMixAt(X, Y, M))
+			int32 Lod = -1;
+			if (!Terrain->GroundMixAt(X, Y, M, &Lod))
 			{
 				bMissing = true;
 				return false;
 			}
+			if (Lod < Finest)
+			{
+				bMissing = true;
+			}
 			W = {M[0], M[1], M[2], M[3]};
 			return true;
 		}, Out);
-	Cell.bPending = bMissing;
+	Cell.bPending = bMissing && ++Cell.Attempts < 120;
 	TArray<TArray<FTransform>> PerMesh;
 	PerMesh.SetNum(Meshes.Num());
 	for (const emberworld::CoverInstance& In : Out)

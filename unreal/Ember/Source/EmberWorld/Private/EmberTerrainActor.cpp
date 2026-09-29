@@ -462,7 +462,7 @@ void AEmberTerrainActor::Tick(float DeltaSeconds)
 	}
 }
 
-bool AEmberTerrainActor::GroundMixAt(double WorldX, double WorldY, float OutW[4]) const
+bool AEmberTerrainActor::GroundMixAt(double WorldX, double WorldY, float OutW[4], int32* OutLod) const
 {
 	const FTileMix* Best = nullptr;
 	for (const TPair<uint64, FTileMix>& P : TileMixes)
@@ -483,6 +483,10 @@ bool AEmberTerrainActor::GroundMixAt(double WorldX, double WorldY, float OutW[4]
 	}
 	const int32 X = FMath::Clamp(static_cast<int32>((WorldX - Best->MinX) / Best->Width * Best->W), 0, Best->W - 1);
 	const int32 Y = FMath::Clamp(static_cast<int32>((Best->MaxY - WorldY) / Best->Height * Best->H), 0, Best->H - 1);
+	if (OutLod)
+	{
+		*OutLod = Best->Lod;
+	}
 	const uint8* Px = &Best->Rgba[(static_cast<int64>(Y) * Best->W + X) * 4];
 	for (int32 C = 0; C < 4; ++C)
 	{
