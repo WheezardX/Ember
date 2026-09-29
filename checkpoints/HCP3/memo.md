@@ -14,10 +14,11 @@ state stream.
 | `stills/jolly_map_d35.jpg` | Final footprint straight down (compare with the 2D map) |
 | `stills/jolly_run_mid_d19.jpg`, `jolly_run_close_d19.jpg` | The day-19 run at its peak hour (9,718 cells burning), mid distance and in the trees |
 | `orbits/jolly_run_d19_720p.mp4` | 6 hours of the day-19 run in 10 s (weak shot, see below) |
+| `stills/jolly_ground_*.jpg`, `jolly_ridge_lookout_d19.jpg`, `jolly_scar_morning_d20.jpg` | Added after your first look: ground level behind and ahead of the day-19 head, a ridge lookout 2 km off, and standing in the scar the next day. A baseline, not a result: they show what HCP4 and the ground plane have to fix |
 
 ## Pass criteria (EPIC_5_PLAN §4)
 
-* **Front position matches the state stream (probe-verified): PASS.** `S_jolly_fire` asserts 51
+* **Front position matches the state stream (probe-verified): PASS.** `S_jolly_fire` asserts 71
   checks (`jolly_verdict.json`), all passing. At every capture the renderer's burned and burning
   cell counts equal counts computed independently from the `.ess` stream with Epic 4's own
   reader (e.g. day 19: 44,602 burned, 9,718 burning; day 35: 166,647), and five probe points
@@ -56,8 +57,13 @@ state stream.
 3. **Wind is a scenario constant** (from the west). The arrival-playback replay carries no wind
    field; plume-vs-HUD wind agreement is an HCP4 criterion.
 4. **Scene exposure is still dark** (the -2 EV decision from HCP2 is open).
-5. **Capture is slow**: ~0.6-0.85 s per frame, though the GPU needs ~7 ms. Synchronous PNG
-   per frame; piping frames to ffmpeg (G1) should cut a 13-minute run to 2-3 minutes.
+5. **At ground level it falls apart** (the added stills): burning crowns read as orange paint or
+   autumn larch, not flame; the char ground shows a marbled noise pattern; crown-fire stands the
+   next morning keep full dark crowns instead of standing as black snags; ash ground is flat
+   grey. HCP4 (intensity classes, real flames, embers) plus the ground plane (duff, rocks, ground
+   cover) own this.
+6. ~~Capture is slow~~ **Fixed after bundling (ecda34d):** orbit frames stream to the GPU video
+   encoder (NVENC) instead of a PNG each; the full Jolly scenario went from 13 min to 3 min.
 
 ## Perf / memory
 

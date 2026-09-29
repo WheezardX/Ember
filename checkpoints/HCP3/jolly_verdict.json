@@ -2,16 +2,16 @@
   "format": "ember-viz-verdict",
   "version": 1,
   "scenario": "S_jolly_fire",
-  "run_dir": "C:\\Projects\\Ember\\runs\\viz\\S_jolly_fire\\20260928-174353",
-  "evaluated_utc": "2026-09-29T00:57:06Z",
+  "run_dir": "C:\\Projects\\Ember\\runs\\viz\\S_jolly_fire\\20260928-194823",
+  "evaluated_utc": "2026-09-29T02:51:25Z",
   "pass": true,
   "summary": {
-    "captures": 8,
-    "match": 0,
-    "new": 8,
+    "captures": 12,
+    "match": 8,
+    "new": 4,
     "mismatch": 0,
     "missing": 0,
-    "checks": 51,
+    "checks": 71,
     "checks_failed": 0,
     "run_exit_code": 0
   },
@@ -20,62 +20,214 @@
       "name": "d06",
       "bookmark": "overview",
       "image": "captures\\d06.png",
-      "golden": null,
-      "diff": null,
-      "status": "new"
+      "golden": "viz\\goldens\\S_jolly_fire\\d06.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\d06.png"
     },
     {
       "name": "d13",
       "bookmark": "overview",
       "image": "captures\\d13.png",
-      "golden": null,
-      "diff": null,
-      "status": "new"
+      "golden": "viz\\goldens\\S_jolly_fire\\d13.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\d13.png"
     },
     {
       "name": "d19",
       "bookmark": "overview",
       "image": "captures\\d19.png",
-      "golden": null,
-      "diff": null,
-      "status": "new"
+      "golden": "viz\\goldens\\S_jolly_fire\\d19.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\d19.png"
     },
     {
       "name": "d25",
       "bookmark": "overview",
       "image": "captures\\d25.png",
-      "golden": null,
-      "diff": null,
-      "status": "new"
+      "golden": "viz\\goldens\\S_jolly_fire\\d25.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\d25.png"
     },
     {
       "name": "d35",
       "bookmark": "overview",
       "image": "captures\\d35.png",
-      "golden": null,
-      "diff": null,
-      "status": "new"
+      "golden": "viz\\goldens\\S_jolly_fire\\d35.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\d35.png"
     },
     {
       "name": "map_d35",
       "bookmark": "map",
       "image": "captures\\map_d35.png",
-      "golden": null,
-      "diff": null,
-      "status": "new"
+      "golden": "viz\\goldens\\S_jolly_fire\\map_d35.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 1.0,
+        "region_ssim_min": 1.0,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.0,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\map_d35.png"
     },
     {
       "name": "run_mid_d19",
       "bookmark": "run_mid",
       "image": "captures\\run_mid_d19.png",
-      "golden": null,
-      "diff": null,
-      "status": "new"
+      "golden": "viz\\goldens\\S_jolly_fire\\run_mid_d19.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 0.999873586342455,
+        "region_ssim_min": 0.9996812828050715,
+        "worst_region": [
+          0,
+          2
+        ],
+        "mean_abs_luma": 0.016030797526041668,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\run_mid_d19.png"
     },
     {
       "name": "run_close_d19",
       "bookmark": "run_close",
       "image": "captures\\run_close_d19.png",
+      "golden": "viz\\goldens\\S_jolly_fire\\run_close_d19.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 0.9999172799913973,
+        "region_ssim_min": 0.9993552860722069,
+        "worst_region": [
+          0,
+          3
+        ],
+        "mean_abs_luma": 0.016486143663194442,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\run_close_d19.png"
+    },
+    {
+      "name": "ground_behind_d19",
+      "bookmark": "ground_behind",
+      "image": "captures\\ground_behind_d19.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "ground_ahead_d19",
+      "bookmark": "ground_ahead",
+      "image": "captures\\ground_ahead_d19.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "ridge_lookout_d19",
+      "bookmark": "ridge_lookout",
+      "image": "captures\\ridge_lookout_d19.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "scar_morning_d20",
+      "bookmark": "scar_morning",
+      "image": "captures\\scar_morning_d20.png",
       "golden": null,
       "diff": null,
       "status": "new"
@@ -87,6 +239,7 @@
       "frames": 600,
       "mp4": "orbits/timelapse.mp4",
       "error": "",
+      "encoded_by": "harness",
       "camera_csv": "orbits/timelapse.camera.csv"
     },
     {
@@ -94,6 +247,7 @@
       "frames": 300,
       "mp4": "orbits/run_d19.mp4",
       "error": "",
+      "encoded_by": "harness",
       "camera_csv": "orbits/run_d19.camera.csv"
     },
     {
@@ -101,6 +255,7 @@
       "frames": 141,
       "mp4": "orbits/map_timelapse.mp4",
       "error": "",
+      "encoded_by": "harness",
       "camera_csv": "orbits/map_timelapse.camera.csv"
     }
   ],
@@ -512,6 +667,166 @@
       "ok": true,
       "actual": 0,
       "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "ground_behind_d19",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "ground_behind_d19",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "ground_behind_d19",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "ground_behind_d19",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "ground_behind_d19",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "ground_ahead_d19",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "ground_ahead_d19",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "ground_ahead_d19",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "ground_ahead_d19",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "ground_ahead_d19",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "ridge_lookout_d19",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "ridge_lookout_d19",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "ridge_lookout_d19",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "ridge_lookout_d19",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "ridge_lookout_d19",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "scar_morning_d20",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "scar_morning_d20",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "scar_morning_d20",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "scar_morning_d20",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "scar_morning_d20",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
     }
   ],
   "run": {
@@ -520,12 +835,12 @@
     "scenario": "S_jolly_fire",
     "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_jolly_fire.toml",
     "world": "C:\\Projects\\Terrain\\store\\jolly_mountain_2017",
-    "started": "20260928-174353",
-    "seconds": 773.6,
+    "started": "20260928-194823",
+    "seconds": 179.2,
     "process_exit_code": 0,
     "exit_code": 0,
     "error": "",
-    "git": "3101bfe",
+    "git": "af1284b+dirty",
     "engine": {
       "pinned": "5.8.3",
       "installed": "5.8.3"
@@ -542,8 +857,8 @@
       "-windowed",
       "-ResX=2560",
       "-ResY=1440",
-      "-EmberRun=C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/plan.json",
-      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_jolly_fire\\20260928-174353\\log\\Ember.log",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-194823/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_jolly_fire\\20260928-194823\\log\\Ember.log",
       "-log",
       "-NoVerifyGC",
       "-ExecCmds=DisableAllScreenMessages"
@@ -554,6 +869,7 @@
         "frames": 600,
         "mp4": "orbits/timelapse.mp4",
         "error": "",
+        "encoded_by": "harness",
         "camera_csv": "orbits/timelapse.camera.csv"
       },
       {
@@ -561,6 +877,7 @@
         "frames": 300,
         "mp4": "orbits/run_d19.mp4",
         "error": "",
+        "encoded_by": "harness",
         "camera_csv": "orbits/run_d19.camera.csv"
       },
       {
@@ -568,6 +885,7 @@
         "frames": 141,
         "mp4": "orbits/map_timelapse.mp4",
         "error": "",
+        "encoded_by": "harness",
         "camera_csv": "orbits/map_timelapse.camera.csv"
       }
     ]

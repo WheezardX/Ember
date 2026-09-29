@@ -59,6 +59,42 @@ pitch_deg = -14
 fov_deg = 50
 sun = "dusk"
 
+[[bookmarks]]
+name = "ground_behind"         # eye level on the burned side, the day-19 head ahead (east)
+target_frac = [0.673, 0.611]   # (baseline for HCP4 + the ground plane; the camera stays 3 m
+distance_m = 120               #  over the surface)
+yaw_deg = 80
+pitch_deg = -2
+fov_deg = 70
+sun = "dusk"
+
+[[bookmarks]]
+name = "ground_ahead"          # in the fire's path, looking back west at the approaching head
+target_frac = [0.668, 0.611]
+distance_m = 250
+yaw_deg = 260
+pitch_deg = -1
+fov_deg = 70
+sun = "dusk"
+
+[[bookmarks]]
+name = "ridge_lookout"         # a lookout 2 km off, low angle
+target_frac = [0.673, 0.611]
+distance_m = 2000
+yaw_deg = 80
+pitch_deg = -5
+fov_deg = 55
+sun = "dusk"
+
+[[bookmarks]]
+name = "scar_morning"          # standing in the day-19 scar the next day
+target_frac = [0.660, 0.611]
+distance_m = 100
+yaw_deg = 80
+pitch_deg = -3
+fov_deg = 70
+sun = "noon"
+
 [[captures]]
 name = "d06"
 bookmark = "overview"
@@ -98,6 +134,26 @@ t_s = 1645200
 name = "run_close_d19"
 bookmark = "run_close"
 t_s = 1645200
+
+[[captures]]
+name = "ground_behind_d19"
+bookmark = "ground_behind"
+t_s = 1645200
+
+[[captures]]
+name = "ground_ahead_d19"
+bookmark = "ground_ahead"
+t_s = 1641600
+
+[[captures]]
+name = "ridge_lookout_d19"
+bookmark = "ridge_lookout"
+t_s = 1645200
+
+[[captures]]
+name = "scar_morning_d20"
+bookmark = "scar_morning"
+t_s = 1731600
 
 [[orbits]]
 name = "timelapse"            # 35 days in 20 s, the camera slowly circling
