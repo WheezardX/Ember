@@ -117,6 +117,10 @@ deciding the change is intended; say why in the commit message. Goldens are comm
 
 ## Gotchas (learned the hard way)
 
+* **The first run after `ember-dev build` can capture before shaders finish compiling:**
+  flat grey fallback materials, a large spurious mismatch (2026-09-29: S_forest_teanaway
+  oblique ssim 0.75 cold, 0.81 warm - the warm diff was the intended change). Re-run before
+  reading a mismatch after a build.
 * **Facts can pass while the picture is wrong.** The first HCP0 run had correct tile and
   triangle counts and rendered only skirts (inverted winding). Always look at the sheet.
 * Run from an **activated** terrain env (`conda activate terrain`). Calling the env's
