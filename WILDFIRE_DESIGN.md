@@ -316,6 +316,31 @@ One data spine, three frontends:
 | **JFSP** | Joint Fire Science Program — federal fire research funding body |
 | **NSF** | National Science Foundation |
 
+**Project process & plan labels**
+
+Labels used in the epic plans (`EPIC_n_PLAN.md`), checkpoint memos and commits. Numbering is per epic: Epic 4 and Epic 5 each have their own D1, A1, and so on, so a label is read in the context of its plan.
+
+| Term | Meaning |
+|---|---|
+| **Epic** | A major build phase with its own plan file (`EPIC_n_PLAN.md`): Epic 1 terrain/DEM, Epic 2 fuels and vegetation scatter, Epic 3 incident data, weather and arrival history, Epic 4 the fire simulator, Epic 5 the Unreal renderer, Epic 6 (planned) the interactive command layer |
+| **HCP0–HCP7** | Human Checkpoints (Epic 5). A review gate: a bundle of videos, stills, a memo and a review page under `checkpoints/HCPn/`, signed off by Brad before the next stage. HCP0 the loop closes · HCP1 terrain reads true · HCP2 the forest is real · HCP3 fire replays in 3D · HCP4 the fire reads · HCP5 broadcast layer · HCP6 the camera speaks · HCP7 Visualizer v0 ships |
+| **CP1–CP7** | Checkpoints (Epic 4), the simulator's equivalent of HCPs, archived under `checkpoints/CPn/` (e.g. CP2, the 2D Jolly Mountain playback) |
+| **U1, U2, …** | Upstream tickets: problems found in an earlier epic's data or pipeline, logged in `EPIC_4_PLAN.md` §11 for that layer to fix (e.g. U6 bounded-memory chunked ingest, U7 lakes as DEM holes, U10 historical worlds built on post-fire fuels) |
+| **Decision D1, D2, …** | A row in a plan's load-bearing decisions table (Epic 5 §4), e.g. decision D6 legibility-first fire and smoke, D7 the fire player owns the clock, D8 frame and VRAM budgets, D11 the LOD / world-context plan |
+| **Task A1 … H3** | A workstream task (Epic 5 §6): the letter is the workstream, the number the task. A harness and tooling · B asset generation (B3 tree meshes) · C world streaming (C4 scatter port) · D fire state rendering · E overlays · F cameras and interactive shell · G export and the Visualizer (G1 batch render path) · H perf and docs. Epic 5's workstream D tasks share the D-prefix with its decisions, so write "task D1" or "decision D1" |
+| **⚑** | Marks a plan default that needed Brad's confirmation before work started |
+| **Sign-off** | Brad's explicit approval of a checkpoint; the plan records it (e.g. EPIC_5_PLAN §8d) |
+| **Bundle** | The reviewable artifact set for a checkpoint: memo, review page, videos, stills, verdicts |
+| **Scenario** | A render test definition in `viz/scenarios/*.toml`: world, optional fire replay, camera bookmarks, captures, orbits (videos) and assertions |
+| **Bookmark / capture / orbit** | A named camera pose / a still rendered from a bookmark / a video: a camera move, optionally sweeping sim time |
+| **Golden** | A blessed reference image a later render is compared against (`viz/goldens/`); a mismatch fails evaluation |
+| **Scene facts** | Countable numbers the renderer reports at each capture (tiles, trees, burned cells, smoke puffs, VRAM, frame times), checked by assertions so nobody has to count from pixels |
+| **Verdict** | `ember-dev evaluate`'s pass/fail record for a run: image diffs, fact assertions, budgets |
+| **Probe** | A world point whose fire state is reported as a fact and checked against the sim's stream |
+| **Replay / state stream** | Epic 4's output for a fire run: `.replay.json` (what was run) and `.ess` (the fire state tick by tick) |
+| **World pack (.ewp)** | Epic 4's packaged sim world for one incident (fuels, terrain, weather on the sim grid) |
+| **Tile store / region / bake** | Terrain's output: a region's DEM, fuels, vegetation and tiles on disk; a bake is the run that produces it |
+
 ---
 
 ## 7. Reference Links
