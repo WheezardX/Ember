@@ -300,6 +300,13 @@ Linux leg of the determinism matrix, which only runs in CI.
       for 2017 fires, added in Terrain 27fbb20) and rebuild the pack; same for post-fire LiDAR
       canopy. Epic 5 renders Jolly on an LF2016 world (viz/worlds/jolly_mountain_2017.terrain.toml).
       Found at HCP3 (2026-09-28).
+- [x] U11 (Epic 2, canopy CHM on steep ground) - DONE 2026-09-29 upstream (Terrain 407f6e0):
+      CHM was grid-max DSM minus the DEM at the cell centre, so on canyon walls the rim's
+      ground inside a 10 m cell read as canopy (Big Grass: 109 k cells > 30 m, median slope 51
+      deg, max 92 m). Now `canopy.method = "hag"` (default): each point's height above the
+      ground under it, then the per-cell max; "dsm_minus_dem" stays selectable. Deliberate
+      method change: canopy and everything downstream re-bakes; Ember forest goldens
+      (S_tq_forest, S_forest_teanaway, scatter conformance) need re-blessing on the re-bake.
 
 **Model-quality candidates noted, deliberately not tuned (would be fitting one fire)**
 - [ ] CP5: RH/T→moisture response too strong relative to wind for timber (model grows fastest
