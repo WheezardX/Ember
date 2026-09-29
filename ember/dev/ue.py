@@ -172,6 +172,18 @@ def _water_dir(sc: LoadedScenario) -> str | None:
     return d.as_posix() if (d / "index.json").exists() else None
 
 
+def orbit_encoder() -> tuple[str | None, str]:
+    """(ffmpeg path, codec) for orbit video the harness streams to: the GPU encoder (NVENC) when
+    this ffmpeg has it, else CPU x264. No ffmpeg: (None, "") and the harness writes PNG frames."""
+    import shutil
+
+    ff = shutil.which("ffmpeg")
+    if not ff:
+        return None, ""
+    p = subprocess.run([ff, "-hide_banner", "-encoders"], capture_output=True, text=True)
+    return ff, ("h264_nvenc" if "h264_nvenc" in p.stdout else "libx264")
+
+
 def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0) -> Path:
     s = sc.spec
     plan = {
@@ -204,6 +216,10 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "orbits": [o.model_dump() for o in s.orbits],
         "fire_probes": [p.model_dump() for p in s.fire_probes],
     }
+    ff, codec = orbit_encoder()
+    if ff and s.orbits:
+        plan["ffmpeg"] = ff.replace("\\", "/")
+        plan["orbit_codec"] = codec
     p = run_dir / "plan.json"
     p.write_text(json.dumps(plan, indent=2), encoding="utf-8")
     return p
@@ -273,7 +289,8 @@ def run_scenario(eng: Engine, sc: LoadedScenario, *, runs_root: Path | None = No
 
 
 def encode_orbits(sc: LoadedScenario, run_dir: Path, keep_frames: bool = False) -> list[dict]:
-    """frames/<orbit>/f%05d.png -> orbits/<orbit>.mp4 (H.264, yuv420p, crf 18) via ffmpeg."""
+    """Orbit videos. Normally the harness streamed raw frames to ffmpeg (GPU encoder) and
+    orbits/<orbit>.mp4 already exists; otherwise frames/<orbit>/f%05d.png -> mp4 here."""
     import shutil
 
     out = []
@@ -283,6 +300,19 @@ def encode_orbits(sc: LoadedScenario, run_dir: Path, keep_frames: bool = False) 
         mp4 = run_dir / "orbits" / f"{o.name}.mp4"
         entry = {"name": o.name, "frames": len(list(frames.glob("f*.png"))), "mp4": None,
                  "error": ""}
+        cam = frames / "camera.csv"   # the harness's per-frame camera path
+        if entry["frames"] == 0 and mp4.exists():
+            entry["mp4"] = str(mp4.relative_to(run_dir)).replace("\\", "/")
+            entry["encoded_by"] = "harness"
+            if cam.exists():
+                entry["frames"] = max(0, len(cam.read_text(encoding="utf-8").splitlines()) - 1)
+                shutil.copyfile(cam, mp4.with_suffix(".camera.csv"))
+                entry["camera_csv"] = str(mp4.with_suffix(".camera.csv").relative_to(
+                    run_dir)).replace("\\", "/")
+            if not keep_frames:
+                shutil.rmtree(frames, ignore_errors=True)
+            out.append(entry)
+            continue
         if not ff:
             entry["error"] = "ffmpeg not on PATH"
         elif entry["frames"] == 0:
@@ -295,7 +325,6 @@ def encode_orbits(sc: LoadedScenario, run_dir: Path, keep_frames: bool = False) 
                                 str(mp4)], capture_output=True, text=True)
             if p.returncode == 0 and mp4.exists():
                 entry["mp4"] = str(mp4.relative_to(run_dir)).replace("\\", "/")
-                cam = frames / "camera.csv"   # the harness's per-frame camera path
                 if cam.exists():
                     shutil.copyfile(cam, mp4.with_suffix(".camera.csv"))
                     entry["camera_csv"] = str(mp4.with_suffix(".camera.csv").relative_to(

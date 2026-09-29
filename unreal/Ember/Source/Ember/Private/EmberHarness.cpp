@@ -9,7 +9,9 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "HAL/FileManager.h"
 #include "HAL/PlatformMisc.h"
+#include "HAL/PlatformProcess.h"
 #include "ImageCore.h"
 #include "ImageUtils.h"
 #include "Misc/FileHelper.h"
@@ -76,6 +78,8 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetBoolField(TEXT("veg_lineup"), bVegLineup);
 	J->TryGetStringField(TEXT("perf_bookmark"), PerfBookmark);
 	J->TryGetStringField(TEXT("water_dir"), WaterDir);
+	J->TryGetStringField(TEXT("ffmpeg"), FfmpegPath);
+	J->TryGetStringField(TEXT("orbit_codec"), OrbitCodec);
 	J->TryGetStringField(TEXT("replay"), ReplayPath);
 	const TArray<TSharedPtr<FJsonValue>>* ProbeArr = nullptr;
 	if (J->TryGetArrayField(TEXT("fire_probes"), ProbeArr))
@@ -198,6 +202,7 @@ bool AEmberHarness::Start(const FString& PlanPath, AEmberEnvironment* Env)
 
 void AEmberHarness::EndPlay(const EEndPlayReason::Type Reason)
 {
+	AbortOrbitVideo();
 	UGameViewportClient::OnScreenshotCaptured().Remove(ShotHandle);
 	Super::EndPlay(Reason);
 }
@@ -269,8 +274,89 @@ void AEmberHarness::OnScreenshot(int32 W, int32 H, const TArray<FColor>& Pixels)
 	bShotReady = true;
 }
 
+bool AEmberHarness::StartOrbitVideo(const FString& Name, int32 Fps, int32 W, int32 H, FString& OutError)
+{
+	const FString Mp4 = OutDir / TEXT("orbits") / (Name + TEXT(".mp4"));
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(Mp4), true);
+	// Raw frames in on stdin; the GPU encoder (NVENC) does the compression. Constant quality ~ crf 18;
+	// yuv420p so every player takes it.
+	const bool bNv = OrbitCodec.EndsWith(TEXT("_nvenc"));
+	const FString Quality = bNv ? TEXT("-preset p5 -tune hq -rc vbr -cq 18 -b:v 0") : TEXT("-preset medium -crf 18");
+	const FString Args = FString::Printf(
+		TEXT("-y -loglevel error -f rawvideo -pix_fmt bgra -s %dx%d -r %d -i - -c:v %s %s -pix_fmt yuv420p -movflags +faststart \"%s\""),
+		W, H, FMath::Max(1, Fps), *OrbitCodec, *Quality, *Mp4);
+	if (!FPlatformProcess::CreatePipe(EncRead, EncWrite, /*bWritePipeLocal*/ true))
+	{
+		OutError = TEXT("orbit video: could not create a pipe for ffmpeg");
+		return false;
+	}
+	EncProc = FPlatformProcess::CreateProc(*FfmpegPath, *Args, false, true, true, nullptr, 0, nullptr,
+		/*PipeWriteChild*/ nullptr, /*PipeReadChild (stdin)*/ EncRead);
+	if (!EncProc.IsValid())
+	{
+		AbortOrbitVideo();
+		OutError = TEXT("orbit video: could not start ") + FfmpegPath;
+		return false;
+	}
+	UE_LOG(LogEmberHarness, Display, TEXT("orbit %s: streaming %dx%d frames to %s (%s)"), *Name, W, H, *Mp4, *OrbitCodec);
+	return true;
+}
+
+bool AEmberHarness::WriteOrbitFrame(FString& OutError)
+{
+	const int32 Bytes = ShotPixels.Num() * sizeof(FColor);  // FColor is B, G, R, A in memory
+	const uint8* Data = reinterpret_cast<const uint8*>(ShotPixels.GetData());
+	int32 Done = 0;
+	while (Done < Bytes)
+	{
+		int32 N = 0;
+		if (!FPlatformProcess::WritePipe(EncWrite, Data + Done, Bytes - Done, &N) || N <= 0)
+		{
+			OutError = TEXT("orbit video: ffmpeg stopped reading frames (see the log for its error)");
+			return false;
+		}
+		Done += N;
+	}
+	return true;
+}
+
+bool AEmberHarness::FinishOrbitVideo(FString& OutError)
+{
+	if (!EncProc.IsValid())
+	{
+		return true;
+	}
+	FPlatformProcess::ClosePipe(EncRead, EncWrite);  // EOF on ffmpeg's stdin: it finishes the file
+	EncRead = EncWrite = nullptr;
+	FPlatformProcess::WaitForProc(EncProc);
+	int32 Code = -1;
+	FPlatformProcess::GetProcReturnCode(EncProc, &Code);
+	FPlatformProcess::CloseProc(EncProc);
+	if (Code != 0)
+	{
+		OutError = FString::Printf(TEXT("orbit video: ffmpeg exited with %d"), Code);
+		return false;
+	}
+	return true;
+}
+
+void AEmberHarness::AbortOrbitVideo()
+{
+	if (EncRead || EncWrite)
+	{
+		FPlatformProcess::ClosePipe(EncRead, EncWrite);
+		EncRead = EncWrite = nullptr;
+	}
+	if (EncProc.IsValid())
+	{
+		FPlatformProcess::WaitForProc(EncProc);
+		FPlatformProcess::CloseProc(EncProc);
+	}
+}
+
 void AEmberHarness::Finish(int32 ExitCode, const FString& Error)
 {
+	AbortOrbitVideo();
 	State = EState::Done;
 	TSharedRef<FJsonObject> S = MakeShared<FJsonObject>();
 	S->SetStringField(TEXT("format"), TEXT("ember-run-status"));
@@ -669,6 +755,9 @@ void AEmberHarness::Tick(float DeltaSeconds)
 	{
 		const FOrbit& O = Orbits[OrbitIndex];
 		OrbitFrame = 0;
+		ProfStart = FPlatformTime::Seconds();
+		ProfShotWait = ProfSave = ProfPlace = 0.0;
+		ProfWaitTicks = 0;
 		PrepareFlyoverHeights(O);
 		if (!PlaceOrbitFrame(O, 0, Err))
 		{
@@ -695,6 +784,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 
 	case EState::OrbitShoot:
 		bShotReady = false;
+		ProfShotReq = FPlatformTime::Seconds();
 		FScreenshotRequest::RequestScreenshot(false);
 		FramesLeft = 120;
 		State = EState::OrbitWait;
@@ -703,6 +793,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 	case EState::OrbitWait:
 	{
 		const FOrbit& O = Orbits[OrbitIndex];
+		++ProfWaitTicks;
 		if (!bShotReady)
 		{
 			if (--FramesLeft <= 0)
@@ -711,12 +802,31 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			}
 			return;
 		}
-		const FString Png = OutDir / TEXT("frames") / O.Name / FString::Printf(TEXT("f%05d.png"), OrbitFrame);
-		if (!FImageUtils::SaveImageByExtension(*Png, FImageView(ShotPixels.GetData(), ShotW, ShotH)))
+		const double TSave0 = FPlatformTime::Seconds();
+		ProfShotWait += TSave0 - ProfShotReq;
+		if (!FfmpegPath.IsEmpty())
 		{
-			Finish(2, TEXT("failed to write ") + Png);
-			return;
+			if (OrbitFrame == 0 && !StartOrbitVideo(O.Name, O.Fps, ShotW, ShotH, Err))
+			{
+				Finish(2, Err);
+				return;
+			}
+			if (!WriteOrbitFrame(Err))
+			{
+				Finish(2, FString::Printf(TEXT("orbit %s frame %d: %s"), *O.Name, OrbitFrame, *Err));
+				return;
+			}
 		}
+		else
+		{
+			const FString Png = OutDir / TEXT("frames") / O.Name / FString::Printf(TEXT("f%05d.png"), OrbitFrame);
+			if (!FImageUtils::SaveImageByExtension(*Png, FImageView(ShotPixels.GetData(), ShotW, ShotH)))
+			{
+				Finish(2, TEXT("failed to write ") + Png);
+				return;
+			}
+		}
+		ProfSave += FPlatformTime::Seconds() - TSave0;
 		if (Camera)
 		{
 			const FVector L = Camera->GetActorLocation();
@@ -725,12 +835,27 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		if (++OrbitFrame < O.Frames)
 		{
 			// Move now; the next tick requests the frame rendered from the new pose.
+			const double TPlace0 = FPlatformTime::Seconds();
 			if (!PlaceOrbitFrame(O, OrbitFrame, Err))
 			{
 				Finish(2, Err);
 				return;
 			}
+			ProfPlace += FPlatformTime::Seconds() - TPlace0;
 			State = EState::OrbitShoot;
+			return;
+		}
+		{
+			const double Wall = FPlatformTime::Seconds() - ProfStart;
+			const double N = FMath::Max(1, O.Frames);
+			UE_LOG(LogEmberHarness, Display,
+				TEXT("orbit %s timing: %d frames in %.1f s = %.0f ms/frame | screenshot wait %.0f ms (%.1f ticks) | frame out (%s) %.0f ms | place (fire+smoke+camera) %.0f ms"),
+				*O.Name, O.Frames, Wall, 1000.0 * Wall / N, 1000.0 * ProfShotWait / N, ProfWaitTicks / N,
+				FfmpegPath.IsEmpty() ? TEXT("png") : *OrbitCodec, 1000.0 * ProfSave / N, 1000.0 * ProfPlace / N);
+		}
+		if (!FinishOrbitVideo(Err))
+		{
+			Finish(2, FString::Printf(TEXT("orbit %s: %s"), *O.Name, *Err));
 			return;
 		}
 		// Camera path (UE cm) per frame: review / smoothness checks.

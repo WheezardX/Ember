@@ -154,4 +154,13 @@ the ground under the aim point and under the camera is sampled for every frame, 
 +-3 s (raised where needed to keep 30 m of clearance) and smoothed twice, so the camera holds
 height like a drone instead of tracing the 10 m ground (HCP2: "jittery in the vertical").
 Each orbit writes its per-frame camera path next to the MP4 (`orbits/<name>.camera.csv`).
+
+Orbit video capture: the harness streams each frame's raw BGRA pixels over a pipe into one ffmpeg
+per orbit, which encodes on the GPU (`h264_nvenc`, constant quality ~cq 18, yuv420p) straight to
+`orbits/<name>.mp4` (`ember-dev` puts `ffmpeg` + `orbit_codec` in the plan; `libx264` if this
+ffmpeg has no NVENC; PNG frames + encode afterwards if there is no ffmpeg). Stills stay lossless
+PNG (they are diffed; orbits are not). Each orbit logs its timing, e.g. Jolly 1440p:
+`70-95 ms/frame | screenshot wait ~45 ms | frame out 3 ms | place (fire+smoke+camera) 20-40 ms`
+(was ~490 ms/frame with a PNG per frame, ~365 ms of it PNG compression). Next: an asynchronous
+readback so the screenshot wait overlaps the next frame's render.
 `perf.json` carries `frame_ms_series`, `game_ms_series` and `gpu_ms_series` for the window.

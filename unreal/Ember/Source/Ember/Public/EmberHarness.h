@@ -111,6 +111,21 @@ private:
 	int32 CaptureIndex = 0;
 	int32 OrbitIndex = 0;
 	int32 OrbitFrame = 0;
+	// Orbit capture timing (seconds, summed over the orbit; logged when it ends).
+	double ProfStart = 0.0, ProfShotReq = 0.0, ProfShotWait = 0.0, ProfSave = 0.0, ProfPlace = 0.0;
+	int32 ProfWaitTicks = 0;
+
+	// Orbit video: raw BGRA frames piped to ffmpeg (GPU encoder, e.g. h264_nvenc) straight to
+	// orbits/<name>.mp4. Without an ffmpeg path in the plan, frames are PNGs (ember-dev encodes).
+	FString FfmpegPath;
+	FString OrbitCodec = TEXT("h264_nvenc");
+	FProcHandle EncProc;
+	void* EncRead = nullptr;   // ffmpeg's stdin (child side)
+	void* EncWrite = nullptr;  // ours
+	bool StartOrbitVideo(const FString& Name, int32 Fps, int32 W, int32 H, FString& OutError);
+	bool WriteOrbitFrame(FString& OutError);
+	bool FinishOrbitVideo(FString& OutError);
+	void AbortOrbitVideo();
 	int32 FramesLeft = 0;
 	bool bShotReady = false;
 	int32 ShotW = 0, ShotH = 0;
