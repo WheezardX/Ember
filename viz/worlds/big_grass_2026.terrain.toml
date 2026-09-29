@@ -4,30 +4,26 @@
 #
 #   terrain run --config viz/worlds/big_grass_2026.terrain.toml --store ../Terrain/store
 #
-# WINDOW, not the whole fire. The perimeter spans 83 x 103 km (2,326 km2 burned); a full-extent
-# bake needs bounded-memory chunked ingest (upstream U6). This 25.6 x 19.2 km window is the one
-# with the most burned ground (97 % inside the 2026-08-24 perimeter), snapped to whole 1.28 km
-# content tiles in UTM 11N so a later full-extent bake on the same grid, seed and settings
-# reproduces these tiles exactly (U6 keeps the global scatter seed) and can adopt them.
+# The whole fire (U6 chunked ingest, Terrain ADR 0008): the AOI is the 2026-08-24 perimeter
+# polygon (2,326 km2); the grid is its bounding box (~83 x 103 km), tile-anchored so it can grow.
+# Bandwidth (household data cap): LiDAR is fetched only for chunks within 200 m of the
+# perimeter (clip_to_aoi); Copernicus 30 m fills the rest of the box. 3DEP here:
+# ID_SouthernID_2_2018, ID_SouthernID_21_2018, ID_SouthernID_4_SA2_2018, OR_SouthEast_4_D22 -
+# all flown before the fire, so the canopy (sagebrush height) is pre-fire too.
 #
-# PRE-FIRE world (discovered 2026-07-23):
-#   * fuels pinned to LF2025 (maps disturbances through 2024), never "latest" (see U10);
-#   * no LiDAR canopy (rangeland; any 2026 flights may post-date the fire);
-#   * greenness from the early summer before ignition.
-# Vegetation is OFF for now: the Cascades palette has no sagebrush-steppe EVTs and would plant
-# conifers. Add a Great Basin palette, then `terrain veg big_grass_2026` re-runs only that stage.
-# No fire replay yet: we have one final perimeter (arrival raster is all zero), so a progression
-# needs IR/FIRMS timing first.
+# PRE-FIRE world (discovered 2026-07-23): fuels pinned to LF2025 (disturbances through 2024),
+# never "latest" (U10). Season OFF for now: the fire spans several Sentinel-2 tiles and needs
+# per-tile scene selection. Vegetation OFF until a Great Basin palette exists.
+# No fire replay yet: one final perimeter only; a progression needs IR/FIRMS timing (Epic 3).
 
 [project]
 name = "big_grass_2026"
 crs  = "EPSG:32611"
 
 [aoi]
-type = "bbox"
-crs  = "EPSG:32611"
-#       min_x     min_y      max_x     max_y      (multiples of 1280 m)
-bbox = [485120.0, 4698880.0, 510720.0, 4718080.0]
+type    = "geojson"
+geojson = "store/incidents/6b0c72b3-0e12-4695-9022-e1113c0aa8d1/observations/perimeters/20260824T0310_a9b29331e167.geojson"
+crs     = "EPSG:4326"
 
 [dem]
 profile        = "game"              # 10 m
@@ -44,6 +40,14 @@ tile_px    = 128                     # 1.28 km content tiles at 10 m
 overlap_px = 8
 base_lod   = 14
 num_lods   = 4
+anchor     = "grid"                  # tile-aligned in UTM 11N: the region can grow
+
+[ingest]
+max_chunk_mb  = 2048
+chunk_tiles   = 2                    # 2.56 km chunks: finer LiDAR clipping than the default
+clip_to_aoi   = true
+clip_buffer_m = 200.0
+max_fetch_gb  = 12.0                 # hard stop on LiDAR download (Brad approved ~12 GB)
 
 [outputs.heightmap]
 enabled = true
@@ -63,14 +67,13 @@ enabled          = true
 landfire_version = "LF2025"          # pre-fire, pinned
 
 [canopy]
-enabled = false
+enabled = true                       # pre-fire LiDAR: shrub / juniper heights
 
 [season]
-enabled = true
-window  = ["2026-06-01", "2026-07-20"]   # before ignition (2026-07-23)
+enabled = false
 
 [vegetation]
-enabled                = false       # needs a Great Basin palette first (see header)
+enabled                = false       # needs a Great Basin palette first
 palette                = "packs/palettes/cascades_mixed_conifer.toml"
 world_seed             = 1337
 layer_version          = 2
