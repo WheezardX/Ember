@@ -100,6 +100,10 @@ public:
                const Raster* water = nullptr, double bed_depth_m = 1.0);
     // World metres in, metres out; false outside the tile content or on invalid corners.
     bool height_at(double wx, double wy, double& out_z) const;
+    // Exactly the rendered triangles (each quad split NE-SW like build_tile_mesh), for objects
+    // that must touch the ground everywhere, not only at corners (ground cover, GP4). Bilinear
+    // height_at can sit up to ~a quarter of a quad's twist above or below them.
+    bool surface_at(double wx, double wy, double& out_z) const;
 
 private:
     Bounds content_;

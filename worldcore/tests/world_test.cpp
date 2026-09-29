@@ -369,3 +369,32 @@ TEST_CASE("heightfield: water layer fills DEM holes as a lakebed and builds a fl
     REQUIRE(s.height_at(500040.0, 5200040.0, zb));
     CHECK(zb < 699.0);
 }
+
+TEST_CASE("heightfield: SurfaceSampler::surface_at lies on the rendered triangles") {
+    const auto root = testutil::write_synth_region("sampler_tri", hill);
+    auto rr = load_region(root.string());
+    REQUIRE(rr);
+    const Region& R = *rr.region;
+    const TileEntry& t = *R.find(5, 0, 0);
+    auto tr = read_tiff(R.path(t.height_tif));
+    REQUIRE(tr);
+    SurfaceSampler s;
+    REQUIRE(s.build(R, t, *tr.raster));
+    const Frame fr = region_frame(R);
+    auto m = build_tile_mesh(R, t, *tr.raster, fr);
+    REQUIRE(m.ok());
+    // Each surface triangle's centroid: the plane height there is the mean of its vertices.
+    double worst_tri = 0;
+    for (size_t k = 0; k < static_cast<size_t>(m.mesh.surface_triangles) * 3; k += 3) {
+        const auto& p0 = m.mesh.positions[m.mesh.indices[k]];
+        const auto& p1 = m.mesh.positions[m.mesh.indices[k + 1]];
+        const auto& p2 = m.mesh.positions[m.mesh.indices[k + 2]];
+        const double X = (p0.x + p1.x + p2.x) / 3.0, Y = (p0.y + p1.y + p2.y) / 3.0;
+        const double Zc = (p0.z + p1.z + p2.z) / 3.0 / 100.0 + fr.anchor_z;
+        const double wx = fr.anchor_x + X / 100.0, wy = fr.anchor_y - Y / 100.0;
+        double z = 0;
+        REQUIRE(s.surface_at(wx, wy, z));
+        worst_tri = std::max(worst_tri, std::abs(z - Zc));
+    }
+    CHECK(worst_tri < 1e-3);        // on the triangles (float vertex positions)
+}

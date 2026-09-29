@@ -77,8 +77,9 @@ def shrub(seed: int) -> Mesh:
 
 
 def rock(seed: int) -> Mesh:
-    """Subdivided octahedron, radius displaced by low-frequency lumps, bottom flattened (it sits
-    in the ground), squashed a little. Shading darker underneath."""
+    """A subdivided sphere (shared vertices: smooth shading, no visible triangles) shaped by
+    low-frequency lumps, a few planar cleavage cuts (the flat faces broken stone has), a squash,
+    and a flattened base that sits in the ground. Shading: darker toward the base, mottled."""
     rng = random.Random(seed)
     base = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
     faces = [(0, 2, 4), (2, 1, 4), (1, 3, 4), (3, 0, 4), (2, 0, 5), (1, 2, 5), (3, 1, 5), (0, 3, 5)]
@@ -92,30 +93,38 @@ def rock(seed: int) -> Mesh:
             cache[key] = len(verts) - 1
         return cache[key]
 
-    for _ in range(2):
+    for _ in range(4):
         nf = []
         for a, b, c in faces:
             ab, bc, ca = midpoint(a, b), midpoint(b, c), midpoint(c, a)
             nf += [(a, ab, ca), (b, bc, ab), (c, ca, bc), (ab, bc, ca)]
         faces = nf
-    lumps = [(norm((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-1, 1))),
-              rng.uniform(0.1, 0.3)) for _ in range(6)]
-    jitter = [rng.uniform(-0.12, 0.12) for _ in verts]
+
+    def rnd_dir():
+        return norm((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-0.4, 1)))
+
+    lumps = [(rnd_dir(), rng.uniform(0.08, 0.2), rng.uniform(1.5, 3.0)) for _ in range(6)]
+    cuts = [(rnd_dir(), rng.uniform(0.72, 0.9)) for _ in range(rng.randint(3, 5))]
+    waves = [(rnd_dir(), rng.uniform(4.0, 7.0), rng.uniform(0, 6.28)) for _ in range(4)]
     sx, sy, sz = rng.uniform(0.75, 1.25), rng.uniform(0.75, 1.25), rng.uniform(0.5, 0.8)
     r0 = 30.0
-    pos = []
-    for i, v in enumerate(verts):
-        r = 1.0 + jitter[i] + sum(h * max(0.0, sum(a * b for a, b in zip(v, d, strict=True))) ** 2
-                                  for d, h in lumps)
-        pos.append((v[0] * r * sx * r0, v[1] * r * sy * r0, max(-0.2, v[2] * r) * sz * r0))
     m = Mesh()
-    for a, b, c in faces:  # unshared vertices: flat facets read as broken stone, not a blob
-        shade = 0.5 + 0.35 * ((pos[a][2] + pos[b][2] + pos[c][2]) / 3.0 / (sz * r0) * 0.5 + 0.5)
-        shade *= rng.uniform(0.85, 1.1)
-        ia = m.vert(pos[a], shade, False)
-        ib = m.vert(pos[b], shade, False)
-        ic = m.vert(pos[c], shade, False)
-        m.tri(ia, ic, ib)
+    for v in verts:
+        r = 1.0
+        for d, h, sharp in lumps:
+            r += h * max(0.0, sum(a * b for a, b in zip(v, d, strict=True))) ** sharp
+        for d, f, ph in waves:  # small undulation, smooth at this vertex density
+            r += 0.02 * math.sin(f * sum(a * b for a, b in zip(v, d, strict=True)) + ph)
+        for n, off in cuts:     # cleavage planes: the radius stops at the plane
+            c = sum(a * b for a, b in zip(v, n, strict=True))
+            if c > 1e-3:
+                r = min(r, off / c)
+        z = max(-0.25, v[2] * r)
+        p = (v[0] * r * sx * r0, v[1] * r * sy * r0, z * sz * r0)
+        mottle = 0.9 + 0.1 * math.sin(7.0 * v[0] + 3.0) * math.sin(6.0 * v[1] + 1.0)
+        m.vert(p, (0.5 + 0.4 * (v[2] * 0.5 + 0.5)) * mottle, False)
+    for a, b, c in faces:
+        m.tri(a, c, b)
     return m
 
 

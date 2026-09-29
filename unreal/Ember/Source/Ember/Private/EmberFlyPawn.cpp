@@ -25,7 +25,9 @@ bool AEmberFlyPawn::GroundZ(const FVector& UE, double& OutUEZ) const
 	}
 	const emberworld::Frame& F = Terrain->GetFrame();
 	double Gz = 0.0;
-	if (!Terrain->GroundHeightAt(F.anchor_x + UE.X / 100.0, F.anchor_y - UE.Y / 100.0, Gz))
+	const double Wx = F.anchor_x + UE.X / 100.0, Wy = F.anchor_y - UE.Y / 100.0;
+	// the rendered triangles (smooth for walking); the DEM corner lookup where no tile is loaded
+	if (!Terrain->SurfaceAt(Wx, Wy, Gz) && !Terrain->GroundHeightAt(Wx, Wy, Gz))
 	{
 		return false;
 	}

@@ -307,6 +307,22 @@ bool SurfaceSampler::height_at(double wx, double wy, double& out_z) const {
     return true;
 }
 
+bool SurfaceSampler::surface_at(double wx, double wy, double& out_z) const {
+    if (n_ == 0) return false;
+    const double gx = (wx - content_.min_x) / px_, gy = (content_.max_y - wy) / px_;
+    if (gx < 0 || gy < 0 || gx > n_ - 1 || gy > n_ - 1) return false;
+    const int i = std::min(static_cast<int>(gx), n_ - 2), j = std::min(static_cast<int>(gy), n_ - 2);
+    const double tx = gx - i, ty = gy - j;  // east, south within the quad
+    const size_t a = static_cast<size_t>(j) * n_ + i, b = a + 1, c = a + n_, d = c + 1;
+    if (!valid_[a] || !valid_[b] || !valid_[c] || !valid_[d]) return false;
+    // build_tile_mesh: triangles (a, c, b) and (b, c, d) - the diagonal runs b (NE) to c (SW)
+    if (tx + ty <= 1.0)
+        out_z = z_[a] + (z_[b] - z_[a]) * tx + (z_[c] - z_[a]) * ty;
+    else
+        out_z = z_[d] + (z_[c] - z_[d]) * (1.0 - tx) + (z_[b] - z_[d]) * (1.0 - ty);
+    return true;
+}
+
 }  // namespace emberworld
 
 namespace emberworld {

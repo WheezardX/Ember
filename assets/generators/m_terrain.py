@@ -25,6 +25,8 @@ Parameters (the runtime surface; docs/viz/assets.md):
     GroundFadeFar   scalar     no detail past this distance (cm)        default 40000
     GroundNormal    scalar     detail normal strength                   default 1
     GroundHeight    scalar     height-blend contrast between sets       default 0.6
+    GroundCliffNz   scalar     |normal.z| below which detail projects on a vertical plane
+                               (YZ or XZ, whichever the normal faces) default 0.707 (45 deg)
     Tex_<Set>_C/_N  texture    detail sets (t_ground.py): Litter, Grass, Rock, Shrub
     Rep_<Set>       scalar     repeat in cm: litter 250, grass 300, rock 400, shrub 300
 
@@ -184,7 +186,16 @@ float3 vn = normalize(VN);
 NormalWS = vn;
 Rough = R0;
 if (fade <= 0.0) { return Base; }
+// Projection (Brad, from GW2): top-down until the surface is steeper than 45 deg, then a hard
+// switch to the vertical plane the normal faces most (YZ or XZ). No blend: the jump lands on
+// the steep break, where a change in the stone pattern reads as a rock edge, not a seam.
+float3 an = abs(vn);
 float2 p = WP.xy;
+float3 tu = float3(1, 0, 0), tv = float3(0, 1, 0);
+if (an.z < CliffZ) {
+    if (an.x > an.y) { p = WP.yz; tu = float3(0, 1, 0); tv = float3(0, 0, 1); }
+    else             { p = WP.xz; tu = float3(1, 0, 0); tv = float3(0, 0, 1); }
+}
 float2 q = float2(p.x * 0.8 - p.y * 0.6, p.x * 0.6 + p.y * 0.8) * 0.37 + 1731.0;
 float t = saturate(Nlo * 0.5 + 0.5);
 float4 c0 = lerp(Texture2DSample(LC, LCSampler, p / RL), Texture2DSample(LC, LCSampler, q / RL), t);
@@ -209,7 +220,7 @@ float3 mul = 2.0 * (bw.x * c0.rgb + bw.y * c1.rgb + bw.z * c2.rgb + bw.w * c3.rg
 float2 slope = bw.x * (n0.rg * 2 - 1) + bw.y * (n1.rg * 2 - 1) + bw.z * (n2.rg * 2 - 1) + bw.w * (n3.rg * 2 - 1);
 float rough = bw.x * n0.b + bw.y * n1.b + bw.z * n2.b + bw.w * n3.b + bs * R0;
 float ao = bw.x * n0.a + bw.y * n1.a + bw.z * n2.a + bw.w * n3.a + bs;
-NormalWS = normalize(vn + float3(slope * NS * fade, 0.0));
+NormalWS = normalize(vn + (tu * slope.x + tv * slope.y) * NS * fade);
 Rough = lerp(R0, rough, fade);
 return Base * lerp(1.0, mul * ao, fade);
 """
@@ -222,7 +233,8 @@ link(add, "", mixtex, "UVs")
 
 ground = custom("EmberGround", -250, -300,
                 ["Base", "Mix", "WP", "Cam", "VN", "Nlo", "On", "FadeNear", "FadeFar", "NS", "HC",
-                 "R0", "LC", "LN", "GC", "GN", "RC", "RN", "SC", "SN", "RL", "RG", "RR", "RS"],
+                 "R0", "LC", "LN", "GC", "GN", "RC", "RN", "SC", "SN", "RL", "RG", "RR", "RS",
+                 "CliffZ"],
                 GROUND_CODE)
 outs = []
 for oname, otype in (("NormalWS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
@@ -256,6 +268,7 @@ link(scalar("GroundFadeFar", 40000.0, -650, -880), "", ground, "FadeFar")
 link(scalar("GroundNormal", 1.0, -650, -940), "", ground, "NS")
 link(scalar("GroundHeight", 0.6, -650, -1000), "", ground, "HC")
 link(scalar("Roughness", 0.92, -650, -1060), "", ground, "R0")
+link(scalar("GroundCliffNz", 0.707, -650, -1120), "", ground, "CliffZ")  # |N.z| below: vertical projection
 for i, (set_name, pin, rep) in enumerate((("Litter", "L", 250.0), ("Grass", "G", 300.0),
                                           ("Rock", "R", 400.0), ("Shrub", "S", 300.0))):
     for kind in ("C", "N"):

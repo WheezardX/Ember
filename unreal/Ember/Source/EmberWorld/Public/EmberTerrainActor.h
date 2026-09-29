@@ -48,6 +48,12 @@ public:
 	 * the finest loaded tile's composed ground mix (look [ground]). False where no tile covers it.
 	 */
 	bool GroundMixAt(double WorldX, double WorldY, float OutW[4], int32* OutLod = nullptr) const;
+	/**
+	 * Height of the RENDERED surface (metres): the finest loaded tile's triangles, exactly as
+	 * meshed (lakebeds included). GroundHeightAt is the nearest DEM corner read from disk - on a
+	 * slope that floats or sinks objects by metres. False where no loaded tile covers the point.
+	 */
+	bool SurfaceAt(double WorldX, double WorldY, double& OutZ) const;
 
 	/** Region-CRS metres -> UE world location. */
 	FVector WorldToUE(double X, double Y, double Z) const;
@@ -123,6 +129,12 @@ public:
 		TArray<uint8> Rgba;
 	};
 	TMap<uint64, FTileMix> TileMixes;
+	struct FTileSurface
+	{
+		int32 Lod = 0;
+		emberworld::SurfaceSampler Sampler;
+	};
+	TMap<uint64, FTileSurface> TileSurfaces;
 	UPROPERTY(Transient)
 	TObjectPtr<class UTexture> FireTexture;
 	FLinearColor FireRect = FLinearColor(0, 0, 1, 1);

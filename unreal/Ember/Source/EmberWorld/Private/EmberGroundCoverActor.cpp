@@ -112,17 +112,29 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 	PerMesh.SetNum(Meshes.Num());
 	for (const emberworld::CoverInstance& In : Out)
 	{
-		double Z = 0.0;
-		if (!Terrain->GroundHeightAt(In.x, In.y, Z))
-		{
-			continue;
-		}
 		const int32 Mi = FirstMesh[In.item] + In.variant;
 		const FBoxSphereBounds B = Meshes[Mi]->GetBounds();
 		const double MeshH = FMath::Max(1.0, 2.0 * B.BoxExtent.Z);
 		const double S = In.height_m * 100.0 / MeshH;
+		// Sit on the RENDERED ground at the lowest point under the footprint: on a slope the
+		// downhill edge touches and the uphill side is buried (a rock was seen floating when z
+		// came from the nearest DEM corner).
+		const double Rm = FMath::Max(B.BoxExtent.X, B.BoxExtent.Y) * S / 100.0 * 0.7;
+		double Z = 0.0;
+		if (!Terrain->SurfaceAt(In.x, In.y, Z))
+		{
+			continue;
+		}
+		for (const FVector2D& O : {FVector2D(Rm, 0), FVector2D(-Rm, 0), FVector2D(0, Rm), FVector2D(0, -Rm)})
+		{
+			double Zo = 0.0;
+			if (Terrain->SurfaceAt(In.x + O.X, In.y + O.Y, Zo))
+			{
+				Z = FMath::Min(Z, Zo);
+			}
+		}
 		FVector Loc = Terrain->WorldToUE(In.x, In.y, Z);
-		Loc.Z -= (B.Origin.Z - B.BoxExtent.Z) * S + 2.0;  // bottom a touch into the ground
+		Loc.Z -= (B.Origin.Z - B.BoxExtent.Z) * S + 0.06 * B.BoxExtent.Z * 2.0 * S;  // ~6 % sunk
 		PerMesh[Mi].Add(FTransform(FRotator(0.0, FMath::RadiansToDegrees(In.yaw_rad), 0.0), Loc, FVector(S)));
 	}
 	for (int32 Mi = 0; Mi < PerMesh.Num(); ++Mi)

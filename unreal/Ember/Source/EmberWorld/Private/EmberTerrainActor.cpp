@@ -273,6 +273,19 @@ bool AEmberTerrainActor::LoadTile(const emberworld::TileEntry& Tile, FString& Ou
 		}
 	}
 	emberworld::MeshResult M = emberworld::load_tile_mesh(*Region, Tile, Frame, Opt);
+	{
+		// CPU copy of the rendered surface (ground cover placement; same corners, same water rule)
+		emberworld::TiffResult HR = emberworld::read_tiff(Region->path(Tile.height_tif));
+		if (HR)
+		{
+			FTileSurface S;
+			S.Lod = Tile.lod;
+			if (S.Sampler.build(*Region, Tile, *HR.raster, Opt.water, Opt.bed_depth_m))
+			{
+				TileSurfaces.Add(TileKey(Tile), MoveTemp(S));
+			}
+		}
+	}
 	if (!M.ok())
 	{
 		OutError = FString::Printf(TEXT("tile z%d/x%d/y%d: %s"), Tile.lod, Tile.x, Tile.y, UTF8_TO_TCHAR(M.error.c_str()));
@@ -348,6 +361,7 @@ bool AEmberTerrainActor::LoadTile(const emberworld::TileEntry& Tile, FString& Ou
 void AEmberTerrainActor::UnloadTile(uint64 Key)
 {
 	TileMixes.Remove(Key);
+	TileSurfaces.Remove(Key);
 	if (const FLoadedTile* L = Loaded.Find(Key))
 	{
 		Mesh->ClearMeshSection(L->Section);
@@ -493,6 +507,23 @@ bool AEmberTerrainActor::GroundMixAt(double WorldX, double WorldY, float OutW[4]
 		OutW[C] = Px[C] / 255.0f;
 	}
 	return true;
+}
+
+bool AEmberTerrainActor::SurfaceAt(double WorldX, double WorldY, double& OutZ) const
+{
+	int32 BestLod = -1;
+	bool bHit = false;
+	for (const TPair<uint64, FTileSurface>& P : TileSurfaces)
+	{
+		double Z = 0.0;
+		if (P.Value.Lod > BestLod && P.Value.Sampler.surface_at(WorldX, WorldY, Z))
+		{
+			BestLod = P.Value.Lod;
+			OutZ = Z;
+			bHit = true;
+		}
+	}
+	return bHit;
 }
 
 bool AEmberTerrainActor::GroundHeightAt(double WorldX, double WorldY, double& OutZ) const
