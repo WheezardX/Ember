@@ -1,5 +1,13 @@
 # U6 — Bounded-memory ingest for Terrain (upstream design note)
 
+> **Status (2026-09-28): implemented** in Terrain as ADR 0008 (`adr/0008-chunked-ingest.md`,
+> commits f2559ac..bb643e4); acceptance record `tasks/u6/acceptance.md`. Differences from this
+> note: vegetation runs in full-width row bands (identical `instances.npy`, same order, no
+> `layer_version` bump); the CHM outlier filter runs in two passes over one region-wide
+> threshold with exact k-NN (re-query past the halo), so results do not depend on chunk size;
+> bandwidth controls (`clip_to_aoi`, `max_scenes`, `max_fetch_gb`) and a download ledger were
+> added for the household data cap. Parallel chunks and print exports remain "later".
+
 **Owner:** Terrain (Epics 1–2 pipeline) · **Filed from:** Ember Epic 5, 2026-09-27
 **Trigger:** the Three Queens 2026 bake (238 km² @ 10 m) peaked at 13.4 GB in the LiDAR stage
 and was killed once for memory pressure on a 32 GB runner.

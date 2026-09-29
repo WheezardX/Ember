@@ -274,7 +274,8 @@ Linux leg of the determinism matrix, which only runs in CI.
 - [ ] U4 (Epic 3, weather) — done as `ember weather --start/--hours`; consider making the
       refresh path accept a window too.
 - [ ] U5 (Epic 1, story 1.2) — structures layer (observer reports `-1` until it exists).
-- [ ] U6 (Epics 1–2, all ingest stages) — bounded-memory, chunked, resumable ingest; peak RAM
+- [x] U6 (Epics 1–2, all ingest stages) — DONE 2026-09-28 as Terrain ADR 0008 (chunked, resumable,
+      equivalent to the pre-U6 stores; acceptance in Terrain tasks/u6/acceptance.md). Was: bounded-memory, chunked, resumable ingest; peak RAM
       must not scale with incident size (Three Queens peaked 13.4 GB and was killed once).
       Design: `docs/upstream/U6-bounded-memory-ingest.md` (filed from Epic 5, 2026-09-27).
 - [ ] U7 (Epic 1, DEM finalize) — hydro-flatten water bodies: LiDAR drops water returns and void
