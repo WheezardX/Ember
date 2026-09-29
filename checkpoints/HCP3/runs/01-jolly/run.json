@@ -1,0 +1,58 @@
+{
+  "format": "ember-viz-run",
+  "version": 1,
+  "scenario": "S_jolly_fire",
+  "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_jolly_fire.toml",
+  "world": "C:\\Projects\\Terrain\\store\\jolly_mountain_2017",
+  "started": "20260928-174353",
+  "seconds": 773.6,
+  "process_exit_code": 0,
+  "exit_code": 0,
+  "error": "",
+  "git": "3101bfe",
+  "engine": {
+    "pinned": "5.8.3",
+    "installed": "5.8.3"
+  },
+  "command": [
+    "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+    "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+    "-game",
+    "-RenderOffscreen",
+    "-unattended",
+    "-nosplash",
+    "-nosound",
+    "-NoLoadingScreen",
+    "-windowed",
+    "-ResX=2560",
+    "-ResY=1440",
+    "-EmberRun=C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/plan.json",
+    "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_jolly_fire\\20260928-174353\\log\\Ember.log",
+    "-log",
+    "-NoVerifyGC",
+    "-ExecCmds=DisableAllScreenMessages"
+  ],
+  "orbits": [
+    {
+      "name": "timelapse",
+      "frames": 600,
+      "mp4": "orbits/timelapse.mp4",
+      "error": "",
+      "camera_csv": "orbits/timelapse.camera.csv"
+    },
+    {
+      "name": "run_d19",
+      "frames": 300,
+      "mp4": "orbits/run_d19.mp4",
+      "error": "",
+      "camera_csv": "orbits/run_d19.camera.csv"
+    },
+    {
+      "name": "map_timelapse",
+      "frames": 141,
+      "mp4": "orbits/map_timelapse.mp4",
+      "error": "",
+      "camera_csv": "orbits/map_timelapse.camera.csv"
+    }
+  ]
+}

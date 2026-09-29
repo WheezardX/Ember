@@ -1,0 +1,220 @@
+{
+  "format": "ember-run-plan",
+  "version": 1,
+  "scenario": "S_jolly_fire",
+  "world": "C:/Projects/Terrain/store/jolly_mountain_2017",
+  "replay": "C:/Projects/Ember/runs/cp2/cp2-jolly-playback.replay.json",
+  "out_dir": "C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353",
+  "resolution": [
+    2560,
+    1440
+  ],
+  "perf_frames": 0,
+  "exposure_bias": -2.0,
+  "fixed_lod": null,
+  "lod_refine_factor": 1.5,
+  "look": "C:/Projects/Ember/viz/looks/terrain_default.toml",
+  "vegetation": true,
+  "veg_radius_m": 4000.0,
+  "veg_near_radius_m": 500.0,
+  "veg_mid_min_height_m": 12.0,
+  "wind_strength": 6.0,
+  "wind_from_deg": 270.0,
+  "smoke": true,
+  "smoke_wind_ms": 8.0,
+  "veg_lineup": false,
+  "exec_cmds": [],
+  "perf_exec_cmds": [],
+  "water_dir": "C:/Projects/Ember/store/render/jolly_mountain_2017/water",
+  "perf_bookmark": null,
+  "bookmarks": [
+    {
+      "name": "overview",
+      "target_frac": [
+        0.5,
+        0.5
+      ],
+      "target_cell": null,
+      "distance_m": 21000.0,
+      "yaw_deg": 10.0,
+      "pitch_deg": -38.0,
+      "fov_deg": 55.0,
+      "sun": "afternoon"
+    },
+    {
+      "name": "map",
+      "target_frac": [
+        0.5,
+        0.5
+      ],
+      "target_cell": null,
+      "distance_m": 35900.0,
+      "yaw_deg": 0.0,
+      "pitch_deg": -89.0,
+      "fov_deg": 50.0,
+      "sun": "noon"
+    },
+    {
+      "name": "run_mid",
+      "target_frac": [
+        0.66,
+        0.61
+      ],
+      "target_cell": null,
+      "distance_m": 5000.0,
+      "yaw_deg": 80.0,
+      "pitch_deg": -24.0,
+      "fov_deg": 55.0,
+      "sun": "dusk"
+    },
+    {
+      "name": "run_close",
+      "target_frac": [
+        0.68,
+        0.61
+      ],
+      "target_cell": null,
+      "distance_m": 1500.0,
+      "yaw_deg": 80.0,
+      "pitch_deg": -14.0,
+      "fov_deg": 50.0,
+      "sun": "dusk"
+    }
+  ],
+  "captures": [
+    {
+      "name": "d06",
+      "bookmark": "overview",
+      "t_s": 518400,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "d13",
+      "bookmark": "overview",
+      "t_s": 1123200,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "d19",
+      "bookmark": "overview",
+      "t_s": 1645200,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "d25",
+      "bookmark": "overview",
+      "t_s": 2160000,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "d35",
+      "bookmark": "overview",
+      "t_s": 3031200,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "map_d35",
+      "bookmark": "map",
+      "t_s": 3031200,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "run_mid_d19",
+      "bookmark": "run_mid",
+      "t_s": 1645200,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "run_close_d19",
+      "bookmark": "run_close",
+      "t_s": 1645200,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    }
+  ],
+  "orbits": [
+    {
+      "name": "timelapse",
+      "bookmark": "overview",
+      "to_bookmark": null,
+      "degrees": 40.0,
+      "t_from_s": 0.0,
+      "t_to_s": 3031200.0,
+      "frames": 600,
+      "fps": 30,
+      "warmup_frames": 30
+    },
+    {
+      "name": "run_d19",
+      "bookmark": "run_mid",
+      "to_bookmark": null,
+      "degrees": 12.0,
+      "t_from_s": 1630800.0,
+      "t_to_s": 1652400.0,
+      "frames": 300,
+      "fps": 30,
+      "warmup_frames": 30
+    },
+    {
+      "name": "map_timelapse",
+      "bookmark": "map",
+      "to_bookmark": null,
+      "degrees": 0.0,
+      "t_from_s": 0.0,
+      "t_to_s": 3024000.0,
+      "frames": 141,
+      "fps": 12,
+      "warmup_frames": 30
+    }
+  ],
+  "fire_probes": [
+    {
+      "name": "ignition",
+      "x": 649436.5,
+      "y": 5248858.3
+    },
+    {
+      "name": "run_d19",
+      "x": 657386.5,
+      "y": 5242948.3
+    },
+    {
+      "name": "late_west",
+      "x": 643676.5,
+      "y": 5245108.3
+    },
+    {
+      "name": "unburned",
+      "x": 655196.5,
+      "y": 5252608.3
+    },
+    {
+      "name": "unburnable",
+      "x": 650696.5,
+      "y": 5245498.3
+    }
+  ]
+}

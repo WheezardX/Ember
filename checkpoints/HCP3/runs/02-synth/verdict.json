@@ -1,0 +1,176 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_tq_fire_synth",
+  "run_dir": "C:\\Projects\\Ember\\runs\\viz\\S_tq_fire_synth\\20260928-175708",
+  "evaluated_utc": "2026-09-29T01:01:46Z",
+  "pass": false,
+  "summary": {
+    "captures": 3,
+    "match": 0,
+    "new": 0,
+    "mismatch": 3,
+    "missing": 0,
+    "checks": 4,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "t12h",
+      "bookmark": "fire_oblique",
+      "image": "captures\\t12h.png",
+      "golden": "viz\\goldens\\S_tq_fire_synth\\t12h.png",
+      "diff": {
+        "ok": false,
+        "reason": "ssim 0.9679 < 0.995; region (3, 0) ssim 0.8483 < 0.98",
+        "ssim": 0.9678772364477277,
+        "region_ssim_min": 0.8482690161532089,
+        "worst_region": [
+          3,
+          0
+        ],
+        "mean_abs_luma": 6.3420185807291665,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "mismatch",
+      "heatmap": "diff\\t12h.png"
+    },
+    {
+      "name": "t24h_front",
+      "bookmark": "front_close",
+      "image": "captures\\t24h_front.png",
+      "golden": "viz\\goldens\\S_tq_fire_synth\\t24h_front.png",
+      "diff": {
+        "ok": false,
+        "reason": "ssim 0.9889 < 0.995; region (0, 0) ssim 0.9150 < 0.98",
+        "ssim": 0.9888912423188033,
+        "region_ssim_min": 0.915007388381332,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.5577836773003472,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "mismatch",
+      "heatmap": "diff\\t24h_front.png"
+    },
+    {
+      "name": "t48h",
+      "bookmark": "fire_oblique",
+      "image": "captures\\t48h.png",
+      "golden": "viz\\goldens\\S_tq_fire_synth\\t48h.png",
+      "diff": {
+        "ok": false,
+        "reason": "ssim 0.8960 < 0.995; region (3, 1) ssim 0.7760 < 0.98",
+        "ssim": 0.8960313712390668,
+        "region_ssim_min": 0.7760409343758599,
+        "worst_region": [
+          3,
+          1
+        ],
+        "mean_abs_luma": 18.206247059461806,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "mismatch",
+      "heatmap": "diff\\t48h.png"
+    }
+  ],
+  "orbits": [
+    {
+      "name": "timelapse",
+      "frames": 300,
+      "mp4": "orbits/timelapse.mp4",
+      "error": "",
+      "camera_csv": "orbits/timelapse.camera.csv"
+    }
+  ],
+  "checks": [
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "t12h",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "t24h_front",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "t48h",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.cells_burned",
+      "capture": "t48h",
+      "ok": true,
+      "actual": 51325,
+      "expected": "> 0"
+    }
+  ],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_tq_fire_synth",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_tq_fire_synth.toml",
+    "world": "C:\\Projects\\Terrain\\store\\three_queens_2026",
+    "started": "20260928-175708",
+    "seconds": 271.0,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "3101bfe+dirty",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_tq_fire_synth/20260928-175708/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_tq_fire_synth\\20260928-175708\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ],
+    "orbits": [
+      {
+        "name": "timelapse",
+        "frames": 300,
+        "mp4": "orbits/timelapse.mp4",
+        "error": "",
+        "camera_csv": "orbits/timelapse.camera.csv"
+      }
+    ]
+  }
+}

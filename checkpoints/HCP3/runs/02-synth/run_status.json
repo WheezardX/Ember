@@ -1,0 +1,18 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_tq_fire_synth",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 258.81582190096378,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_tq_fire_synth/20260928-175708/captures/t12h.png",
+		"C:/Projects/Ember/runs/viz/S_tq_fire_synth/20260928-175708/facts/t12h.json",
+		"C:/Projects/Ember/runs/viz/S_tq_fire_synth/20260928-175708/captures/t24h_front.png",
+		"C:/Projects/Ember/runs/viz/S_tq_fire_synth/20260928-175708/facts/t24h_front.json",
+		"C:/Projects/Ember/runs/viz/S_tq_fire_synth/20260928-175708/captures/t48h.png",
+		"C:/Projects/Ember/runs/viz/S_tq_fire_synth/20260928-175708/facts/t48h.json",
+		"C:/Projects/Ember/runs/viz/S_tq_fire_synth/20260928-175708/facts/orbit_timelapse.json",
+		"C:/Projects/Ember/runs/viz/S_tq_fire_synth/20260928-175708/frames/timelapse"
+	]
+}

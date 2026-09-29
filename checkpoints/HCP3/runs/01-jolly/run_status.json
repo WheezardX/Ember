@@ -1,0 +1,32 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_jolly_fire",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 760.68699720129371,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/captures/d06.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/d06.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/captures/d13.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/d13.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/captures/d19.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/d19.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/captures/d25.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/d25.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/captures/d35.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/d35.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/captures/map_d35.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/map_d35.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/captures/run_mid_d19.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/run_mid_d19.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/captures/run_close_d19.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/run_close_d19.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/orbit_timelapse.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/frames/timelapse",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/orbit_run_d19.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/frames/run_d19",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/facts/orbit_map_timelapse.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/frames/map_timelapse"
+	]
+}

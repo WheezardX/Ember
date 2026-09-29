@@ -1,0 +1,39 @@
+{
+  "hcp": "HCP3",
+  "runs": [
+    {
+      "label": "jolly",
+      "dir": "01-jolly",
+      "source": "runs\\viz\\S_jolly_fire\\20260928-174353",
+      "pass": true,
+      "summary": {
+        "captures": 8,
+        "match": 0,
+        "new": 8,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 51,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "synth",
+      "dir": "02-synth",
+      "source": "runs\\viz\\S_tq_fire_synth\\20260928-175708",
+      "pass": false,
+      "summary": {
+        "captures": 3,
+        "match": 0,
+        "new": 0,
+        "mismatch": 3,
+        "missing": 0,
+        "checks": 4,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    }
+  ]
+}

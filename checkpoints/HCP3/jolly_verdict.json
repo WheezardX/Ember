@@ -1,0 +1,575 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_jolly_fire",
+  "run_dir": "C:\\Projects\\Ember\\runs\\viz\\S_jolly_fire\\20260928-174353",
+  "evaluated_utc": "2026-09-29T00:57:06Z",
+  "pass": true,
+  "summary": {
+    "captures": 8,
+    "match": 0,
+    "new": 8,
+    "mismatch": 0,
+    "missing": 0,
+    "checks": 51,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "d06",
+      "bookmark": "overview",
+      "image": "captures\\d06.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "d13",
+      "bookmark": "overview",
+      "image": "captures\\d13.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "d19",
+      "bookmark": "overview",
+      "image": "captures\\d19.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "d25",
+      "bookmark": "overview",
+      "image": "captures\\d25.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "d35",
+      "bookmark": "overview",
+      "image": "captures\\d35.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "map_d35",
+      "bookmark": "map",
+      "image": "captures\\map_d35.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "run_mid_d19",
+      "bookmark": "run_mid",
+      "image": "captures\\run_mid_d19.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "run_close_d19",
+      "bookmark": "run_close",
+      "image": "captures\\run_close_d19.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    }
+  ],
+  "orbits": [
+    {
+      "name": "timelapse",
+      "frames": 600,
+      "mp4": "orbits/timelapse.mp4",
+      "error": "",
+      "camera_csv": "orbits/timelapse.camera.csv"
+    },
+    {
+      "name": "run_d19",
+      "frames": 300,
+      "mp4": "orbits/run_d19.mp4",
+      "error": "",
+      "camera_csv": "orbits/run_d19.camera.csv"
+    },
+    {
+      "name": "map_timelapse",
+      "frames": 141,
+      "mp4": "orbits/map_timelapse.mp4",
+      "error": "",
+      "camera_csv": "orbits/map_timelapse.camera.csv"
+    }
+  ],
+  "checks": [
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "d06",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "d06",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.cells_burned",
+      "capture": "d06",
+      "ok": true,
+      "actual": 2725,
+      "expected": "== 2725"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "d06",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "d06",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "d06",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "d13",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "d13",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.cells_burned",
+      "capture": "d13",
+      "ok": true,
+      "actual": 13971,
+      "expected": "== 13971"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "d13",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "d13",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "d13",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.run_d19",
+      "capture": "d13",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "d19",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "d19",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.cells_burned",
+      "capture": "d19",
+      "ok": true,
+      "actual": 44602,
+      "expected": "== 44602"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.cells_burning",
+      "capture": "d19",
+      "ok": true,
+      "actual": 9718,
+      "expected": "== 9718"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "d19",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "d19",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "d19",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.run_d19",
+      "capture": "d19",
+      "ok": true,
+      "actual": 2,
+      "expected": "== 2"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "d25",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "d25",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.cells_burned",
+      "capture": "d25",
+      "ok": true,
+      "actual": 111780,
+      "expected": "== 111780"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "d25",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "d25",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "d25",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.run_d19",
+      "capture": "d25",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.late_west",
+      "capture": "d25",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "d35",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "d35",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.cells_burned",
+      "capture": "d35",
+      "ok": true,
+      "actual": 166647,
+      "expected": "== 166647"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "d35",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "d35",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "d35",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.late_west",
+      "capture": "d35",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "map_d35",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "map_d35",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "map_d35",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "map_d35",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "map_d35",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "run_mid_d19",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "run_mid_d19",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "run_mid_d19",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "run_mid_d19",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "run_mid_d19",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.enabled",
+      "capture": "run_close_d19",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.model",
+      "capture": "run_close_d19",
+      "ok": true,
+      "actual": "arrival-playback",
+      "expected": "== 'arrival-playback'"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.ignition",
+      "capture": "run_close_d19",
+      "ok": true,
+      "actual": 3,
+      "expected": "== 3"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburned",
+      "capture": "run_close_d19",
+      "ok": true,
+      "actual": 1,
+      "expected": "== 1"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.probes.unburnable",
+      "capture": "run_close_d19",
+      "ok": true,
+      "actual": 0,
+      "expected": "== 0"
+    }
+  ],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_jolly_fire",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_jolly_fire.toml",
+    "world": "C:\\Projects\\Terrain\\store\\jolly_mountain_2017",
+    "started": "20260928-174353",
+    "seconds": 773.6,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "3101bfe",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_jolly_fire/20260928-174353/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_jolly_fire\\20260928-174353\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ],
+    "orbits": [
+      {
+        "name": "timelapse",
+        "frames": 600,
+        "mp4": "orbits/timelapse.mp4",
+        "error": "",
+        "camera_csv": "orbits/timelapse.camera.csv"
+      },
+      {
+        "name": "run_d19",
+        "frames": 300,
+        "mp4": "orbits/run_d19.mp4",
+        "error": "",
+        "camera_csv": "orbits/run_d19.camera.csv"
+      },
+      {
+        "name": "map_timelapse",
+        "frames": 141,
+        "mp4": "orbits/map_timelapse.mp4",
+        "error": "",
+        "camera_csv": "orbits/map_timelapse.camera.csv"
+      }
+    ]
+  }
+}
