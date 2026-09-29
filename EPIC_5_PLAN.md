@@ -310,6 +310,15 @@ rangeland contrast. Prepared: `viz/worlds/big_grass_2026.terrain.toml` (a tile-a
 (sagebrush-steppe EVTs), and fire timing - we hold one final perimeter only (arrival raster all
 zero), so a replay needs IR/FIRMS progression (Epic 3).
 
+## 8e. HCP3 signed off (Brad, 2026-09-28)
+
+"Yes HCP3 is signed off, lets knock out U6." Bundle `checkpoints/HCP3` (Jolly Mountain 2017:
+S_jolly_fire 12 captures, 71/71 checks incl. exact burned/burning counts and probes vs the Epic 4
+stream; timelapse, 2D|3D split, scar stills, ground-level baseline). Carried to HCP4 / the ground
+plane: flame intensity variety (the uniform orange carpet), ground-level fire look (flames read as
+paint, marbled char, burned stands keep crowns), smoke near the camera, wind from a real field,
+exposure. Capture moved to NVENC (13 -> 3 min per Jolly run). Next: U6.
+
 ## 9. Notes for later epics
 
 - **Epic 6:** C1 readers, F3 shell, camera rigs, and the state player are its foundation; the command-issuing UI plugs into Epic 4's suppression schema on top of this scene. National cartographic view is new work there, not a HCP5 overlay retrofit.
