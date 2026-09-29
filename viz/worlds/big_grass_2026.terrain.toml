@@ -1,0 +1,79 @@
+# Render world for the BIG GRASS fire, 2026 (IRWIN {6B0C72B3-0E12-4695-9022-E1113C0AA8D1}):
+# Owyhee sage/grass rangeland, SE Oregon / SW Idaho - the rangeland contrast to Three Queens and
+# Jolly Mountain. A Terrain pipeline config; from the Ember repo root:
+#
+#   terrain run --config viz/worlds/big_grass_2026.terrain.toml --store ../Terrain/store
+#
+# WINDOW, not the whole fire. The perimeter spans 83 x 103 km (2,326 km2 burned); a full-extent
+# bake needs bounded-memory chunked ingest (upstream U6). This 25.6 x 19.2 km window is the one
+# with the most burned ground (97 % inside the 2026-08-24 perimeter), snapped to whole 1.28 km
+# content tiles in UTM 11N so a later full-extent bake on the same grid, seed and settings
+# reproduces these tiles exactly (U6 keeps the global scatter seed) and can adopt them.
+#
+# PRE-FIRE world (discovered 2026-07-23):
+#   * fuels pinned to LF2025 (maps disturbances through 2024), never "latest" (see U10);
+#   * no LiDAR canopy (rangeland; any 2026 flights may post-date the fire);
+#   * greenness from the early summer before ignition.
+# Vegetation is OFF for now: the Cascades palette has no sagebrush-steppe EVTs and would plant
+# conifers. Add a Great Basin palette, then `terrain veg big_grass_2026` re-runs only that stage.
+# No fire replay yet: we have one final perimeter (arrival raster is all zero), so a progression
+# needs IR/FIRMS timing first.
+
+[project]
+name = "big_grass_2026"
+crs  = "EPSG:32611"
+
+[aoi]
+type = "bbox"
+crs  = "EPSG:32611"
+#       min_x     min_y      max_x     max_y      (multiples of 1280 m)
+bbox = [485120.0, 4698880.0, 510720.0, 4718080.0]
+
+[dem]
+profile        = "game"              # 10 m
+sources        = ["3dep-ept", "copernicus-30m"]
+vertical_datum = "navd88"
+fill_voids     = true
+
+[dem.thinning]
+points_per_cell = 4
+
+[tiling]
+scheme     = "quadtree"
+tile_px    = 128                     # 1.28 km content tiles at 10 m
+overlap_px = 8
+base_lod   = 14
+num_lods   = 4
+
+[outputs.heightmap]
+enabled = true
+format  = "png16"
+
+[outputs.gltf_tiles]
+enabled = false
+
+[outputs.gltf]
+enabled = false
+
+[outputs.stl]
+enabled = false
+
+[fuels]
+enabled          = true
+landfire_version = "LF2025"          # pre-fire, pinned
+
+[canopy]
+enabled = false
+
+[season]
+enabled = true
+window  = ["2026-06-01", "2026-07-20"]   # before ignition (2026-07-23)
+
+[vegetation]
+enabled                = false       # needs a Great Basin palette first (see header)
+palette                = "packs/palettes/cascades_mixed_conifer.toml"
+world_seed             = 1337
+layer_version          = 2
+candidates_per_cell    = 4
+max_instances_per_tile = 20000000
+preview                = false

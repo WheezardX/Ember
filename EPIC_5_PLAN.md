@@ -298,6 +298,18 @@ until licensed scans (with bark). Direction: FBFM40 fuel model drives ground det
 and logs, TU understory, GR/GS/SH grass and shrub, NB rock/snow) plus near-only ground-cover
 instances; own budget line (~1.5 ms), terrain toward Nanite to make room.
 
+**Sequencing after HCP3 (Brad, 2026-09-28):** finish Jolly (HCP3), then **U6 bounded-memory
+chunked ingest** (docs/upstream/U6-bounded-memory-ingest.md) BEFORE the next fire. Runtime
+streaming already works tile by tile; the bake does not (whole AOI in memory, ~12 GB peak at
+~500 km2), and separately baked regions cannot be stitched without seams (edge context, per-region
+height quantization, LOD pyramids). U6 bakes one shared tile grid in haloed chunks with a ledger,
+so regions grow/resume seam-free. Next fire after U6: **BIG GRASS 2026** (IRWIN
+{6B0C72B3-0E12-4695-9022-E1113C0AA8D1}), Owyhee sage/grass rangeland, 83 x 103 km, the
+rangeland contrast. Prepared: `viz/worlds/big_grass_2026.terrain.toml` (a tile-aligned
+25.6 x 19.2 km window, pre-fire LF2025, vegetation off). Still needed: Great Basin veg palette
+(sagebrush-steppe EVTs), and fire timing - we hold one final perimeter only (arrival raster all
+zero), so a replay needs IR/FIRMS progression (Epic 3).
+
 ## 9. Notes for later epics
 
 - **Epic 6:** C1 readers, F3 shell, camera rigs, and the state player are its foundation; the command-issuing UI plugs into Epic 4's suppression schema on top of this scene. National cartographic view is new work there, not a HCP5 overlay retrofit.

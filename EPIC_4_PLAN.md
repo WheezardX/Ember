@@ -291,6 +291,14 @@ Linux leg of the determinism matrix, which only runs in CI.
       33-34 m over Three Queens, there is no understory, and the re-clamp piles 270 k ponderosa at
       exactly 45 m. Consider a stand-structure height draw (dominant/co-dominant/suppressed)
       under the CHM ceiling. Surfaced at HCP2 (`ember-dev forest-report`).
+- [ ] U10 (Epics 1-2, historical fuels vintage) — historical incident worlds take
+      `landfire_version = "latest"`, so hist-jolly-mountain-2017 (fuels provenance: layer list
+      LF2025_FBFM40..LF2025_EVT) is built on fuels mapped AFTER the fire: the 2017 scar is
+      already in them. Any sim of a past fire runs on its own aftermath. Pin historical worlds
+      to the last LANDFIRE vintage before ignition (Terrain `landfire_version` alias, e.g. LF2016
+      for 2017 fires, added in Terrain 27fbb20) and rebuild the pack; same for post-fire LiDAR
+      canopy. Epic 5 renders Jolly on an LF2016 world (viz/worlds/jolly_mountain_2017.terrain.toml).
+      Found at HCP3 (2026-09-28).
 
 **Model-quality candidates noted, deliberately not tuned (would be fitting one fire)**
 - [ ] CP5: RH/T→moisture response too strong relative to wind for timber (model grows fastest
