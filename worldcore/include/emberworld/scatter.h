@@ -88,10 +88,11 @@ struct Params {
     double cc_nodata = -9999.0;
     double dem_nodata = -9999.0;
     double height_nodata = -9999.0;
+    bool ground_tree = false;     // U12 ground_z = "tree": z = DEM bilinear at the tree, not the cell
 };
 
 struct Instance {
-    double x = 0, y = 0, z = 0;   // world metres (z = DEM cell value; 0 where DEM is nodata)
+    double x = 0, y = 0, z = 0;   // world metres (z: see Params::ground_tree; 0 where DEM is nodata)
     int species = 0;              // index into Palette::species_index()
     double height_m = 0;
     double yaw_rad = 0;
@@ -101,10 +102,18 @@ struct Instance {
 
 // Scatter a window of the canonical grid. Arrays are window-local, row-major (row 0 = north),
 // `rows * cols` long; `r0`/`c0` are the window's global row/col (used in hashing and position).
-// Appends in Terrain's order (row, col, attempt).
+// Appends in Terrain's order (row, col, attempt). `dem` may carry `dem_halo` extra cells on
+// every side ((rows + 2h) x (cols + 2h)): the neighbours the per-tree bilinear needs at the edge.
 EMBERWORLD_CORE_API void scatter_window(const Palette& palette, const Params& p, int r0, int c0,
                                         int rows, int cols, std::span<const float> cc,
                                         std::span<const float> height, std::span<const int32_t> evt,
-                                        std::span<const float> dem, std::vector<Instance>& out);
+                                        std::span<const float> dem, std::vector<Instance>& out,
+                                        int dem_halo = 0);
+
+// Ground under a tree at jitter (jx, jy) in DEM-array cell (rr, cc): bilinear between the four
+// cell centres around it; `z_cell` where a neighbour is outside the array or nodata. Mirrors
+// terrain/veg/scatter.py::tree_ground term for term (U12).
+EMBERWORLD_CORE_API double tree_ground(std::span<const float> dem, int rows, int cols, int rr, int cc,
+                                       double jx, double jy, double z_cell, double dem_nodata);
 
 }  // namespace emberworld::scatter

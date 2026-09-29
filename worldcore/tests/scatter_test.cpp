@@ -78,6 +78,58 @@ TEST_CASE("scatter: exact EVT codes win over ranges (scatter v2 palettes)") {
     CHECK(p.group_for_evt(5000).name == "d");
 }
 
+TEST_CASE("scatter: ground_z = tree matches Terrain's golden (U12, every row)") {
+    auto pr = load_palette(data("pnw_conifer.toml"));
+    REQUIRE(pr.ok());
+    std::ifstream gf(data("scatter_pnw_tree.json"));
+    REQUIRE(gf);
+    const auto golden = nlohmann::json::parse(gf);
+    const int n = 8;
+    std::vector<float> cc(n * n), height(n * n), dem(n * n);
+    std::vector<int32_t> evt(n * n);
+    for (int r = 0; r < n; ++r)
+        for (int c = 0; c < n; ++c) {
+            const int k = r * n + c;
+            cc[k] = static_cast<float>(static_cast<double>(r * n + c) * 70.0 / (n * n));
+            evt[k] = r < n / 2 ? 7050 : 5000;
+            height[k] = evt[k] >= 7000 ? 20.0f : 1.0f;
+            dem[k] = static_cast<float>(800.0 + 7.5 * c - 4.25 * r + 3.0 * ((r * c) % 5));
+        }
+    Params prm;
+    prm.tile_seed = golden.at("tile_seed").get<uint64_t>();
+    prm.cell_size = 10.0;
+    prm.x0 = 500000.0;
+    prm.y_top = 5200000.0;
+    prm.candidates_per_cell = 4;
+    prm.ground_tree = true;
+    std::vector<Instance> out;
+    scatter_window(pr.palette, prm, 0, 0, n, n, cc, height, evt, dem, out);
+    const auto& rows = golden.at("rows");
+    REQUIRE(out.size() == rows.size());
+    for (size_t i = 0; i < rows.size(); ++i) {
+        INFO("row " << i);
+        CHECK(rounds_to(out[i].x, rows[i][0].get<double>(), 3));
+        CHECK(rounds_to(out[i].y, rows[i][1].get<double>(), 3));
+        CHECK(rounds_to(out[i].z, rows[i][2].get<double>(), 3));
+        CHECK(rounds_to(out[i].height_m, rows[i][4].get<double>(), 3));
+    }
+    // same trees and banded with a halo (nodata past the grid) == the whole window
+    std::vector<float> padded((n + 2) * (n + 2), -9999.0f);
+    for (int r = 0; r < n; ++r)
+        for (int c = 0; c < n; ++c) padded[(r + 1) * (n + 2) + c + 1] = dem[r * n + c];
+    std::vector<Instance> banded;
+    for (int r0 : {0, 3, 6}) {
+        const int r1 = std::min(n, r0 + 3), h = r1 - r0;
+        std::span<const float> sub(padded.data() + static_cast<size_t>(r0) * (n + 2), (h + 2) * (n + 2));
+        scatter_window(pr.palette, prm, r0, 0, h, n,
+                       std::span<const float>(cc).subspan(r0 * n, h * n),
+                       std::span<const float>(height).subspan(r0 * n, h * n),
+                       std::span<const int32_t>(evt).subspan(r0 * n, h * n), sub, banded, 1);
+    }
+    REQUIRE(banded.size() == out.size());
+    for (size_t i = 0; i < out.size(); ++i) CHECK(banded[i].z == out[i].z);
+}
+
 TEST_CASE("scatter: matches Terrain's golden vectors (synthetic 8x8)") {
     auto pr = load_palette(data("pnw_conifer.toml"));
     REQUIRE(pr.ok());

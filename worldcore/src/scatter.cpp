@@ -150,10 +150,28 @@ PaletteResult load_palette(const std::string& path) {
     return res;
 }
 
+double tree_ground(std::span<const float> dem, int rows, int cols, int rr, int cc, double jx,
+                   double jy, double z_cell, double dem_nodata) {
+    int dc, dr;
+    double tx, ty;
+    if (jx < 0.5) { dc = -1; tx = jx + 0.5; } else { dc = 0; tx = jx - 0.5; }
+    if (jy < 0.5) { dr = -1; ty = jy + 0.5; } else { dr = 0; ty = jy - 0.5; }
+    const int ra = rr + dr, ca = cc + dc;
+    if (ra < 0 || ca < 0 || ra + 1 >= rows || ca + 1 >= cols) return z_cell;
+    auto at = [&](int r, int c) { return static_cast<double>(dem[static_cast<size_t>(r) * cols + c]); };
+    const double z00 = at(ra, ca), z01 = at(ra, ca + 1), z10 = at(ra + 1, ca), z11 = at(ra + 1, ca + 1);
+    if (z00 == dem_nodata || z01 == dem_nodata || z10 == dem_nodata || z11 == dem_nodata) return z_cell;
+    // same order of operations as Python (no contraction: each product rounds on its own)
+    const double top = z00 * (1.0 - tx) + z01 * tx;
+    const double bot = z10 * (1.0 - tx) + z11 * tx;
+    return top * (1.0 - ty) + bot * ty;
+}
+
 void scatter_window(const Palette& palette, const Params& p, int r0, int c0, int rows, int cols,
                     std::span<const float> cc, std::span<const float> height,
                     std::span<const int32_t> evt, std::span<const float> dem,
-                    std::vector<Instance>& out) {
+                    std::vector<Instance>& out, int dem_halo) {
+    const int drows = rows + 2 * dem_halo, dcols = cols + 2 * dem_halo;
     // Python's round() is round-half-even; nearbyint under the default rounding mode matches.
     const int saved_round = std::fegetround();
     std::fesetround(FE_TONEAREST);
@@ -169,7 +187,8 @@ void scatter_window(const Palette& palette, const Params& p, int r0, int c0, int
             const uint64_t c = static_cast<uint64_t>(c0 + cc_i);
             const uint64_t cell_seed = hash64({p.tile_seed, r, c});
             const double hv = height[k];
-            const double zc = dem[k];
+            const double zc =
+                dem[static_cast<size_t>(rr + dem_halo) * dcols + (cc_i + dem_halo)];
             const double z = (zc == p.dem_nodata) ? 0.0 : zc;
 
             for (int a_i = 0; a_i < p.candidates_per_cell; ++a_i) {
@@ -184,7 +203,9 @@ void scatter_window(const Palette& palette, const Params& p, int r0, int c0, int
                 Instance in;
                 in.x = p.x0 + (static_cast<double>(c) + jx) * p.cell_size;
                 in.y = p.y_top - (static_cast<double>(r) + jy) * p.cell_size;
-                in.z = z;
+                in.z = p.ground_tree ? tree_ground(dem, drows, dcols, rr + dem_halo,
+                                                   cc_i + dem_halo, jx, jy, z, p.dem_nodata)
+                                     : z;
 
                 // Stand structure: crown class -> fraction of the canopy-top height.
                 const CrownClass& cls = palette.structure[static_cast<size_t>(

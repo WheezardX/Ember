@@ -31,6 +31,8 @@ ScatterInputResult load_scatter_input(const Region& region) {
         for (char& ch : h)
             if (ch == '\\') ch = '/';
         in.height_layer = h.find("chm") != std::string::npos ? "canopy_chm" : "fuels_ch";
+        // U12: absent in pre-U12 packs = "cell" (the cell-centre DEM value)
+        in.params.ground_tree = j.value("ground_z", std::string("cell")) == "tree";
     } catch (const std::exception& e) {
         res.error = path + ": " + e.what();
     }
@@ -50,9 +52,10 @@ std::string resolve_palette(const Region& region, const std::string& ref) {
 
 namespace {
 
-// Content pixels (tile_px^2) of a layer tile as float, or error.
+// Content pixels (tile_px^2) of a layer tile as float, plus `halo` apron pixels on every side
+// ((tile_px + 2 halo)^2), or error.
 bool content_pixels(const Region& region, const std::string& rel, std::vector<float>& out,
-                    std::string& err) {
+                    std::string& err, int halo = 0) {
     TiffResult t = read_tiff(region.path(rel));
     if (!t) {
         err = t.error.message;
@@ -64,9 +67,14 @@ bool content_pixels(const Region& region, const std::string& rel, std::vector<fl
         err = rel + ": unexpected size";
         return false;
     }
-    out.resize(static_cast<size_t>(tp) * tp);
-    for (int y = 0; y < tp; ++y)
-        for (int x = 0; x < tp; ++x) out[static_cast<size_t>(y) * tp + x] = static_cast<float>(r.at(x + ov, y + ov));
+    if (halo > ov) {
+        err = rel + ": needs a " + std::to_string(halo) + " px apron, tile has " + std::to_string(ov);
+        return false;
+    }
+    const int n = tp + 2 * halo, o = ov - halo;
+    out.resize(static_cast<size_t>(n) * n);
+    for (int y = 0; y < n; ++y)
+        for (int x = 0; x < n; ++x) out[static_cast<size_t>(y) * n + x] = static_cast<float>(r.at(x + o, y + o));
     return true;
 }
 
@@ -91,7 +99,7 @@ TileScatterResult scatter_tile(const Region& region, const TileEntry& tile,
     if (!content_pixels(region, lcc->path, cc, res.error) ||
         !content_pixels(region, levt->path, evtf, res.error) ||
         !content_pixels(region, lh->path, h, res.error) ||
-        !content_pixels(region, tile.height_tif, dem, res.error))
+        !content_pixels(region, tile.height_tif, dem, res.error, in.params.ground_tree ? 1 : 0))
         return res;
     std::vector<int32_t> evt(evtf.size());
     for (size_t i = 0; i < evt.size(); ++i) evt[i] = static_cast<int32_t>(evtf[i]);
@@ -100,7 +108,10 @@ TileScatterResult scatter_tile(const Region& region, const TileEntry& tile,
     res.c0 = static_cast<int>(std::lround((tile.content.min_x - in.params.x0) / cs));
     res.r0 = static_cast<int>(std::lround((in.params.y_top - tile.content.max_y) / cs));
     const int tp = region.tile_px;
-    scatter::scatter_window(palette, in.params, res.r0, res.c0, tp, tp, cc, h, evt, dem, res.instances);
+    // ground_z = "tree": the base-LOD height tile's apron is the DEM's own neighbouring cells
+    // (nodata past the grid), exactly the halo Terrain's row bands read
+    scatter::scatter_window(palette, in.params, res.r0, res.c0, tp, tp, cc, h, evt, dem, res.instances,
+                            in.params.ground_tree ? 1 : 0);
     return res;
 }
 
