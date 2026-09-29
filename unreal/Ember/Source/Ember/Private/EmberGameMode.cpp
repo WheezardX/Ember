@@ -14,7 +14,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogEmberGame, Log, All);
 
 AEmberGameMode::AEmberGameMode()
 {
-	DefaultPawnClass = ASpectatorPawn::StaticClass();
+	DefaultPawnClass = ASpectatorPawn::StaticClass();  // play mode swaps in AEmberFlyPawn
 }
 
 void AEmberGameMode::StartPlay()

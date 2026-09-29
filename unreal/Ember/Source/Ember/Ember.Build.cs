@@ -10,7 +10,7 @@ public class Ember : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] {
 			"Core", "CoreUObject", "Engine", "EmberWorld" });
 		PrivateDependencyModuleNames.AddRange(new string[] {
-			"Json", "RenderCore", "RHI", "ImageCore", "ProceduralMeshComponent" });
+			"Json", "RenderCore", "RHI", "ImageCore", "ProceduralMeshComponent", "InputCore" });
 
 		if (Target.Platform == UnrealTargetPlatform.Win64)
 		{

@@ -20,6 +20,21 @@ Measured on the runner (HCP0, 2026-09-27): **inner loop 20–35 s** (incremental
 harness run ~13 s, evaluate ~2 s). First run after a clean checkout adds shader compilation
 (~1 min).
 
+## Flying around a scenario (`ember-dev play`)
+
+```
+ember-dev play S_ground_tq                  # windowed 1920x1080, starts at the first capture's bookmark
+ember-dev play S_ground_fire_tq -b smoulder # any bookmark; --res 2560x1440, --fullscreen, --wait
+```
+
+The harness loads the scenario exactly as for a capture run (look, trees, ground cover, water,
+fire replay, smoke), then hands the view to a free-fly pawn (`AEmberFlyPawn`) instead of
+capturing. Speed follows the height above ground (~4 m/s at eye level, ~0.8 x height above
+that) and the camera never goes below 1 m. Controls: mouse look, WASD, E/Space up, Q/C down,
+Shift x4, Ctrl x0.25, mouse wheel speed, G walk (eye 1.7 m, follows the ground) / fly, 1-5 sun
+dawn..dusk; with a fire replay P plays the fire, `,` `.` step -/+1 h, `[` `]` halve/double the
+rate; H hides the help line; Esc quits. Logs go to `runs/play/<scenario>/<stamp>/log/`.
+
 ## What happens in a run
 
 `run-scenario` writes a **run plan** (`plan.json`, `ember-run-plan` v1 — the scenario resolved

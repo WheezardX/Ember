@@ -65,13 +65,26 @@ private:
 		int32 WarmupFrames = 30;
 		double TimeS = -1.0;       // >= 0: fire sim time to show (replay scenarios)
 	};
-	enum class EState : uint8 { Idle, LoadWorld, Position, Warmup, Shoot, WaitShot, OrbitStart, OrbitWarmup, OrbitShoot, OrbitWait, PerfWarmup, Perf, Done };
+	enum class EState : uint8 { Idle, LoadWorld, Position, Warmup, Shoot, WaitShot, OrbitStart, OrbitWarmup, OrbitShoot, OrbitWait, PerfWarmup, Perf, Play, Done };
 
 	bool LoadPlan(const FString& Path, FString& OutError);
 	bool PlaceCamera(const FBookmark& B, FString& OutError);
 	void OnScreenshot(int32 W, int32 H, const TArray<FColor>& Pixels);
 	void Finish(int32 ExitCode, const FString& Error);
 	void NextPhase();                                  // captures -> orbits -> perf -> finish
+	// Play mode (`ember-dev play`): the scenario loads as for a capture run, then the view goes to
+	// a free-fly pawn (AEmberFlyPawn) and the harness only animates wind / fire and draws help.
+	void StartPlay();
+	void TickPlay(float DeltaSeconds);
+	bool bPlay = false;
+	FString PlayBookmark;
+	bool bFirePlaying = false;
+	bool bShowHelp = true;
+	double PlayFireS = 0.0;       // replay time (s)
+	double PlayRateH = 1.0;       // replay hours per real second while playing
+	double PlayClock = 0.0;       // wind / flicker clock
+	int32 SunIndex = -1;
+	UPROPERTY(Transient) TObjectPtr<class AEmberFlyPawn> FlyPawn;
 	bool PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutError);
 	/** The pose of an orbit/flyover frame (before any height override). */
 	bool OrbitPose(const FOrbit& O, int32 Frame, FBookmark& Out, FString& OutError) const;

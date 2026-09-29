@@ -291,6 +291,32 @@ def run_scenario(eng: Engine, sc: LoadedScenario, *, runs_root: Path | None = No
     return run_dir
 
 
+def play(eng: Engine, sc: LoadedScenario, *, bookmark: str | None = None,
+         resolution: tuple[int, int] | None = None, fullscreen: bool = False,
+         exposure_bias: float = 0.0) -> tuple[Path, subprocess.Popen]:
+    """Launch the client interactively on a scenario (the harness in play mode: everything the
+    scenario loads, then a free-fly camera; no captures). Returns (run dir, process)."""
+    repo = repo_root()
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    run_dir = repo / "runs" / "play" / sc.name / stamp
+    (run_dir / "log").mkdir(parents=True, exist_ok=True)
+    plan_path = write_run_plan(sc, run_dir, exposure_bias)
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    plan["mode"] = "play"
+    if bookmark:
+        if bookmark not in {b["name"] for b in plan["bookmarks"]}:
+            raise ValueError(f"no bookmark {bookmark!r} in {sc.name}")
+        plan["play_bookmark"] = bookmark
+    plan_path.write_text(json.dumps(plan, indent=2), encoding="utf-8")
+    w, h = resolution or (1920, 1080)
+    cmd = [str(eng.editor_exe), str(eng.project), "-game", "-nosplash", "-NoLoadingScreen",
+           "-fullscreen" if fullscreen else "-windowed", f"-ResX={w}", f"-ResY={h}",
+           f"-EmberRun={plan_path.as_posix()}", f"-abslog={run_dir / 'log' / 'Ember.log'}",
+           "-log"]
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return run_dir, proc
+
+
 def encode_orbits(sc: LoadedScenario, run_dir: Path, keep_frames: bool = False) -> list[dict]:
     """Orbit videos. Normally the harness streamed raw frames to ffmpeg (GPU encoder) and
     orbits/<orbit>.mp4 already exists; otherwise frames/<orbit>/f%05d.png -> mp4 here."""

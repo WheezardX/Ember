@@ -109,6 +109,38 @@ def run_scenario(name: str, timeout: int = typer.Option(600, "--timeout"),
         raise typer.Exit(1)
 
 
+@app.command()
+def play(name: str,
+         bookmark: str = typer.Option(None, "--bookmark", "-b",
+                                      help="Start pose (default: the first capture's)."),
+         res: str = typer.Option("1920x1080", "--res", help="Window size WxH."),
+         fullscreen: bool = typer.Option(False, "--fullscreen"),
+         wait: bool = typer.Option(False, "--wait", help="Block until the client exits.")) -> None:
+    """Launch the client on a scenario and fly around in it (free camera, no captures)."""
+    sc = _sc(name)
+    if not (sc.world_path / "manifest.json").exists():
+        typer.secho(f"world not found: {sc.world_path}", fg=typer.colors.RED)
+        raise typer.Exit(2)
+    try:
+        w, h = (int(v) for v in res.lower().split("x"))
+    except ValueError:
+        typer.secho(f"--res wants WxH, got {res!r}", fg=typer.colors.RED)
+        raise typer.Exit(2) from None
+    eng = ue.load_engine()
+    try:
+        run_dir, proc = ue.play(eng, sc, bookmark=bookmark, resolution=(w, h),
+                                fullscreen=fullscreen,
+                                exposure_bias=sc.spec.scenario.exposure_bias)
+    except ValueError as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(2) from None
+    typer.echo(f"playing {sc.name} (pid {proc.pid}); log {run_dir / 'log' / 'Ember.log'}")
+    typer.echo("  mouse look | WASD | E/Space up, Q/C down | Shift x4, Ctrl x0.25 | wheel speed")
+    typer.echo("  G walk/fly | 1-5 sun | P play fire, , . -/+1 h, [ ] rate | H help | Esc quit")
+    if wait:
+        proc.wait()
+
+
 def _resolve_run(name: str, run: str | None) -> Path:
     if run:
         return Path(run)

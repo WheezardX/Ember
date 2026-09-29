@@ -1,0 +1,107 @@
+#include "EmberFlyPawn.h"
+
+#include "Camera/CameraComponent.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "InputCoreTypes.h"
+
+#include "EmberTerrainActor.h"
+
+AEmberFlyPawn::AEmberFlyPawn()
+{
+	PrimaryActorTick.bCanEverTick = true;
+	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+	RootComponent = Camera;
+	Camera->bConstrainAspectRatio = false;
+	bUseControllerRotationPitch = true;
+	bUseControllerRotationYaw = true;
+}
+
+bool AEmberFlyPawn::GroundZ(const FVector& UE, double& OutUEZ) const
+{
+	if (!Terrain)
+	{
+		return false;
+	}
+	const emberworld::Frame& F = Terrain->GetFrame();
+	double Gz = 0.0;
+	if (!Terrain->GroundHeightAt(F.anchor_x + UE.X / 100.0, F.anchor_y - UE.Y / 100.0, Gz))
+	{
+		return false;
+	}
+	OutUEZ = Terrain->WorldToUE(0.0, 0.0, Gz).Z;
+	return true;
+}
+
+void AEmberFlyPawn::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+	{
+		return;
+	}
+	// Look: raw mouse deltas (no input-mapping assets: content-free project).
+	float Mx = 0.f, My = 0.f;
+	PC->GetInputMouseDelta(Mx, My);
+	FRotator R = PC->GetControlRotation();
+	R.Yaw += Mx * LookSensitivity * 10.f;
+	R.Pitch = FMath::Clamp(FRotator::NormalizeAxis(R.Pitch + My * LookSensitivity * 10.f), -89.f, 89.f);
+	PC->SetControlRotation(R);
+
+	auto Down = [&](const FKey& K) { return PC->IsInputKeyDown(K); };
+	if (PC->WasInputKeyJustPressed(EKeys::G))
+	{
+		bWalk = !bWalk;
+	}
+	if (PC->WasInputKeyJustPressed(EKeys::MouseScrollUp))
+	{
+		SpeedScale = FMath::Min(SpeedScale * 1.25, 20.0);
+	}
+	if (PC->WasInputKeyJustPressed(EKeys::MouseScrollDown))
+	{
+		SpeedScale = FMath::Max(SpeedScale / 1.25, 0.05);
+	}
+
+	FVector Loc = GetActorLocation();
+	double Gz = 0.0;
+	const bool bGround = GroundZ(Loc, Gz);
+	AglM = bGround ? (Loc.Z - Gz) / 100.0 : -1.0;
+
+	// Speed grows with height: ~4 m/s at eye level, ~0.8 x height above ~5 m (800 m/s at 1 km).
+	const double Base = bWalk ? 4.0 : FMath::Max(4.0, 0.8 * FMath::Max(AglM, 0.0));
+	double Mult = SpeedScale;
+	if (Down(EKeys::LeftShift) || Down(EKeys::RightShift)) Mult *= 4.0;
+	if (Down(EKeys::LeftControl) || Down(EKeys::RightControl)) Mult *= 0.25;
+	SpeedMs = Base * Mult;
+
+	const FRotator Yaw(0.f, R.Yaw, 0.f);
+	const FVector Fwd = bWalk ? Yaw.Vector() : R.Vector();
+	const FVector Right = FRotationMatrix(Yaw).GetScaledAxis(EAxis::Y);
+	FVector Move = FVector::ZeroVector;
+	if (Down(EKeys::W) || Down(EKeys::Up)) Move += Fwd;
+	if (Down(EKeys::S) || Down(EKeys::Down)) Move -= Fwd;
+	if (Down(EKeys::D) || Down(EKeys::Right)) Move += Right;
+	if (Down(EKeys::A) || Down(EKeys::Left)) Move -= Right;
+	if (!bWalk)
+	{
+		if (Down(EKeys::E) || Down(EKeys::SpaceBar)) Move += FVector::UpVector;
+		if (Down(EKeys::Q) || Down(EKeys::C)) Move -= FVector::UpVector;
+	}
+	if (!Move.IsNearlyZero())
+	{
+		Loc += Move.GetSafeNormal() * SpeedMs * 100.0 * DeltaSeconds;
+	}
+	if (GroundZ(Loc, Gz))
+	{
+		if (bWalk)
+		{
+			Loc.Z = Gz + EyeM * 100.0;
+		}
+		else
+		{
+			Loc.Z = FMath::Max(Loc.Z, Gz + MinAglM * 100.0);
+		}
+	}
+	SetActorLocation(Loc);
+}

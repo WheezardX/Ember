@@ -24,6 +24,7 @@
 
 #include "EmberEnvironment.h"
 #include "EmberFireActor.h"
+#include "EmberFlyPawn.h"
 #include "EmberGroundCoverActor.h"
 #include "EmberSceneFacts.h"
 #include "EmberTerrainActor.h"
@@ -71,6 +72,12 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetNumberField(TEXT("lod_refine_factor"), RefineFactor);
 	J->TryGetStringField(TEXT("look"), LookPath);
 	J->TryGetBoolField(TEXT("vegetation"), bVegetation);
+	FString Mode;
+	if (J->TryGetStringField(TEXT("mode"), Mode))
+	{
+		bPlay = Mode == TEXT("play");
+	}
+	J->TryGetStringField(TEXT("play_bookmark"), PlayBookmark);
 	J->TryGetBoolField(TEXT("ground_cover"), bGroundCover);
 	J->TryGetNumberField(TEXT("ground_cover_radius_m"), GroundCoverRadiusM);
 	J->TryGetNumberField(TEXT("veg_radius_m"), VegRadiusM);
@@ -205,7 +212,7 @@ bool AEmberHarness::Start(const FString& PlanPath, AEmberEnvironment* Env)
 		*Scenario, *WorldDir, Captures.Num(), *OutDir);
 	if (GEngine)
 	{
-		GEngine->bEnableOnScreenDebugMessages = false;
+		GEngine->bEnableOnScreenDebugMessages = bPlay;  // play mode draws its help text
 	}
 	if (Environment)
 	{
@@ -608,6 +615,142 @@ bool AEmberHarness::OrbitPose(const FOrbit& O, int32 Frame, FBookmark& At, FStri
 	return true;
 }
 
+void AEmberHarness::StartPlay()
+{
+	// Start pose: the named bookmark, else the first capture's, else the first bookmark.
+	FString Name = PlayBookmark;
+	if (Name.IsEmpty() && Captures.Num())
+	{
+		Name = Captures[0].Bookmark;
+	}
+	const FBookmark* B = Bookmarks.FindByPredicate([&](const FBookmark& X) { return Name.IsEmpty() || X.Name == Name; });
+	FString Err;
+	if (B && !PlaceCamera(*B, Err))
+	{
+		UE_LOG(LogEmberHarness, Warning, TEXT("play: start bookmark: %s"), *Err);
+	}
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (!PC)
+	{
+		Finish(2, TEXT("play: no player controller"));
+		return;
+	}
+	const FVector Loc = Camera ? Camera->GetActorLocation() : FVector(0, 0, 100000);
+	const FRotator Rot = Camera ? Camera->GetActorRotation() : FRotator(-30, 0, 0);
+	FActorSpawnParameters P;
+	P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	FlyPawn = GetWorld()->SpawnActor<AEmberFlyPawn>(Loc, Rot, P);
+	FlyPawn->Terrain = Terrain;
+	if (Camera)
+	{
+		FlyPawn->Camera->SetFieldOfView(Camera->GetCameraComponent()->FieldOfView);
+	}
+	if (APawn* Old = PC->GetPawn())
+	{
+		PC->UnPossess();
+		Old->Destroy();
+	}
+	PC->Possess(FlyPawn);
+	PC->SetControlRotation(Rot);
+	PC->SetViewTarget(FlyPawn);
+	PC->SetInputMode(FInputModeGameOnly());
+	PC->bShowMouseCursor = false;
+	if (Fire)
+	{
+		PlayFireS = Fire->EndS;
+		SetFireTime(PlayFireS, 0.0);
+	}
+	State = EState::Play;
+	UE_LOG(LogEmberHarness, Display, TEXT("play: %s from bookmark '%s'"), *Scenario, B ? *B->Name : TEXT("(none)"));
+}
+
+void AEmberHarness::TickPlay(float DeltaSeconds)
+{
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (!PC || !FlyPawn)
+	{
+		return;
+	}
+	PlayClock += DeltaSeconds;
+	if (Vegetation) Vegetation->SetWindTime(PlayClock);
+	if (Cover) Cover->SetWindTime(PlayClock);
+	if (PC->WasInputKeyJustPressed(EKeys::Escape))
+	{
+		FPlatformMisc::RequestExit(false);
+		return;
+	}
+	if (PC->WasInputKeyJustPressed(EKeys::H))
+	{
+		bShowHelp = !bShowHelp;
+	}
+	static const TCHAR* Suns[] = {TEXT("dawn"), TEXT("morning"), TEXT("noon"), TEXT("afternoon"), TEXT("dusk")};
+	const FKey SunKeys[] = {EKeys::One, EKeys::Two, EKeys::Three, EKeys::Four, EKeys::Five};
+	for (int32 i = 0; i < 5; ++i)
+	{
+		if (PC->WasInputKeyJustPressed(SunKeys[i]) && Environment)
+		{
+			Environment->SetSun(Suns[i]);
+			SunIndex = i;
+		}
+	}
+	if (Fire)
+	{
+		bool bChanged = false;
+		if (PC->WasInputKeyJustPressed(EKeys::P))
+		{
+			bFirePlaying = !bFirePlaying;
+			if (bFirePlaying && PlayFireS >= Fire->EndS)
+			{
+				PlayFireS = Fire->StartS;
+			}
+		}
+		if (PC->WasInputKeyJustPressed(EKeys::Period)) { PlayFireS += 3600.0; bChanged = true; }
+		if (PC->WasInputKeyJustPressed(EKeys::Comma)) { PlayFireS -= 3600.0; bChanged = true; }
+		if (PC->WasInputKeyJustPressed(EKeys::RightBracket)) PlayRateH = FMath::Min(PlayRateH * 2.0, 48.0);
+		if (PC->WasInputKeyJustPressed(EKeys::LeftBracket)) PlayRateH = FMath::Max(PlayRateH / 2.0, 0.125);
+		if (bFirePlaying)
+		{
+			PlayFireS += PlayRateH * 3600.0 * DeltaSeconds;
+			bChanged = true;
+			if (PlayFireS >= Fire->EndS)
+			{
+				bFirePlaying = false;
+			}
+		}
+		PlayFireS = FMath::Clamp(PlayFireS, static_cast<double>(Fire->StartS), static_cast<double>(Fire->EndS));
+		if (bChanged)
+		{
+			SetFireTime(PlayFireS, PlayClock);
+		}
+		else
+		{
+			if (Terrain) Terrain->SetFireTime(PlayClock);  // flames keep flickering
+			if (Vegetation) Vegetation->SetFireTime(PlayClock);
+			if (Cover) Cover->SetFireTime(PlayClock);
+		}
+		if (Smoke)
+		{
+			Smoke->SetClock(PlayClock);
+			Smoke->Rebuild(FlyPawn->GetActorLocation(), PC->GetControlRotation());
+		}
+	}
+	if (GEngine)
+	{
+		const FString Status = FString::Printf(TEXT("%s   %s  %.0f m above ground   %.1f m/s (x%.2f)%s   %.0f fps"),
+			*Scenario, FlyPawn->IsWalking() ? TEXT("WALK") : TEXT("FLY"), FlyPawn->GetAglM(), FlyPawn->GetSpeedMs(),
+			FlyPawn->SpeedScale,
+			Fire ? *FString::Printf(TEXT("   fire t = %.1f h%s"), (PlayFireS - Fire->StartS) / 3600.0, bFirePlaying ? *FString::Printf(TEXT(" (playing %.2g h/s)"), PlayRateH) : TEXT("")) : TEXT(""),
+			DeltaSeconds > 0.f ? 1.0 / DeltaSeconds : 0.0);
+		GEngine->AddOnScreenDebugMessage(9001, 0.f, FColor::White, Status);
+		if (bShowHelp)
+		{
+			GEngine->AddOnScreenDebugMessage(9002, 0.f, FColor(200, 200, 200),
+				TEXT("mouse look | WASD move | E / Space up, Q / C down | Shift x4, Ctrl x0.25 | wheel: speed | G: walk / fly")
+				TEXT(" | 1-5: sun dawn..dusk | P: play fire, ',' '.': -/+ 1 h, '[' ']': rate | H: help | Esc: quit"));
+		}
+	}
+}
+
 bool AEmberHarness::CompilesPending()
 {
 	const int32 Shaders = GShaderCompilingManager ? GShaderCompilingManager->GetNumRemainingJobs() : 0;
@@ -645,6 +788,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 	{
 	case EState::Idle:
 	case EState::Done:
+		return;
+
+	case EState::Play:
+		TickPlay(DeltaSeconds);
 		return;
 
 	case EState::LoadWorld:
@@ -749,6 +896,11 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		}
 		CaptureIndex = 0;
 		OrbitIndex = 0;
+		if (bPlay)
+		{
+			StartPlay();
+			return;
+		}
 		NextPhase();
 		return;
 	}
