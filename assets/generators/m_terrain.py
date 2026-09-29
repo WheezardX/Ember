@@ -293,21 +293,27 @@ ftex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_
 link(fuv, "", ftex, "UVs")
 # Ground: charcoal black -> dark ash (noise), settling over the days after the burn. Warm, not
 # grey: a neutral grey reads slate-blue under the skylight at altitude (HCP3 Jolly).
-fcol = custom("EmberFireGround", -450, 450, ["Base", "F", "N", "On"], (
+fcol = custom("EmberFireGround", -450, 450, ["Base", "F", "N", "On", "Macro"], (
     "float burned = smoothstep(0.35, 0.65, F.g + N * 0.18) * F.a * On;\n"
     "float age_h = F.b * F.b * 200.0;\n"
     "float ash = saturate(N * 0.9 + 0.35);\n"
     "float3 fresh = lerp(float3(0.010, 0.009, 0.008), float3(0.035, 0.032, 0.03), ash * ash);\n"
     "float3 old = lerp(float3(0.028, 0.022, 0.017), float3(0.075, 0.063, 0.052), ash * ash);\n"
     "float3 charc = lerp(fresh, old, saturate(age_h / 72.0));\n"
+    # ground plane v1: the detail's light/dark pattern survives as charred texture
+    "float3 lw = float3(0.2126, 0.7152, 0.0722);\n"
+    "float r = dot(Base, lw) / max(dot(Macro, lw), 1e-4);\n"
+    "charc *= lerp(1.0, clamp(r, 0.3, 2.0), 0.85);\n"
     "return lerp(Base, charc, burned);\n"))
 link(ground, "", fcol, "Base")
+link(base, "", fcol, "Macro")
 link(ftex, "RGBA", fcol, "F")
 link(noise, "", fcol, "N")
 link(fire_on, "", fcol, "On")
 to_property(fcol, "", unreal.MaterialProperty.MP_BASE_COLOR)
 # Emissive: flickering flames on burning cells; a fading ember glow for ~12 h after the front.
-femi = custom("EmberFireGlow", -450, 700, ["F", "N", "On", "T", "G", "WP", "Cam"], (
+femi = custom("EmberFireGlow", -450, 700,
+              ["F", "N", "On", "T", "G", "WP", "Cam", "Ground", "Macro"], (
     "float inside = F.a * On;\n"
     "float age_h = F.b * F.b * 200.0;\n"
     "float burning = smoothstep(0.3, 0.7, F.r + N * 0.2) * inside;\n"
@@ -320,6 +326,16 @@ femi = custom("EmberFireGlow", -450, 700, ["F", "N", "On", "T", "G", "WP", "Cam"
     "float flick = 0.7 + 0.3 * sin(T * 7.0 + N * 23.0) * sin(T * 3.1 + N * 11.0);\n"
     "float3 flame = lerp(float3(3.0, 0.45, 0.04), float3(5.0, 1.8, 0.25), front) * flick;\n"
     "float patch = saturate(N * 2.0 - 0.2);\n"
+    # ground plane v1: near the camera the glow breaks up into embers on the bright bits of the
+    # ground detail (needles, twigs) instead of a 2.5 m wash; unchanged past ~300 m
+    "float3 lw = float3(0.2126, 0.7152, 0.0722);\n"
+    "float gr = dot(Ground, lw) / max(dot(Macro, lw), 1e-4);\n"
+    "float nearc = saturate(1.0 - length(WP - Cam) / 30000.0);\n"
+    "float fine = saturate((gr - 1.15) * 3.0);\n"
+    "fine *= fine * saturate(N * 3.0 - 0.5);\n"            # sparse: highlights x noise
+    "patch = lerp(patch, patch * fine, nearc);\n"
+    # eye level: a smouldering floor is dim - the 2.5 m wash lit the whole scene red (Lumen GI)
+    "patch *= lerp(1.0, 0.35, nearc);\n"
     "float smoulder = burning * (1.0 - front) * 0.07 * patch;\n"
     "float embers = F.g * (1.0 - saturate(F.r * 4.0)) * inside\n"
     "             * saturate(1.0 - age_h / 12.0) * patch * 0.08;\n"
@@ -332,6 +348,8 @@ link(fire_time, "", femi, "T")
 link(fire_gain, "", femi, "G")
 link(wp, "", femi, "WP")
 link(expr(unreal.MaterialExpressionCameraPositionWS, -650, 900), "", femi, "Cam")
+link(ground, "", femi, "Ground")
+link(base, "", femi, "Macro")
 to_property(femi, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
 to_property(ground, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)

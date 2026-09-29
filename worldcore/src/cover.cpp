@@ -48,6 +48,8 @@ CoverRulesResult load_cover_rules(const std::string& look_path) {
             c.height_min_m = num(it->get("height_min_m"), c.height_min_m);
             c.height_max_m = num(it->get("height_max_m"), c.height_max_m);
             c.variants = static_cast<int>(std::max(1.0, num(it->get("variants"), c.variants)));
+            c.consume = static_cast<float>(num(it->get("consume"), 0.0));
+            c.smoulder = static_cast<float>(num(it->get("smoulder"), 0.0));
             R.items.push_back(std::move(c));
         }
         // Keys in file order are not guaranteed by the TOML table; sort for determinism.

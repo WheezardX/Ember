@@ -44,7 +44,10 @@ bool AEmberGroundCoverActor::Init(AEmberTerrainActor* InTerrain, const FString& 
 			OutError = TEXT("missing ") + MiPath + TEXT(" (ember-dev regen-assets)");
 			return false;
 		}
-		Materials.Add(UMaterialInstanceDynamic::Create(Mi, this));
+		UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(Mi, this);
+		Mid->SetScalarParameterValue(TEXT("Consume"), It.consume);
+		Mid->SetScalarParameterValue(TEXT("Smoulder"), It.smoulder);
+		Materials.Add(Mid);
 		FirstMesh.Add(Meshes.Num());
 		for (int32 V = 0; V < It.variants; ++V)
 		{

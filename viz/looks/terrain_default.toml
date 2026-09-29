@@ -62,6 +62,7 @@ slash_blowdown    = [0.9, 0.0, 0.0, 0.05]
 [cover]
 candidates_per_m2 = 3
 [cover.items.grass]        # the scatter's bunchgrass meshes, as small tufts
+consume = 1.0
 grass = 220.0
 shrub = 25.0
 litter = 6.0
@@ -70,17 +71,20 @@ height_min_m = 0.25
 height_max_m = 0.55
 variants = 4
 [cover.items.fern]         # sword fern: under canopy on litter
+consume = 1.0
 litter = 14.0
 shrub = 8.0
 height_min_m = 0.45
 height_max_m = 0.9
 [cover.items.huckleberry]  # fall reds (Three Queens field photo)
+consume = 1.0
 litter = 4.0
 shrub = 30.0
 grass = 2.0
 height_min_m = 0.4
 height_max_m = 0.9
 [cover.items.shrub]
+consume = 1.0
 shrub = 35.0
 litter = 3.0
 grass = 3.0
@@ -103,11 +107,13 @@ litter = 0.15
 height_min_m = 0.5
 height_max_m = 1.1
 [cover.items.log]          # down wood on the forest floor
+smoulder = 1.0
 litter = 1.2
 shrub = 0.2
 height_min_m = 0.35
 height_max_m = 0.6
 [cover.items.stump]
+smoulder = 1.0
 litter = 0.5
 height_min_m = 0.4
 height_max_m = 1.0

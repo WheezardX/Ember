@@ -3,6 +3,10 @@
     lerp(TrunkColor, Color x per-tree tint, vertex alpha) x vertex RGB; two-sided; Two-Sided
     Foliage shading; wind WPO (sway + per-tree lean + twig flutter, harness-owned clock); fire
     (FireTex / FireRect / FireOn / FireTime / FireGain sampled at each tree's pivot: char, flames).
+    Ground cover (ground plane v1 GP5): Consume 0..1 collapses a burned plant toward its pivot
+    (grass, ferns, shrubs are consumed, not left standing black); Smoulder 0..1 gives wood (vertex
+    alpha 0: logs, stumps) a patchy ember glow for many hours after the front (Three Queens field
+    photo: a hollow stump still burning inside). Both default 0 (trees unchanged).
 
 Split from veg_species.py so a shader edit rebuilds one material (seconds) instead of every
 tree mesh (~20 min). Species material instances (veg_species.py) parent this asset, so it is
@@ -143,8 +147,6 @@ def build_material():
     link(params["WindTime"], "", wind, "T")
     link(params["WindStrength"], "", wind, "S")
     link(wdir, "", wind, "D")
-    if not mel.connect_material_property(wind, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET):
-        raise RuntimeError("world position offset")
 
     # Fire (HCP3): each tree samples the replay's fire state at its own pivot (EmberFireActor's
     # FireTex over FireRect, same encoding as M_Terrain). Burned: charred crown and bark.
@@ -153,7 +155,8 @@ def build_material():
     rect.set_editor_property("parameter_name", "FireRect")
     rect.set_editor_property("default_value", unreal.LinearColor(0.0, 0.0, 1.0, 1.0))
     fire_params = {}
-    for i, (name, default) in enumerate((("FireOn", 0.0), ("FireTime", 0.0), ("FireGain", 1.0))):
+    for i, (name, default) in enumerate((("FireOn", 0.0), ("FireTime", 0.0), ("FireGain", 1.0),
+                                         ("Consume", 0.0), ("Smoulder", 0.0))):
         q = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter,
                                            -1100, 1100 + 90 * i)
         q.set_editor_property("parameter_name", name)
@@ -193,13 +196,21 @@ def build_material():
     link(rnd, "", burnt, "Rnd")
     if not mel.connect_material_property(burnt, "", unreal.MaterialProperty.MP_BASE_COLOR):
         raise RuntimeError("base colour")
-    glow = custom("EmberFireCrown", -100, 300, ["F", "A", "On", "T", "G", "Rnd", "Local"], (
+    glow = custom("EmberFireCrown", -100, 300,
+                  ["F", "A", "On", "T", "G", "Rnd", "Local", "Sm", "WP"], (
         "float age_h = F.b * F.b * 200.0;\n"
         "float burning = F.r * F.a * On * exp(-age_h / 1.2);\n"   # trees torch as the front arrives
         "float h = saturate(Local.z / 3000.0);\n"
         "float flick = 0.6 + 0.4 * sin(T * 8.0 + Rnd * 40.0 + Local.z * 0.01);\n"
         "float3 flame = lerp(float3(7.0, 1.2, 0.1), float3(10.0, 4.5, 0.8), h) * flick;\n"
-        "return G * burning * (0.25 + 0.75 * A) * flame;\n"))
+        "float3 e = burning * (0.25 + 0.75 * A) * flame;\n"
+        # smouldering wood: starts ~20 min after the front, fades over ~a day, in patches
+        "float sm = Sm * F.g * F.a * On * (1.0 - A) * saturate(age_h / 0.3) * exp(-age_h / 20.0);\n"
+        "float3 q = WP * 0.02 + Rnd * 17.0;\n"
+        "float patch = saturate(sin(q.x) * sin(q.y * 1.3) * sin(q.z * 1.7) * 4.0 - 0.8);\n"
+        "float pulse = 0.75 + 0.25 * sin(T * 1.1 + Rnd * 30.0);\n"
+        "e += sm * patch * pulse * float3(2.6, 0.38, 0.03);\n"
+        "return G * e;\n"))
     link(ftex, "RGBA", glow, "F")
     link(vc, "A", glow, "A")
     link(fire_params["FireOn"], "", glow, "On")
@@ -207,8 +218,28 @@ def build_material():
     link(fire_params["FireGain"], "", glow, "G")
     link(rnd, "", glow, "Rnd")
     link(local, "", glow, "Local")
+    link(fire_params["Smoulder"], "", glow, "Sm")
+    link(wpos, "", glow, "WP")
     if not mel.connect_material_property(glow, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR):
         raise RuntimeError("emissive")
+    ftex_v = mel.create_material_expression(mat, unreal.MaterialExpressionTextureSampleParameter2D,
+                                            -600, 1250)
+    ftex_v.set_editor_property("parameter_name", "FireTex")
+    ftex_v.set_editor_property("texture", black)
+    ftex_v.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    ftex_v.set_editor_property("mip_value_mode", unreal.TextureMipValueMode.TMVM_MIP_LEVEL)
+    ftex_v.set_editor_property("const_mip_value", 0)
+    link(fuv, "", ftex_v, "UVs")
+    consume = custom("EmberConsume", -300, 600, ["O", "L", "F", "On", "C"], (
+        "float k = saturate(F.g * F.a * On * C) * 0.85;\n"   # burned: down to ~15 % stubble
+        "return O * (1.0 - k) - L * k;\n"))
+    link(wind, "", consume, "O")
+    link(local, "", consume, "L")
+    link(ftex_v, "RGBA", consume, "F")
+    link(fire_params["FireOn"], "", consume, "On")
+    link(fire_params["Consume"], "", consume, "C")
+    if not mel.connect_material_property(consume, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET):
+        raise RuntimeError("world position offset")
     mat.set_editor_property("two_sided", True)                  # foliage is single-layer sprays
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
     mat.set_editor_property("max_world_position_offset_displacement", 700.0)  # Nanite WPO bounds

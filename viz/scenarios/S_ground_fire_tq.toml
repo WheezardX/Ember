@@ -1,0 +1,62 @@
+# Ground plane v1 GP5: fire on the ground, at eye level, in the synthetic 48 h Three Queens fire
+# (S_tq_fire_synth's replay). Sites on litter picked from the synth arrival field, each camera in
+# a canopy gap; all at t = 24 h:
+#   front       arrival 23.8 h: the flaming front passing under the trees
+#   smoulder    arrival 21.0 h: 3 h after - char, consumed cover, logs and stumps still glowing
+#   old_burn    arrival 12.0 h: 12 h after - cold char and ash
+render_scenario_version = 1
+
+[scenario]
+name = "S_ground_fire_tq"
+description = "Ground plane v1: fire at eye level - the front, 3 h after (smouldering), 12 h after"
+world = "terrain:three_queens_2026"
+replay = "../../store/render/three_queens_2026/fire/synth.replay.json"
+resolution = [1920, 1080]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 1500
+veg_near_radius_m = 400
+ground_cover = true
+exposure_bias = -1.0
+
+[[bookmarks]]
+name = "front"
+target_frac = [0.6159, 0.5012]
+distance_m = 10
+yaw_deg = 180
+pitch_deg = -18
+fov_deg = 60
+sun = "dusk"
+
+[[bookmarks]]
+name = "smoulder"
+target_frac = [0.6946, 0.3690]
+distance_m = 8
+yaw_deg = 180
+pitch_deg = -24
+fov_deg = 60
+sun = "dusk"
+
+[[bookmarks]]
+name = "old_burn"
+target_frac = [0.5142, 0.5262]
+distance_m = 8
+yaw_deg = 180
+pitch_deg = -24
+fov_deg = 60
+sun = "afternoon"
+
+[[captures]]
+name = "front"
+bookmark = "front"
+t_s = 86400
+
+[[captures]]
+name = "smoulder"
+bookmark = "smoulder"
+t_s = 86400
+
+[[captures]]
+name = "old_burn"
+bookmark = "old_burn"
+t_s = 86400

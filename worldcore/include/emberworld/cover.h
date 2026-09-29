@@ -24,6 +24,8 @@ struct CoverItem {
     float soil_per_100m2 = 0.0f;        // density on plain soil (weight left after the four sets)
     double height_min_m = 0.3, height_max_m = 0.6;
     int variants = 3;
+    float consume = 0.0f;    // fire: burned plants collapse to stubble (M_Veg Consume)
+    float smoulder = 0.0f;   // fire: wood glows for hours after the front (M_Veg Smoulder)
 };
 
 struct CoverRules {
