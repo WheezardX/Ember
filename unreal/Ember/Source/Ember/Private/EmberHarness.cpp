@@ -19,6 +19,8 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 #include "UnrealClient.h"
+#include "AssetCompilingManager.h"
+#include "ShaderCompiler.h"
 
 #include "EmberEnvironment.h"
 #include "EmberFireActor.h"
@@ -582,6 +584,33 @@ bool AEmberHarness::OrbitPose(const FOrbit& O, int32 Frame, FBookmark& At, FStri
 	return true;
 }
 
+bool AEmberHarness::CompilesPending()
+{
+	const int32 Shaders = GShaderCompilingManager ? GShaderCompilingManager->GetNumRemainingJobs() : 0;
+	const int32 Assets = FAssetCompilingManager::Get().GetNumRemainingAssets();
+	const double Now = FPlatformTime::Seconds();
+	if (Shaders + Assets == 0)
+	{
+		if (CompileWaitStart >= 0.0)
+		{
+			UE_LOG(LogEmberHarness, Display, TEXT("compiles done after %.1f s; warmup continues"), Now - CompileWaitStart);
+			CompileWaitStart = -1.0;
+		}
+		return false;
+	}
+	if (CompileWaitStart < 0.0)
+	{
+		CompileWaitStart = Now;
+		UE_LOG(LogEmberHarness, Display, TEXT("waiting for %d shader job(s) and %d asset(s) to compile before capturing"), Shaders, Assets);
+	}
+	if (Now - CompileWaitStart > 900.0)
+	{
+		UE_LOG(LogEmberHarness, Warning, TEXT("still compiling after 900 s (%d shaders, %d assets): capturing anyway"), Shaders, Assets);
+		return false;
+	}
+	return true;
+}
+
 void AEmberHarness::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -707,6 +736,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 	}
 
 	case EState::Warmup:
+		if (CompilesPending())
+		{
+			return;
+		}
 		if (--FramesLeft <= 0)
 		{
 			State = EState::Shoot;
@@ -770,6 +803,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 	}
 
 	case EState::OrbitWarmup:
+		if (CompilesPending())
+		{
+			return;
+		}
 		if (--FramesLeft <= 0)
 		{
 			if (Facts)
@@ -870,6 +907,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 	}
 
 	case EState::PerfWarmup:
+		if (CompilesPending())
+		{
+			return;
+		}
 		if (--FramesLeft <= 0)
 		{
 			FramesLeft = PerfFrames;

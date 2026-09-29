@@ -127,6 +127,10 @@ private:
 	bool FinishOrbitVideo(FString& OutError);
 	void AbortOrbitVideo();
 	int32 FramesLeft = 0;
+	// Warmup frames only count once shaders/assets have finished compiling (the first run after a
+	// build otherwise captures grey fallback materials).
+	bool CompilesPending();
+	double CompileWaitStart = -1.0;
 	bool bShotReady = false;
 	int32 ShotW = 0, ShotH = 0;
 	TArray<FColor> ShotPixels;
