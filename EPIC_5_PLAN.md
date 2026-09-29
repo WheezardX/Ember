@@ -358,6 +358,41 @@ UE launch for several scenarios (today each run pays ~40 s of engine start); cac
 ground textures on disk keyed by inputs + look (today composed on every load); stage-scoped
 Terrain re-runs (`terrain veg` exists; canopy/tile only).
 
+## 8g. Fly-through notes (Brad, 2026-09-29, first `ember-dev play` session)
+
+Notes only; nothing decided or scheduled yet. Ground plane v1 goldens (8 ground-level views)
+still await sign-off.
+
+- **Keep:** atmospheric lighting and the times of day work well; tree sway reads really well at
+  distance; chunk streaming works as expected.
+- **Ground too flat.** Needs much denser ground cover or a better ground texture (solve unclear).
+  Density must follow the place: dense grass where little grass grows looks wrong.
+- **Logs ignore the slope** (stick out of hills). Mostly lie along the slope, with variation:
+  some propped / sticking up, some partly buried. Add snags and fallen trees hung up in others.
+- **Trees:** sink them so the downhill edge is not lifted; a little terrain influence (slight lean
+  with the slope + random tilt), not all perfectly vertical. Close up, branches look springy
+  (damp / slow the near-range branch motion).
+- **Ambient creatures** (long term): birds, butterflies, flies, bees. Restrained - do not overdo
+  it like many games. Fire drives them away.
+- **Budgets:** most models will be upgraded; leave headroom (today's costs are placeholder geo).
+- **Fire lines and removal:** no renderer plan yet. The Epic 4 suppression sim already emits
+  fuel-removed deltas (hand / dozer line, burnout); the render stream needs a fuel-removed state
+  distinct from burned: mineral soil, cleared cover, trees cleared on dozer line, berms / slash;
+  severity-based tree loss (gone, fallen -> down logs, snags).
+- **Streaming:** tiles pop in solid - fade them in. No fog / haze: sight lines are infinite and
+  every detail shows; atmospheric perspective would help and hide LOD transitions. Terrain-only
+  far field now looks poor next to the detailed near field - liven it up (canopy impression,
+  better distant texture). The game camera will likely be mostly top-down / oblique, which limits
+  what is visible: plan LOD and streaming against that camera, not the free cam.
+- **Water:** river edges are blocky (10 m grid) - interpolate + spline overlays (hydrography
+  centrelines). The water surface breaks into strips with gaps, on lakes too (Lake Kachess), cause
+  undiagnosed (per-neighbourhood levels? per-row patches? tile edges?).
+- **Hitching while flying** is bad: tile compose, ground-cover cell builds (5 surface queries per
+  instance, each scanning all loaded tiles; pending cells rebuilding every frame) and tree cell
+  builds all run on the game thread. Move them async, index tile samplers spatially, throttle
+  rebuilds (async compose was already due before HCP6).
+- **Play mode:** fire keys are silent in a scenario without a replay - say so on screen.
+
 ## 9. Notes for later epics
 
 - **Epic 6:** C1 readers, F3 shell, camera rigs, and the state player are its foundation; the command-issuing UI plugs into Epic 4's suppression schema on top of this scene. National cartographic view is new work there, not a HCP5 overlay retrofit.
