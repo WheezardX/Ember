@@ -55,3 +55,59 @@ shrub             = [0.15, 0.2, 0.05, 0.55]
 timber_understory = [0.5, 0.1, 0.0, 0.35]
 timber_litter     = [0.85, 0.05, 0.0, 0.05]
 slash_blowdown    = [0.9, 0.0, 0.0, 0.05]
+
+# Ground cover (ground plane v1 GP4): near-camera instances, density per 100 m2 on each ground set
+# ([ground] above) and on plain soil. Placement is a hash on the global 1 m lattice
+# (worldcore/cover.cpp), so it never depends on streaming cells.
+[cover]
+candidates_per_m2 = 3
+[cover.items.grass]        # the scatter's bunchgrass meshes, as small tufts
+grass = 220.0
+shrub = 25.0
+litter = 6.0
+soil = 10.0
+height_min_m = 0.25
+height_max_m = 0.55
+variants = 4
+[cover.items.fern]         # sword fern: under canopy on litter
+litter = 14.0
+shrub = 8.0
+height_min_m = 0.45
+height_max_m = 0.9
+[cover.items.huckleberry]  # fall reds (Three Queens field photo)
+litter = 4.0
+shrub = 30.0
+grass = 2.0
+height_min_m = 0.4
+height_max_m = 0.9
+[cover.items.shrub]
+shrub = 35.0
+litter = 3.0
+grass = 3.0
+height_min_m = 0.35
+height_max_m = 0.8
+[cover.items.rock]         # cobbles
+rock = 45.0
+grass = 1.5
+shrub = 2.0
+litter = 1.0
+soil = 2.0
+height_min_m = 0.08
+height_max_m = 0.4
+[cover.items.boulder]      # the same meshes, rare and big
+mesh = "rock"
+rock = 3.0
+grass = 0.15
+shrub = 0.2
+litter = 0.15
+height_min_m = 0.5
+height_max_m = 1.1
+[cover.items.log]          # down wood on the forest floor
+litter = 1.2
+shrub = 0.2
+height_min_m = 0.35
+height_max_m = 0.6
+[cover.items.stump]
+litter = 0.5
+height_min_m = 0.4
+height_max_m = 1.0

@@ -24,6 +24,7 @@
 
 #include "EmberEnvironment.h"
 #include "EmberFireActor.h"
+#include "EmberGroundCoverActor.h"
 #include "EmberSceneFacts.h"
 #include "EmberTerrainActor.h"
 #include "EmberVegetationActor.h"
@@ -70,6 +71,8 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetNumberField(TEXT("lod_refine_factor"), RefineFactor);
 	J->TryGetStringField(TEXT("look"), LookPath);
 	J->TryGetBoolField(TEXT("vegetation"), bVegetation);
+	J->TryGetBoolField(TEXT("ground_cover"), bGroundCover);
+	J->TryGetNumberField(TEXT("ground_cover_radius_m"), GroundCoverRadiusM);
 	J->TryGetNumberField(TEXT("veg_radius_m"), VegRadiusM);
 	J->TryGetNumberField(TEXT("veg_near_radius_m"), VegNearRadiusM);
 	J->TryGetNumberField(TEXT("veg_mid_min_height_m"), VegMidMinHeightM);
@@ -540,6 +543,7 @@ void AEmberHarness::SetFireTime(double SimS, double ClockS)
 	}
 	if (Terrain) Terrain->SetFireTime(ClockS);
 	if (Vegetation) Vegetation->SetFireTime(ClockS);
+	if (Cover) Cover->SetFireTime(ClockS);
 }
 
 bool AEmberHarness::PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutError)
@@ -556,6 +560,10 @@ bool AEmberHarness::PlaceOrbitFrame(const FOrbit& O, int32 Frame, FString& OutEr
 	if (Vegetation)
 	{
 		Vegetation->SetWindTime(static_cast<double>(Frame) / FMath::Max(1, O.Fps));
+	}
+	if (Cover)
+	{
+		Cover->SetWindTime(static_cast<double>(Frame) / FMath::Max(1, O.Fps));
 	}
 	if (Fire)
 	{
@@ -687,6 +695,23 @@ void AEmberHarness::Tick(float DeltaSeconds)
 				Vegetation->SpawnLineup(E.min_x + B->Target.X * E.width(), E.max_y - B->Target.Y * E.height(), B->YawDeg + 90.0);
 			}
 		}
+		if (bGroundCover)
+		{
+			if (LookPath == TEXT("clay"))
+			{
+				Finish(2, TEXT("ground_cover needs a look (its [cover] rules)"));
+				return;
+			}
+			Cover = GetWorld()->SpawnActor<AEmberGroundCoverActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+			Cover->RadiusM = GroundCoverRadiusM;
+			if (!Cover->Init(Terrain, LookPath, Err))
+			{
+				Finish(2, TEXT("ground cover: ") + Err);
+				return;
+			}
+			Cover->SetWind(WindStrength, WindFromDeg);
+			Cover->SetWindTime(0.0);
+		}
 		if (!ReplayPath.IsEmpty())
 		{
 			Fire = GetWorld()->SpawnActor<AEmberFireActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
@@ -700,6 +725,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			if (Vegetation)
 			{
 				Vegetation->SetFire(Fire->GetTexture(), Fire->GetRect());
+			}
+			if (Cover)
+			{
+				Cover->SetFire(Fire->GetTexture(), Fire->GetRect());
 			}
 			if (bSmoke)
 			{
@@ -741,6 +770,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		if (Vegetation)
 		{
 			Vegetation->SetWindTime(0.0);  // stills: frozen wind clock (pixel-deterministic goldens)
+		}
+		if (Cover)
+		{
+			Cover->SetWindTime(0.0);
 		}
 		if (Fire && C.TimeS >= 0.0)
 		{
@@ -964,6 +997,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		{
 			PerfWindTime += DeltaSeconds;  // perf measures the real sway cost
 			Vegetation->SetWindTime(PerfWindTime);
+		}
+		if (Cover)
+		{
+			Cover->SetWindTime(PerfWindTime);
 		}
 		if (--FramesLeft <= 0)
 		{

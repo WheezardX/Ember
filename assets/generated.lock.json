@@ -179,6 +179,35 @@
         "/Game/Ember/Generated/M_Smoke": "unreal/Ember/Content/Ember/Generated/M_Smoke.uasset",
         "/Game/Ember/Generated/T_SmokePuff": "unreal/Ember/Content/Ember/Generated/T_SmokePuff.uasset"
       }
+    },
+    "ground_cover.py": {
+      "script_sha256": "7cf941d72a418fdb65ed6dd9d1bc22886f3211dba4d3ae6bac151c1435c851c6",
+      "outputs": {
+        "/Game/Ember/Generated/Cover/MI_Cover_fern": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_fern.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fern_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fern_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fern_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fern_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fern_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fern_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_huckleberry": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_huckleberry.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_huckleberry_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_huckleberry_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_huckleberry_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_huckleberry_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_huckleberry_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_huckleberry_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_shrub": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_shrub.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_shrub_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_shrub_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_shrub_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_shrub_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_shrub_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_shrub_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_rock": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_rock.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_rock_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_rock_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_rock_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_rock_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_rock_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_rock_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_log": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_log.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_log_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_log_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_log_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_log_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_log_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_log_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_stump": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_stump.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_stump_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_stump_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_stump_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_stump_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_stump_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_stump_v2.uasset"
+      }
     }
   }
 }

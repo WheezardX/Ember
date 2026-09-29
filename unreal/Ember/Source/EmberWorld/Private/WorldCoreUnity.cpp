@@ -11,4 +11,5 @@ THIRD_PARTY_INCLUDES_START
 #include "src/lod.cpp"
 #include "src/look.cpp"
 #include "src/firestate.cpp"
+#include "src/cover.cpp"
 THIRD_PARTY_INCLUDES_END

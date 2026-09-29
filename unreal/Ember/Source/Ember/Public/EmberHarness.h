@@ -9,6 +9,7 @@
 
 class AEmberTerrainActor;
 class AEmberVegetationActor;
+class AEmberGroundCoverActor;
 class AEmberEnvironment;
 class AEmberFireActor;
 class AEmberSmokeActor;
@@ -90,6 +91,8 @@ private:
 	double RefineFactor = 1.5;
 	FString LookPath = TEXT("clay");
 	bool bVegetation = false;
+	bool bGroundCover = false;
+	double GroundCoverRadiusM = 60.0;
 	double VegRadiusM = 1500.0;
 	double VegNearRadiusM = 500.0;
 	double VegMidMinHeightM = 12.0;
@@ -143,6 +146,7 @@ private:
 
 	UPROPERTY(Transient) TObjectPtr<AEmberTerrainActor> Terrain;
 	UPROPERTY(Transient) TObjectPtr<AEmberVegetationActor> Vegetation;
+	UPROPERTY(Transient) TObjectPtr<AEmberGroundCoverActor> Cover;
 	UPROPERTY(Transient) TObjectPtr<AEmberEnvironment> Environment;
 	UPROPERTY(Transient) TObjectPtr<AEmberFireActor> Fire;
 	UPROPERTY(Transient) TObjectPtr<AEmberSmokeActor> Smoke;

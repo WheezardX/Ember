@@ -166,3 +166,33 @@ outputs = ["/Game/Ember/Generated/M_Water"]
 [[generator]]
 script = "m_smoke.py"
 outputs = ["/Game/Ember/Generated/M_Smoke", "/Game/Ember/Generated/T_SmokePuff"]
+
+[[generator]]
+script = "ground_cover.py"
+depends = ["groundgen.py", "treegen.py"]
+outputs = [
+  "/Game/Ember/Generated/Cover/MI_Cover_fern",
+  "/Game/Ember/Generated/Cover/SM_Cover_fern_v0",
+  "/Game/Ember/Generated/Cover/SM_Cover_fern_v1",
+  "/Game/Ember/Generated/Cover/SM_Cover_fern_v2",
+  "/Game/Ember/Generated/Cover/MI_Cover_huckleberry",
+  "/Game/Ember/Generated/Cover/SM_Cover_huckleberry_v0",
+  "/Game/Ember/Generated/Cover/SM_Cover_huckleberry_v1",
+  "/Game/Ember/Generated/Cover/SM_Cover_huckleberry_v2",
+  "/Game/Ember/Generated/Cover/MI_Cover_shrub",
+  "/Game/Ember/Generated/Cover/SM_Cover_shrub_v0",
+  "/Game/Ember/Generated/Cover/SM_Cover_shrub_v1",
+  "/Game/Ember/Generated/Cover/SM_Cover_shrub_v2",
+  "/Game/Ember/Generated/Cover/MI_Cover_rock",
+  "/Game/Ember/Generated/Cover/SM_Cover_rock_v0",
+  "/Game/Ember/Generated/Cover/SM_Cover_rock_v1",
+  "/Game/Ember/Generated/Cover/SM_Cover_rock_v2",
+  "/Game/Ember/Generated/Cover/MI_Cover_log",
+  "/Game/Ember/Generated/Cover/SM_Cover_log_v0",
+  "/Game/Ember/Generated/Cover/SM_Cover_log_v1",
+  "/Game/Ember/Generated/Cover/SM_Cover_log_v2",
+  "/Game/Ember/Generated/Cover/MI_Cover_stump",
+  "/Game/Ember/Generated/Cover/SM_Cover_stump_v0",
+  "/Game/Ember/Generated/Cover/SM_Cover_stump_v1",
+  "/Game/Ember/Generated/Cover/SM_Cover_stump_v2",
+]

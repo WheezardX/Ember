@@ -43,6 +43,11 @@ public:
 
 	/** Ground height (metres, region CRS) at a world point, from the finest LOD. */
 	bool GroundHeightAt(double WorldX, double WorldY, double& OutZ) const;
+	/**
+	 * Ground-plane weights {litter, grass, rock, shrub} at a world point (region CRS metres), from
+	 * the finest loaded tile's composed ground mix (look [ground]). False where no tile covers it.
+	 */
+	bool GroundMixAt(double WorldX, double WorldY, float OutW[4]) const;
 
 	/** Region-CRS metres -> UE world location. */
 	FVector WorldToUE(double X, double Y, double Z) const;
@@ -109,6 +114,15 @@ public:
 	// Ground mix per section (look [ground]): linear RGBA weights litter / grass / rock / shrub.
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTexture2D>> SectionMixTextures;
+	// CPU copy of each loaded tile's ground mix (ground cover placement reads it).
+	struct FTileMix
+	{
+		int32 Lod = 0;
+		double MinX = 0, MaxY = 0, Width = 1, Height = 1;  // apron bounds, metres
+		int32 W = 0, H = 0;
+		TArray<uint8> Rgba;
+	};
+	TMap<uint64, FTileMix> TileMixes;
 	UPROPERTY(Transient)
 	TObjectPtr<class UTexture> FireTexture;
 	FLinearColor FireRect = FLinearColor(0, 0, 1, 1);

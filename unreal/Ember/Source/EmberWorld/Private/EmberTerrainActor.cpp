@@ -155,6 +155,15 @@ void AEmberTerrainActor::BindLook(int32 Section, const emberworld::TileEntry& Ti
 	{
 		MID->SetTextureParameterValue(TEXT("GroundMix"), MixTex);
 		MID->SetScalarParameterValue(TEXT("GroundOn"), 1.0f);
+		FTileMix& TM = TileMixes.Add(TileKey(Tile));
+		TM.Lod = Tile.lod;
+		TM.MinX = Tile.apron.min_x;
+		TM.MaxY = Tile.apron.max_y;
+		TM.Width = Tile.apron.width();
+		TM.Height = Tile.apron.height();
+		TM.W = A.width;
+		TM.H = A.height;
+		TM.Rgba = TArray<uint8>(A.mix.data(), static_cast<int32>(A.mix.size()));
 	}
 	MID->SetScalarParameterValue(TEXT("AlbedoScale"), Region->tile_px / Full);
 	MID->SetScalarParameterValue(TEXT("AlbedoOffset"), Region->overlap_px / Full);
@@ -338,6 +347,7 @@ bool AEmberTerrainActor::LoadTile(const emberworld::TileEntry& Tile, FString& Ou
 
 void AEmberTerrainActor::UnloadTile(uint64 Key)
 {
+	TileMixes.Remove(Key);
 	if (const FLoadedTile* L = Loaded.Find(Key))
 	{
 		Mesh->ClearMeshSection(L->Section);
@@ -450,6 +460,35 @@ void AEmberTerrainActor::Tick(float DeltaSeconds)
 			++StreamUpdates;  // count the first selection even if it changed nothing
 		}
 	}
+}
+
+bool AEmberTerrainActor::GroundMixAt(double WorldX, double WorldY, float OutW[4]) const
+{
+	const FTileMix* Best = nullptr;
+	for (const TPair<uint64, FTileMix>& P : TileMixes)
+	{
+		const FTileMix& M = P.Value;
+		if (WorldX < M.MinX || WorldX >= M.MinX + M.Width || WorldY > M.MaxY || WorldY <= M.MaxY - M.Height)
+		{
+			continue;
+		}
+		if (!Best || M.Lod > Best->Lod)
+		{
+			Best = &M;
+		}
+	}
+	if (!Best)
+	{
+		return false;
+	}
+	const int32 X = FMath::Clamp(static_cast<int32>((WorldX - Best->MinX) / Best->Width * Best->W), 0, Best->W - 1);
+	const int32 Y = FMath::Clamp(static_cast<int32>((Best->MaxY - WorldY) / Best->Height * Best->H), 0, Best->H - 1);
+	const uint8* Px = &Best->Rgba[(static_cast<int64>(Y) * Best->W + X) * 4];
+	for (int32 C = 0; C < 4; ++C)
+	{
+		OutW[C] = Px[C] / 255.0f;
+	}
+	return true;
 }
 
 bool AEmberTerrainActor::GroundHeightAt(double WorldX, double WorldY, double& OutZ) const

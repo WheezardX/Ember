@@ -23,6 +23,7 @@
 #include "EmberFireActor.h"
 #include "EmberSmokeActor.h"
 #include "EmberTerrainActor.h"
+#include "EmberGroundCoverActor.h"
 #include "EmberVegetationActor.h"
 
 #if PLATFORM_WINDOWS
@@ -196,6 +197,11 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 	TSharedRef<FJsonObject> BySp = MakeShared<FJsonObject>();
 	Inst->SetNumberField(TEXT("total"), 0);
 	Inst->SetBoolField(TEXT("enabled"), false);
+	for (TActorIterator<AEmberGroundCoverActor> It(W); It; ++It)
+	{
+		Inst->SetNumberField(TEXT("ground_cover"), static_cast<double>(It->GetInstanceCount()));
+		Inst->SetNumberField(TEXT("ground_cover_cells"), It->GetCellCount());
+	}
 	for (TActorIterator<AEmberVegetationActor> It(W); It; ++It)
 	{
 		Inst->SetBoolField(TEXT("enabled"), true);
