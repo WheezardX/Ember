@@ -1,5 +1,7 @@
 #include "EmberHarness.h"
 
+#include "EmberSmokeActor.h"
+
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Dom/JsonObject.h"
@@ -69,10 +71,25 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetNumberField(TEXT("veg_mid_min_height_m"), VegMidMinHeightM);
 	J->TryGetNumberField(TEXT("wind_strength"), WindStrength);
 	J->TryGetNumberField(TEXT("wind_from_deg"), WindFromDeg);
+	J->TryGetBoolField(TEXT("smoke"), bSmoke);
+	J->TryGetNumberField(TEXT("smoke_wind_ms"), SmokeWindMs);
 	J->TryGetBoolField(TEXT("veg_lineup"), bVegLineup);
 	J->TryGetStringField(TEXT("perf_bookmark"), PerfBookmark);
 	J->TryGetStringField(TEXT("water_dir"), WaterDir);
 	J->TryGetStringField(TEXT("replay"), ReplayPath);
+	const TArray<TSharedPtr<FJsonValue>>* ProbeArr = nullptr;
+	if (J->TryGetArrayField(TEXT("fire_probes"), ProbeArr))
+	{
+		for (const TSharedPtr<FJsonValue>& V : *ProbeArr)
+		{
+			const TSharedPtr<FJsonObject>& O = V->AsObject();
+			AEmberFireActor::FProbe Pr;
+			Pr.Name = O->GetStringField(TEXT("name"));
+			Pr.X = O->GetNumberField(TEXT("x"));
+			Pr.Y = O->GetNumberField(TEXT("y"));
+			FireProbes.Add(Pr);
+		}
+	}
 	const TArray<TSharedPtr<FJsonValue>>* Cmds = nullptr;
 	if (J->TryGetArrayField(TEXT("exec_cmds"), Cmds))
 	{
@@ -223,6 +240,10 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 		Camera->GetCameraComponent()->bConstrainAspectRatio = false;
 	}
 	Camera->SetActorLocationAndRotation(Loc, Rot);
+	if (Smoke)
+	{
+		Smoke->Rebuild(Loc, Rot);  // camera-facing, back-to-front puffs
+	}
 	Camera->GetCameraComponent()->SetFieldOfView(B.FovDeg);
 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
 	{
@@ -403,6 +424,16 @@ void AEmberHarness::SetFireTime(double SimS, double ClockS)
 		return;
 	}
 	Fire->SetTime(SimS);
+	if (Smoke)
+	{
+		Smoke->SetSources(Fire->SmokeSources);
+		Smoke->SetClock(ClockS);
+		if (Camera)
+		{
+			// Stills set the time after placing the camera; PlaceCamera re-lays them on moves.
+			Smoke->Rebuild(Camera->GetActorLocation(), Camera->GetActorRotation());
+		}
+	}
 	if (Terrain) Terrain->SetFireTime(ClockS);
 	if (Vegetation) Vegetation->SetFireTime(ClockS);
 }
@@ -533,10 +564,21 @@ void AEmberHarness::Tick(float DeltaSeconds)
 				Finish(2, TEXT("replay: ") + Err);
 				return;
 			}
+			Fire->Probes = FireProbes;
 			Terrain->SetFire(Fire->GetTexture(), Fire->GetRect());
 			if (Vegetation)
 			{
 				Vegetation->SetFire(Fire->GetTexture(), Fire->GetRect());
+			}
+			if (bSmoke)
+			{
+				Smoke = GetWorld()->SpawnActor<AEmberSmokeActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+				if (!Smoke->Init(Terrain, Err))
+				{
+					Finish(2, TEXT("smoke: ") + Err);
+					return;
+				}
+				Smoke->SetWind(WindFromDeg, SmokeWindMs);
 			}
 			SetFireTime(Fire->EndS, 0.0);  // default: the final footprint
 		}

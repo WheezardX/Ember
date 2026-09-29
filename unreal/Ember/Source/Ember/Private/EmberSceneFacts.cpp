@@ -21,6 +21,7 @@
 
 #include "EmberEnvironment.h"
 #include "EmberFireActor.h"
+#include "EmberSmokeActor.h"
 #include "EmberTerrainActor.h"
 #include "EmberVegetationActor.h"
 
@@ -234,9 +235,28 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		FireJ->SetNumberField(TEXT("burned_ha"), It->CellsBurned * It->CellM * It->CellM / 1e4);
 		FireJ->SetNumberField(TEXT("start_s"), It->StartS);
 		FireJ->SetNumberField(TEXT("end_s"), It->EndS);
+		TSharedRef<FJsonObject> ProbesJ = MakeShared<FJsonObject>();
+		for (const AEmberFireActor::FProbe& Pr : It->Probes)
+		{
+			ProbesJ->SetNumberField(Pr.Name, It->PhaseAt(Pr.X, Pr.Y));
+		}
+		FireJ->SetObjectField(TEXT("probes"), ProbesJ);
 		break;
 	}
 	F->SetObjectField(TEXT("fire"), FireJ);
+
+	TSharedRef<FJsonObject> SmokeJ = MakeShared<FJsonObject>();
+	SmokeJ->SetBoolField(TEXT("enabled"), false);
+	for (TActorIterator<AEmberSmokeActor> It(W); It; ++It)
+	{
+		SmokeJ->SetBoolField(TEXT("enabled"), true);
+		SmokeJ->SetNumberField(TEXT("sources"), It->NumSources);
+		SmokeJ->SetNumberField(TEXT("plumes"), It->NumPlumes);
+		SmokeJ->SetNumberField(TEXT("puffs"), It->NumPuffs);
+		SmokeJ->SetNumberField(TEXT("max_top_m"), It->MaxTopM);
+		break;
+	}
+	F->SetObjectField(TEXT("smoke"), SmokeJ);
 
 	TSharedRef<FJsonObject> Env = MakeShared<FJsonObject>();
 	for (TActorIterator<AEmberEnvironment> It(W); It; ++It)

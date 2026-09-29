@@ -1,0 +1,244 @@
+# HCP3 "Fire replays in 3D": the Epic 4 CP2 Jolly Mountain 2017 replay (the Epic 3 arrival
+# raster through the arrival-playback driver, 35 days) over the PRE-FIRE render world
+# (viz/worlds/jolly_mountain_2017.terrain.toml: LANDFIRE LF2016 vegetation, no post-fire LiDAR
+# canopy). The replay grid and the render world's AOI are the same box, so target_frac is also
+# the fire grid fraction. Capture times and probe expectations come from the stream itself
+# (ember.sim.stream.iter_frames, cells burn from their exact arrival time as rendered):
+#   t (s)      day   cells burned   burning
+#   518400     6.0          2725        280
+#   1123200   13.0         13971       1777
+#   1645200   19.04        44602       9718   <- peak burning hour, the head running east
+#   2160000   25.0        111780       6306
+#   3031200   35.08       166647        187   (end of stream)
+render_scenario_version = 1
+
+[scenario]
+name = "S_jolly_fire"
+description = "HCP3: Jolly Mountain 2017 (Epic 4 CP2 replay) in 3D - scar progression, day-19 run, timelapse"
+world = "terrain:jolly_mountain_2017"
+replay = "../../runs/cp2/cp2-jolly-playback.replay.json"
+resolution = [2560, 1440]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 4000
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "overview"             # the whole fire from the south, looking north up the Teanaway side
+target_frac = [0.50, 0.50]
+distance_m = 21000
+yaw_deg = 10
+pitch_deg = -38
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "map"                  # straight down, north up: lines up with the 2D CP2 animation
+target_frac = [0.50, 0.50]    # 35.9 km at 50 deg: the grid's full 18.8 km height fits 16:9
+distance_m = 35900
+yaw_deg = 0
+pitch_deg = -89
+fov_deg = 50
+sun = "noon"
+
+[[bookmarks]]
+name = "run_mid"              # the day-19 run from behind (west), looking east after the head;
+target_frac = [0.66, 0.61]    # the dusk sun (az 285) is behind the camera, lighting the plume
+distance_m = 5000             # (looking west into it silhouetted everything)
+yaw_deg = 80
+pitch_deg = -24
+fov_deg = 55
+sun = "dusk"
+
+[[bookmarks]]
+name = "run_close"            # the head of the day-19 run in the trees, from the burned side
+target_frac = [0.68, 0.61]
+distance_m = 1500
+yaw_deg = 80
+pitch_deg = -14
+fov_deg = 50
+sun = "dusk"
+
+[[captures]]
+name = "d06"
+bookmark = "overview"
+t_s = 518400
+
+[[captures]]
+name = "d13"
+bookmark = "overview"
+t_s = 1123200
+
+[[captures]]
+name = "d19"
+bookmark = "overview"
+t_s = 1645200
+
+[[captures]]
+name = "d25"
+bookmark = "overview"
+t_s = 2160000
+
+[[captures]]
+name = "d35"
+bookmark = "overview"
+t_s = 3031200
+
+[[captures]]
+name = "map_d35"
+bookmark = "map"
+t_s = 3031200
+
+[[captures]]
+name = "run_mid_d19"
+bookmark = "run_mid"
+t_s = 1645200
+
+[[captures]]
+name = "run_close_d19"
+bookmark = "run_close"
+t_s = 1645200
+
+[[orbits]]
+name = "timelapse"            # 35 days in 20 s, the camera slowly circling
+bookmark = "overview"
+degrees = 40
+frames = 600
+fps = 30
+t_from_s = 0
+t_to_s = 3031200
+
+[[orbits]]
+name = "run_d19"              # the day-19 run in real-ish time: 6 h over 10 s
+bookmark = "run_mid"
+degrees = 12
+frames = 300
+fps = 30
+t_from_s = 1630800
+t_to_s = 1652400
+
+[[orbits]]
+name = "map_timelapse"        # frame-for-frame with checkpoints/CP2/cp2-jolly-playback.mp4
+bookmark = "map"              # (141 frames at 12 fps, one per 6 ticks) for the 2D | 3D split
+degrees = 0
+frames = 141
+fps = 12
+t_from_s = 0
+t_to_s = 3024000
+
+# Probes (EPSG:32610 metres, 3x3-uniform cells of the stream)
+[[fire_probes]]
+name = "ignition"             # burning at t0
+x = 649436.5
+y = 5248858.3
+
+[[fire_probes]]
+name = "run_d19"              # arrives at 1641914 s
+x = 657386.5
+y = 5242948.3
+
+[[fire_probes]]
+name = "late_west"            # arrives at 2436069 s
+x = 643676.5
+y = 5245108.3
+
+[[fire_probes]]
+name = "unburned"             # burnable, never reached
+x = 655196.5
+y = 5252608.3
+
+[[fire_probes]]
+name = "unburnable"
+x = 650696.5
+y = 5245498.3
+
+[[assert]]
+fact = "fire.enabled"
+op = "=="
+value = true
+
+[[assert]]
+fact = "fire.model"
+op = "=="
+value = "arrival-playback"
+
+[[assert]]
+fact = "fire.cells_burned"
+op = "=="
+value = 2725
+capture = "d06"
+
+[[assert]]
+fact = "fire.cells_burned"
+op = "=="
+value = 13971
+capture = "d13"
+
+[[assert]]
+fact = "fire.cells_burned"
+op = "=="
+value = 44602
+capture = "d19"
+
+[[assert]]
+fact = "fire.cells_burning"
+op = "=="
+value = 9718
+capture = "d19"
+
+[[assert]]
+fact = "fire.cells_burned"
+op = "=="
+value = 111780
+capture = "d25"
+
+[[assert]]
+fact = "fire.cells_burned"
+op = "=="
+value = 166647
+capture = "d35"
+
+[[assert]]
+fact = "fire.probes.ignition"
+op = "=="
+value = 3
+
+[[assert]]
+fact = "fire.probes.unburned"
+op = "=="
+value = 1
+
+[[assert]]
+fact = "fire.probes.unburnable"
+op = "=="
+value = 0
+
+[[assert]]
+fact = "fire.probes.run_d19"
+op = "=="
+value = 1
+capture = "d13"
+
+[[assert]]
+fact = "fire.probes.run_d19"
+op = "=="
+value = 2
+capture = "d19"
+
+[[assert]]
+fact = "fire.probes.run_d19"
+op = "=="
+value = 3
+capture = "d25"
+
+[[assert]]
+fact = "fire.probes.late_west"
+op = "=="
+value = 1
+capture = "d25"
+
+[[assert]]
+fact = "fire.probes.late_west"
+op = "=="
+value = 3
+capture = "d35"

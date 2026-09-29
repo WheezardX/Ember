@@ -81,6 +81,16 @@ class FactAssert(_Strict):
     capture: str | None = None  # None: must hold at every capture point
 
 
+class FireProbe(_Strict):
+    """A world point whose fire phase is reported as the fact `fire.probes.<name>` (-1 outside
+    the grid, 0 unburnable, 1 unburned, 2 burning, 3 burned) - checks the scar lands where the
+    Epic 4 stream says it does."""
+
+    name: str
+    x: float                    # metres, the replay grid's CRS
+    y: float
+
+
 class ScenarioMeta(_Strict):
     name: str
     description: str = ""
@@ -104,6 +114,8 @@ class ScenarioMeta(_Strict):
     # wind clock (t = 0) so goldens stay pixel-deterministic; orbits/flyovers run it at frame/fps.
     wind_strength: float = 6.0
     wind_from_deg: float = 270.0
+    smoke: bool = True           # replay scenarios: smoke v0 plumes (bend with wind_from_deg)
+    smoke_wind_ms: float = 8.0   # plume drift speed (m/s)
     veg_lineup: bool = False    # B3 silhouette sheet: one tree per species at the first capture's
     #                             target (row across the view) + a 1.8 m post, no scattered trees
     exec_cmds: list[str] = Field(default_factory=list)  # console commands after world load
@@ -118,6 +130,7 @@ class RenderScenario(_Strict):
     bookmarks: list[Bookmark]
     captures: list[Capture]
     orbits: list[Orbit] = Field(default_factory=list)
+    fire_probes: list[FireProbe] = Field(default_factory=list)
     asserts: list[FactAssert] = Field(default_factory=list, alias="assert")
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -138,6 +151,11 @@ class RenderScenario(_Strict):
                 raise ValueError(f"capture {c.name!r} references unknown bookmark {c.bookmark!r}")
             if c.t_s is not None and self.scenario.replay is None:
                 raise ValueError(f"capture {c.name!r} sets t_s but the scenario has no replay")
+        if self.fire_probes and self.scenario.replay is None:
+            raise ValueError("fire_probes need a replay")
+        probes = [p.name for p in self.fire_probes]
+        if len(set(probes)) != len(probes):
+            raise ValueError("duplicate fire probe names")
         if self.scenario.perf_bookmark is not None and self.scenario.perf_bookmark not in names:
             raise ValueError(f"perf_bookmark {self.scenario.perf_bookmark!r} is not a bookmark")
         for o in self.orbits:

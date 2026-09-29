@@ -31,6 +31,19 @@ nor a VLM ever has to count from pixels.
                  "near": 0, "near_radius_m": 500, "cells_near": 0, "tiles_near": 0,
                  "mid_culled": 0,
                  "generated_species": 5, "by_species": {} },  // vegetation (world.md)
+  "fire": {                                     // replay scenarios (AEmberFireActor), else enabled: false
+    "enabled": true, "model": "arrival-playback", "t_s": 1645200, "tick": 457,
+    "time_utc": "2017-08-31T01:00:00.000Z",
+    "cells_burning": 9718, "cells_burned": 44602,  // as rendered: a cell burns from its exact arrival
+    "stream_burned": 34884,                        // the stream's own metric at this tick (excludes burning)
+    "burned_ha": 4014.2, "start_s": 0, "end_s": 3031200,
+    "probes": { "run_d19": 2 }                     // scenario [[fire_probes]]: phase at a world point,
+  },                                               // -1 outside, 0 unburnable, 1 unburned, 2 burning, 3 burned
+  "smoke": {                                    // smoke v0 (AEmberSmokeActor), replay scenarios
+    "enabled": true, "sources": 197,            // 300 m bins with recent arrivals
+    "plumes": 197, "puffs": 5361,               // plumes that fit the puff budget (20000), cards laid out
+    "max_top_m": 2138.9                         // highest injection height (m above ground)
+  },
   "environment": { "sun": "noon", "sun_azimuth_deg": 180, "sun_elevation_deg": 58,
                    "exposure_bias": -2 },
   "render": {

@@ -152,3 +152,7 @@ outputs = [
 [[generator]]
 script = "m_water.py"
 outputs = ["/Game/Ember/Generated/M_Water"]
+
+[[generator]]
+script = "m_smoke.py"
+outputs = ["/Game/Ember/Generated/M_Smoke", "/Game/Ember/Generated/T_SmokePuff"]

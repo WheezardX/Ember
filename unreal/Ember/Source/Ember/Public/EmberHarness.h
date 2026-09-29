@@ -3,12 +3,15 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
+#include "EmberFireActor.h"
+
 #include "EmberHarness.generated.h"
 
 class AEmberTerrainActor;
 class AEmberVegetationActor;
 class AEmberEnvironment;
 class AEmberFireActor;
+class AEmberSmokeActor;
 class ACameraActor;
 
 /**
@@ -95,6 +98,9 @@ private:
 	TArray<FString> PerfExecCmds;  // run as the perf window opens (e.g. ProfileGPU)
 	FString WaterDir;
 	FString ReplayPath;        // Epic 4 replay (.replay.json) -> fire state player
+	bool bSmoke = true;        // smoke v0 plumes with the replay
+	double SmokeWindMs = 8.0;
+	TArray<AEmberFireActor::FProbe> FireProbes;
 	FString PerfBookmark;  // "clay" or an absolute viz/looks/*.toml path
 	TArray<FBookmark> Bookmarks;
 	TArray<FCapture> Captures;
@@ -117,6 +123,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<AEmberVegetationActor> Vegetation;
 	UPROPERTY(Transient) TObjectPtr<AEmberEnvironment> Environment;
 	UPROPERTY(Transient) TObjectPtr<AEmberFireActor> Fire;
+	UPROPERTY(Transient) TObjectPtr<AEmberSmokeActor> Smoke;
 	void SetFireTime(double SimS, double ClockS);
 	UPROPERTY(Transient) TObjectPtr<ACameraActor> Camera;
 };

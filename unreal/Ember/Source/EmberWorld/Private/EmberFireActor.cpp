@@ -73,6 +73,11 @@ void AEmberFireActor::SetTime(double TSeconds)
 	CellsBurning = 0;
 	CellsBurned = 0;
 	const int32 N = Nx * Ny;
+	const int32 Bx = (Nx + SmokeBinCells - 1) / SmokeBinCells;
+	const int32 By = (Ny + SmokeBinCells - 1) / SmokeBinCells;
+	struct FBin { double Sx = 0, Sy = 0, W = 0, Burning = 0; };
+	TArray<FBin> Bins;
+	Bins.SetNum(Bx * By);
 	for (int32 I = 0; I < N; ++I)
 	{
 		const uint8 Phase = State.phase[I];
@@ -89,6 +94,18 @@ void AEmberFireActor::SetTime(double TSeconds)
 		{
 			const double AgeH = FMath::Max(0.0, (TSeconds - Arrival[I]) / 3600.0);
 			Age = static_cast<uint8>(FMath::Clamp(FMath::Sqrt(AgeH / 200.0) * 255.0, 0.0, 255.0));
+			// Smoke comes off the front: weight by time since arrival, burning or not.
+			const double W = FMath::Exp(-AgeH / SmokeDecayH);
+			if (W > 0.01)
+			{
+				const int32 Cx = I % Nx;
+				const int32 Cy = I / Nx;
+				FBin& B = Bins[(Cy / SmokeBinCells) * Bx + Cx / SmokeBinCells];
+				B.Sx += W * Cx;
+				B.Sy += W * Cy;
+				B.W += W;
+				B.Burning += bBurning;
+			}
 		}
 		// Intensity 0..3 (0 = model does not report it; the playback model reports 1).
 		const uint8 Flame = bBurning ? static_cast<uint8>(FMath::Clamp(150 + 35 * State.intensity[I], 0, 255)) : 0;
@@ -97,6 +114,38 @@ void AEmberFireActor::SetTime(double TSeconds)
 		P[1] = bBurned ? 255 : 0;
 		P[2] = Flame;
 		P[3] = 255;
+	}
+	SmokeSources.Reset();
+	for (int32 K = 0; K < Bins.Num(); ++K)
+	{
+		const FBin& B = Bins[K];
+		if (B.W < 0.5)
+		{
+			continue;
+		}
+		FEmberSmokeSource S;
+		S.X = Grid.origin_x + (B.Sx / B.W + 0.5) * CellM;
+		S.Y = Grid.origin_y - (B.Sy / B.W + 0.5) * CellM;
+		S.Strength = static_cast<float>(B.W);
+		S.Burning = static_cast<float>(B.Burning);
+		S.Key = K;
+		const int32 Kx = K % Bx;
+		const int32 Ky = K / Bx;
+		double Cl = 0.0;
+		for (int32 Dy = -2; Dy <= 2; ++Dy)
+		{
+			for (int32 Dx = -2; Dx <= 2; ++Dx)
+			{
+				const int32 X = Kx + Dx;
+				const int32 Y = Ky + Dy;
+				if (X >= 0 && Y >= 0 && X < Bx && Y < By)
+				{
+					Cl += Bins[Y * Bx + X].W;
+				}
+			}
+		}
+		S.Cluster = static_cast<float>(Cl);
+		SmokeSources.Add(S);
 	}
 	// Upload the whole grid (a few MB); ordered before the next frame's rendering.
 	FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, Nx, Ny);
@@ -118,5 +167,12 @@ int32 AEmberFireActor::PhaseAt(double WorldX, double WorldY) const
 	{
 		return -1;
 	}
-	return State.phase[Cy * Nx + Cx];
+	// As rendered: a cell burns from its exact arrival time (see SetTime).
+	const int32 I = Cy * Nx + Cx;
+	const int32 A = Stream.final_arrival()[I];
+	if (State.phase[I] == emberworld::fire::Unburned && A >= 0 && A <= TimeS)
+	{
+		return emberworld::fire::Burning;
+	}
+	return State.phase[I];
 }

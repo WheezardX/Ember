@@ -192,6 +192,8 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "veg_mid_min_height_m": s.scenario.veg_mid_min_height_m,
         "wind_strength": s.scenario.wind_strength,
         "wind_from_deg": s.scenario.wind_from_deg,
+        "smoke": s.scenario.smoke,
+        "smoke_wind_ms": s.scenario.smoke_wind_ms,
         "veg_lineup": s.scenario.veg_lineup,
         "exec_cmds": list(s.scenario.exec_cmds),
         "perf_exec_cmds": list(s.scenario.perf_exec_cmds),
@@ -200,6 +202,7 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "bookmarks": [b.model_dump() for b in s.bookmarks],
         "captures": [c.model_dump() for c in s.captures],
         "orbits": [o.model_dump() for o in s.orbits],
+        "fire_probes": [p.model_dump() for p in s.fire_probes],
     }
     p = run_dir / "plan.json"
     p.write_text(json.dumps(plan, indent=2), encoding="utf-8")

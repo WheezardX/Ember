@@ -139,7 +139,8 @@ def linear_black():
     if tex is None:
         raise RuntimeError("T_LinearBlack import failed")
     tex.set_editor_property("srgb", False)
-    tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
+    tex.set_editor_property("compression_settings",
+                            unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
     eal.save_asset(full, only_if_is_dirty=False)
     unreal.log(f"EMBER_GENERATED {full}")
     return tex
@@ -178,13 +179,14 @@ ftex.set_editor_property("parameter_name", "FireTex")
 ftex.set_editor_property("texture", linear_black())
 ftex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
 link(fuv, "", ftex, "UVs")
-# Ground: charcoal black -> ash grey (noise), greying over the days after the burn.
+# Ground: charcoal black -> dark ash (noise), settling over the days after the burn. Warm, not
+# grey: a neutral grey reads slate-blue under the skylight at altitude (HCP3 Jolly).
 fcol = custom("EmberFireGround", -450, 450, ["Base", "F", "N", "On"], (
     "float burned = smoothstep(0.35, 0.65, F.g + N * 0.18) * F.a * On;\n"
     "float age_h = F.b * F.b * 200.0;\n"
     "float ash = saturate(N * 0.9 + 0.35);\n"
     "float3 fresh = lerp(float3(0.010, 0.009, 0.008), float3(0.035, 0.032, 0.03), ash * ash);\n"
-    "float3 old = lerp(float3(0.03, 0.028, 0.026), float3(0.13, 0.125, 0.12), ash * ash);\n"
+    "float3 old = lerp(float3(0.028, 0.022, 0.017), float3(0.075, 0.063, 0.052), ash * ash);\n"
     "float3 charc = lerp(fresh, old, saturate(age_h / 72.0));\n"
     "return lerp(Base, charc, burned);\n"))
 link(base, "", fcol, "Base")
@@ -193,24 +195,31 @@ link(noise, "", fcol, "N")
 link(fire_on, "", fcol, "On")
 to_property(fcol, "", unreal.MaterialProperty.MP_BASE_COLOR)
 # Emissive: flickering flames on burning cells; a fading ember glow for ~12 h after the front.
-femi = custom("EmberFireGlow", -450, 700, ["F", "N", "On", "T", "G"], (
+femi = custom("EmberFireGlow", -450, 700, ["F", "N", "On", "T", "G", "WP", "Cam"], (
     "float inside = F.a * On;\n"
     "float age_h = F.b * F.b * 200.0;\n"
     "float burning = smoothstep(0.3, 0.7, F.r + N * 0.2) * inside;\n"
-    # hottest at the front (first ~hour after arrival), fading to smouldering over the burn
-    "float front = exp(-age_h / 0.7);\n"
+    # hottest at the front (first ~hour after arrival), fading to smouldering over the burn. From
+    # altitude the band widens (decay grows with camera distance) so the active edge stays a few
+    # pixels wide, like the IR maps (design doc 5.2: legibility first); unchanged within 3 km.
+    "float dkm = length(WP - Cam) / 100000.0;\n"
+    "float front = exp(-age_h / (0.7 * max(1.0, dkm / 3.0)));\n"
     "float breakup = saturate(N * 1.0 + 0.75);\n"
     "float flick = 0.7 + 0.3 * sin(T * 7.0 + N * 23.0) * sin(T * 3.1 + N * 11.0);\n"
     "float3 flame = lerp(float3(3.0, 0.45, 0.04), float3(5.0, 1.8, 0.25), front) * flick;\n"
     "float patch = saturate(N * 2.0 - 0.2);\n"
     "float smoulder = burning * (1.0 - front) * 0.07 * patch;\n"
-    "float embers = F.g * (1.0 - saturate(F.r * 4.0)) * inside * saturate(1.0 - age_h / 12.0) * patch * 0.08;\n"
-    "return G * (burning * front * breakup * flame + (smoulder + embers) * float3(1.2, 0.18, 0.02));\n"))
+    "float embers = F.g * (1.0 - saturate(F.r * 4.0)) * inside\n"
+    "             * saturate(1.0 - age_h / 12.0) * patch * 0.08;\n"
+    "return G * (burning * front * breakup * flame\n"
+    "            + (smoulder + embers) * float3(1.2, 0.18, 0.02));\n"))
 link(ftex, "RGBA", femi, "F")
 link(noise, "", femi, "N")
 link(fire_on, "", femi, "On")
 link(fire_time, "", femi, "T")
 link(fire_gain, "", femi, "G")
+link(wp, "", femi, "WP")
+link(expr(unreal.MaterialExpressionCameraPositionWS, -650, 900), "", femi, "Cam")
 to_property(femi, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
 rough = scalar("Roughness", 0.92, -450, 150)

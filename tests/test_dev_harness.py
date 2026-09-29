@@ -427,3 +427,51 @@ def test_synth_fire_obeys_the_state_stream_rules(tmp_path: Path):
         assert burned >= prev_burned
         prev_phase, prev_burned = f.phase, burned
     assert prev_burned > 0
+
+
+def test_fire_probes_validation():
+    base = {"render_scenario_version": 1,
+            "scenario": {"name": "x", "world": "w", "replay": "r.replay.json"},
+            "bookmarks": [{"name": "a", "target_frac": [0.5, 0.5], "distance_m": 10}],
+            "captures": []}
+    probe = {"name": "p", "x": 1.0, "y": 2.0}
+    ok = RenderScenario.model_validate({**base, "fire_probes": [probe]})
+    assert ok.fire_probes[0].x == 1.0 and ok.scenario.smoke
+    with pytest.raises(ValueError, match="duplicate fire probe"):
+        RenderScenario.model_validate({**base, "fire_probes": [probe, probe]})
+    no_replay = {**base, "scenario": {"name": "x", "world": "w"}}
+    with pytest.raises(ValueError, match="need a replay"):
+        RenderScenario.model_validate({**no_replay, "fire_probes": [probe]})
+
+
+def test_split_crop_centres_the_grid(tmp_path: Path):
+    from ember.dev.scenario import LoadedScenario
+    from ember.dev.split import grid_crop
+
+    grid = {"origin_x": 1000.0, "origin_y": 5000.0, "nx": 80, "ny": 60, "cell_size_m": 30.0}
+    replay = tmp_path / "f.replay.json"
+    replay.write_text(json.dumps({"world": {"grid": grid}}), encoding="utf-8")
+    (tmp_path / "run" / "facts").mkdir(parents=True)
+    extent = [1000.0, 5000.0 - 1800.0, 1000.0 + 2400.0, 5000.0]   # the grid, exactly
+    (tmp_path / "run" / "facts" / "a.json").write_text(
+        json.dumps({"world": {"data_extent_m": extent}}), encoding="utf-8")
+
+    def scenario(pitch: float, distance: float) -> LoadedScenario:
+        spec = RenderScenario.model_validate({
+            "render_scenario_version": 1,
+            "scenario": {"name": "x", "world": "w", "replay": "f.replay.json",
+                         "resolution": [1600, 900]},
+            "bookmarks": [{"name": "map", "target_frac": [0.5, 0.5], "distance_m": distance,
+                           "pitch_deg": pitch, "fov_deg": 50}],
+            "captures": []})
+        return LoadedScenario(path=tmp_path / "x.toml", spec=spec, world_path=tmp_path,
+                              replay_path=replay)
+
+    c = grid_crop(scenario(-89, 3600.0), tmp_path / "run", "map")
+    assert abs(c.x + c.w / 2 - 800) <= 1 and abs(c.y + c.h / 2 - 450) <= 1
+    assert abs(c.w / c.h - 2400 / 1800) < 0.01
+    assert abs(c.w - 1600 * 2400 / (2 * 3600 * np.tan(np.radians(25)))) <= 1
+    with pytest.raises(ValueError, match="does not fit"):
+        grid_crop(scenario(-89, 1000.0), tmp_path / "run", "map")
+    with pytest.raises(ValueError, match="straight down"):
+        grid_crop(scenario(-40, 3600.0), tmp_path / "run", "map")

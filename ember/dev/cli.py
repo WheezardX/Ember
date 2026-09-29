@@ -282,6 +282,25 @@ def synth_fire(region: str = typer.Argument(..., help="Terrain region, e.g. thre
     typer.secho(f"synthetic fire {region}: {path}", fg=typer.colors.GREEN)
 
 
+@app.command()
+def split(name: str = typer.Argument(..., help="Replay scenario, e.g. S_jolly_fire"),
+          left: Path = typer.Option(..., "--left", help="Epic 4 2D playback MP4"),
+          orbit: str = typer.Option("map_timelapse", "--orbit"),
+          bookmark: str = typer.Option("map", "--bookmark",
+                                       help="the orbit's straight-down bookmark"),
+          run: str = typer.Option(None, "--run", help="Run dir (default: latest)."),
+          out: Path = typer.Option(None, "--out")) -> None:
+    """2D | 3D split MP4: Epic 4's 2D playback beside the renderer's top-down timelapse."""
+    from ember.dev import split as sp
+
+    run_dir = _resolve_run(name, run)
+    sc = _sc(name)
+    crop = sp.grid_crop(sc, run_dir, bookmark)
+    dst = out or run_dir / "orbits" / f"{orbit}_split.mp4"
+    sp.compose(left, run_dir / "orbits" / f"{orbit}.mp4", crop, dst)
+    typer.secho(f"split {dst} (3D crop {crop})", fg=typer.colors.GREEN)
+
+
 @app.command("forest-report")
 def forest_report(region: str = typer.Argument(..., help="Terrain region, e.g. three_queens_2026"),
                   out: str = typer.Option(None, "--out",
