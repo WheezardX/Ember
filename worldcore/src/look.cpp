@@ -107,6 +107,34 @@ LookResult load_look(const std::string& path) {
         L.supersample = static_cast<int>(std::clamp<int64_t>(de["supersample"].value_or(int64_t{L.supersample}), 1, 16));
         L.boundary_warp_px = de["boundary_warp_px"].value_or(L.boundary_warp_px);
         L.blur_radius_px = de["blur_radius_px"].value_or(L.blur_radius_px);
+        if (auto gr = t["ground"]; gr.is_table()) {
+            L.has_ground = true;
+            L.canopy_to_litter = gr["canopy_to_litter"].value_or(L.canopy_to_litter);
+            for (size_t i = 0; i < static_cast<size_t>(LandClass::Count); ++i) {
+                auto w = gr["classes"][kClassKeys[i]];
+                if (!w) continue;  // absent = plain soil (all zero)
+                const toml::array* arr = w.as_array();
+                if (!arr || arr->size() != 4) {
+                    res.error = path + ": ground.classes." + kClassKeys[i] + " must be [litter, grass, rock, shrub]";
+                    return res;
+                }
+                float sum = 0;
+                for (size_t j = 0; j < 4; ++j) {
+                    const auto& e = (*arr)[j];
+                    const double v = e.is_integer() ? static_cast<double>(e.value_or(int64_t{0})) : e.value_or(0.0);
+                    if (v < 0) {
+                        res.error = path + ": ground.classes." + kClassKeys[i] + " weights must be >= 0";
+                        return res;
+                    }
+                    L.ground[i][j] = static_cast<float>(v);
+                    sum += static_cast<float>(v);
+                }
+                if (sum > 1.0001f) {
+                    res.error = path + ": ground.classes." + kClassKeys[i] + " weights sum > 1";
+                    return res;
+                }
+            }
+        }
     } catch (const std::exception& e) {
         res.error = path + ": " + e.what();
     }
@@ -116,11 +144,24 @@ LookResult load_look(const std::string& path) {
 namespace {
 
 // Per source pixel: colour before slope (class + NDVI + canopy) and rock blend factor.
+using Mix = std::array<float, 4>;
+
 struct SourcePx {
     Rgb c;
     float rock = 0;
     bool valid = false;
+    Mix mix{};  // ground weights before the slope-rock blend
 };
+
+// Weights after the slope-rock blend (rock_t moves everything toward the rock set).
+Mix with_rock(const Mix& m, float rock_t) {
+    Mix o;
+    for (size_t j = 0; j < 4; ++j) o[j] = m[j] * (1.0f - rock_t);
+    o[kRock] += rock_t;
+    return o;
+}
+
+uint8_t unit8(float v) { return static_cast<uint8_t>(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f)); }
 
 // Smooth value noise in [-1, 1] on a unit lattice, world-aligned (x, y in source-pixel units).
 double value_noise(double x, double y, uint64_t salt) {
@@ -150,6 +191,7 @@ Albedo compose_albedo(const TerrainLook& L, const LookInputs& in) {
     fine.width = FW;
     fine.height = FH;
     std::vector<Rgb> col(static_cast<size_t>(FW) * FH);
+    std::vector<Mix> mixv(L.has_ground ? static_cast<size_t>(FW) * FH : 0);
     std::vector<uint8_t> valid(static_cast<size_t>(FW) * FH, 0);
     const double ox = in.origin_x_m / in.pixel_m, oy = -in.origin_y_m / in.pixel_m;  // world px, y south
     auto rock_at = [&](double x, double y) {  // bilinear over source pixel centres, valid only
@@ -189,7 +231,9 @@ Albedo compose_albedo(const TerrainLook& L, const LookInputs& in) {
             }
             const SourcePx& p = src[static_cast<size_t>(wy) * W + wx];
             const size_t k = static_cast<size_t>(fy) * FW + fx;
-            col[k] = lerp(p.c, L.rock, rock_at(sx, sy));
+            const float rt = rock_at(sx, sy);
+            col[k] = lerp(p.c, L.rock, rt);
+            if (L.has_ground) mixv[k] = with_rock(p.mix, rt);
             valid[k] = 1;
         }
     const int radius = static_cast<int>(std::lround(L.blur_radius_px * s));
@@ -220,8 +264,34 @@ Albedo compose_albedo(const TerrainLook& L, const LookInputs& in) {
             pass(true, col, tmp);
             pass(false, tmp, col);
         }
+        if (L.has_ground) {  // the same blur, so mix boundaries sit where colour boundaries do
+            std::vector<Mix> mtmp(mixv.size());
+            auto mpass = [&](bool horizontal, const std::vector<Mix>& from, std::vector<Mix>& to) {
+                for (int fy = 0; fy < FH; ++fy)
+                    for (int fx = 0; fx < FW; ++fx) {
+                        const size_t k = static_cast<size_t>(fy) * FW + fx;
+                        if (!valid[k]) continue;
+                        Mix acc{};
+                        int n = 0;
+                        for (int d = -radius; d <= radius; ++d) {
+                            const int xx = horizontal ? fx + d : fx, yy = horizontal ? fy : fy + d;
+                            if (xx < 0 || yy < 0 || xx >= FW || yy >= FH) continue;
+                            const size_t q = static_cast<size_t>(yy) * FW + xx;
+                            if (!valid[q]) continue;
+                            for (size_t j = 0; j < 4; ++j) acc[j] += from[q][j];
+                            ++n;
+                        }
+                        for (size_t j = 0; j < 4; ++j) to[k][j] = acc[j] / n;
+                    }
+            };
+            for (int it = 0; it < 2; ++it) {
+                mpass(true, mixv, mtmp);
+                mpass(false, mtmp, mixv);
+            }
+        }
     }
     fine.bgra.assign(static_cast<size_t>(FW) * FH * 4, 0);
+    if (L.has_ground) fine.mix.assign(static_cast<size_t>(FW) * FH * 4, 0);
     for (int fy = 0; fy < FH; ++fy)
         for (int fx = 0; fx < FW; ++fx) {
             const size_t k = static_cast<size_t>(fy) * FW + fx;
@@ -232,6 +302,8 @@ Albedo compose_albedo(const TerrainLook& L, const LookInputs& in) {
             o[1] = linear_to_srgb8(c.g);
             o[2] = linear_to_srgb8(c.r);
             o[3] = 255;
+            if (L.has_ground)
+                for (size_t j = 0; j < 4; ++j) fine.mix[k * 4 + j] = unit8(mixv[k][j]);
         }
     return fine;
 }
@@ -242,6 +314,7 @@ static Albedo compose_albedo_native(const TerrainLook& L, const LookInputs& in, 
     out.height = in.height;
     const int W = in.width, H = in.height;
     out.bgra.assign(static_cast<size_t>(W) * H * 4, 0);
+    if (L.has_ground) out.mix.assign(static_cast<size_t>(W) * H * 4, 0);
     if (src_out) src_out->assign(static_cast<size_t>(W) * H, SourcePx{});
     auto dem = [&](int x, int y) -> float {
         x = std::clamp(x, 0, W - 1);
@@ -268,6 +341,18 @@ static Albedo compose_albedo_native(const TerrainLook& L, const LookInputs& in, 
                 }
             }
             const Rgb pre_rock = c;
+            Mix gm{};
+            if (L.has_ground) {
+                gm = L.ground[static_cast<size_t>(cls)];
+                const float cc = in.cc[k];
+                if (cc > 0) {  // shade: grass and shrub give way to needle/leaf litter
+                    const float f = static_cast<float>(L.canopy_to_litter) * std::min(cc, 100.0f) / 100.0f;
+                    const float moved = f * (gm[kGrass] + gm[kShrub]);
+                    gm[kGrass] *= 1.0f - f;
+                    gm[kShrub] *= 1.0f - f;
+                    gm[kLitter] += moved;
+                }
+            }
             float rock_t = 0;
             if (cls != LandClass::Water && cls != LandClass::Snow) {
                 // Central differences; neighbours that are nodata fall back to this pixel.
@@ -282,7 +367,11 @@ static Albedo compose_albedo_native(const TerrainLook& L, const LookInputs& in, 
                 rock_t = static_cast<float>(t);
                 c = lerp(c, L.rock, rock_t);
             }
-            if (src_out) (*src_out)[k] = SourcePx{pre_rock, rock_t, true};
+            if (src_out) (*src_out)[k] = SourcePx{pre_rock, rock_t, true, gm};
+            if (L.has_ground) {
+                const Mix m = with_rock(gm, rock_t);
+                for (size_t j = 0; j < 4; ++j) out.mix[k * 4 + j] = unit8(m[j]);
+            }
             uint8_t* p = &out.bgra[k * 4];
             p[0] = linear_to_srgb8(c.b);
             p[1] = linear_to_srgb8(c.g);
@@ -378,6 +467,38 @@ std::vector<Albedo> build_mips(const Albedo& level0) {
                     for (int c = 0; c < 3; ++c) q[c] = static_cast<uint8_t>(std::lround(acc[c] / wsum));
                     q[3] = static_cast<uint8_t>(std::lround(255.0 * wsum / n));
                 }
+            }
+        mips.push_back(std::move(d));
+    }
+    return mips;
+}
+
+std::vector<Albedo> build_mix_mips(const Albedo& level0) {
+    Albedo top;
+    top.width = level0.width;
+    top.height = level0.height;
+    top.bgra = level0.mix;
+    std::vector<Albedo> mips{top};
+    while (mips.back().width > 1 || mips.back().height > 1) {
+        const Albedo& s = mips.back();
+        Albedo d;
+        d.width = std::max(1, s.width / 2);
+        d.height = std::max(1, s.height / 2);
+        d.bgra.assign(static_cast<size_t>(d.width) * d.height * 4, 0);
+        for (int y = 0; y < d.height; ++y)
+            for (int x = 0; x < d.width; ++x) {
+                const int x0 = 2 * x, x1 = (x == d.width - 1) ? s.width : std::min(s.width, 2 * x + 2);
+                const int y0 = 2 * y, y1 = (y == d.height - 1) ? s.height : std::min(s.height, 2 * y + 2);
+                double acc[4] = {0, 0, 0, 0};
+                int n = 0;
+                for (int yy = y0; yy < y1; ++yy)
+                    for (int xx = x0; xx < x1; ++xx) {
+                        const uint8_t* p = &s.bgra[(static_cast<size_t>(yy) * s.width + xx) * 4];
+                        for (int c = 0; c < 4; ++c) acc[c] += p[c];
+                        ++n;
+                    }
+                uint8_t* q = &d.bgra[(static_cast<size_t>(y) * d.width + x) * 4];
+                for (int c = 0; c < 4; ++c) q[c] = static_cast<uint8_t>(std::lround(acc[c] / n));
             }
         mips.push_back(std::move(d));
     }

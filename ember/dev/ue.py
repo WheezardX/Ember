@@ -195,6 +195,7 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "resolution": list(s.scenario.resolution),
         "perf_frames": s.scenario.perf_frames,
         "exposure_bias": exposure_bias,
+        "skylight_leaking": s.scenario.skylight_leaking,
         "fixed_lod": s.scenario.fixed_lod,
         "lod_refine_factor": s.scenario.lod_refine_factor,
         "look": _look_ref(s.scenario.look),

@@ -34,7 +34,15 @@ struct TerrainLook {
     int supersample = 4;            // output texels per source pixel, per axis
     double boundary_warp_px = 0.6;  // world-aligned domain warp of class lookups (source px)
     double blur_radius_px = 0.5;    // box-blur radius in SOURCE pixels (2 passes ~ gaussian); 0 = off
+    // [ground] (ground plane v1, EPIC_5_PLAN 8f): what is on the ground, per class, as weights of
+    // the four near-camera detail sets {litter, grass, rock, shrub}; the remainder is plain soil.
+    // Steep slopes move weight to rock like the colour; canopy cover turns grass/shrub to litter.
+    bool has_ground = false;
+    std::array<std::array<float, 4>, static_cast<size_t>(LandClass::Count)> ground{};
+    double canopy_to_litter = 0.8;  // at 100 % cover, this fraction of grass + shrub becomes litter
 };
+
+enum GroundSet { kLitter = 0, kGrass = 1, kRock = 2, kShrub = 3 };
 
 struct LookResult {
     TerrainLook look;
@@ -63,6 +71,9 @@ struct LookInputs {
 struct Albedo {
     int width = 0, height = 0;
     std::vector<uint8_t> bgra;     // sRGB-encoded BGRA8, row 0 = north; alpha 0 where DEM nodata
+    // Ground mix (when the look has [ground]): linear RGBA8 weights R litter, G grass, B rock,
+    // A shrub, same size and texel alignment as bgra; 0 where DEM nodata. Empty otherwise.
+    std::vector<uint8_t> mix;
 };
 
 EMBERWORLD_CORE_API Albedo compose_albedo(const TerrainLook& look, const LookInputs& in);
@@ -71,6 +82,10 @@ EMBERWORLD_CORE_API Albedo compose_albedo(const TerrainLook& look, const LookInp
 // (alpha 0) never darkens valid texels; odd sizes floor (the last row/column folds in).
 // Found at HCP1 work: a single-mip transient texture sampled at distance returns garbage.
 EMBERWORLD_CORE_API std::vector<Albedo> build_mips(const Albedo& level0);
+
+// Mip chain for the ground mix (level 0 = level0.mix): plain 2x2 box average of all four
+// channels (weights, not colour: no alpha weighting). Returned as Albedo with .bgra = the level.
+EMBERWORLD_CORE_API std::vector<Albedo> build_mix_mips(const Albedo& level0);
 
 // Read the tile's layers (height + fuels_fbfm40 + fuels_cc + season_greenness if present).
 EMBERWORLD_CORE_API bool load_look_inputs(const Region& region, const TileEntry& tile, LookInputs& out,

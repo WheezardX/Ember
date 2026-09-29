@@ -18,6 +18,20 @@ Parameters (the runtime surface; docs/viz/assets.md):
     FireOn          scalar     0 = no fire bound                        default 0
     FireTime        scalar     the player's clock (s) for flame flicker default 0
     FireGain        scalar     flame emissive strength                  default 1
+    GroundMix       texture2D  per-tile ground weights (linear): R litter, G grass, B rock,
+                               A shrub; same UV as Albedo                default T_LinearBlack
+    GroundOn        scalar     0 = no ground detail (look without [ground])  default 0
+    GroundFadeNear  scalar     full detail inside this distance (cm)    default 15000
+    GroundFadeFar   scalar     no detail past this distance (cm)        default 40000
+    GroundNormal    scalar     detail normal strength                   default 1
+    GroundHeight    scalar     height-blend contrast between sets       default 0.6
+    Tex_<Set>_C/_N  texture    detail sets (t_ground.py): Litter, Grass, Rock, Shrub
+    Rep_<Set>       scalar     repeat in cm: litter 250, grass 300, rock 400, shrub 300
+
+Ground plane v1 (EPIC_5_PLAN 8f GP3): near the camera the macro colour is multiplied by the detail
+sets' colour variation (mean 1), height-blended by GroundMix; the normal becomes world-space
+(vertex normal + detail slope) and roughness/AO come from the sets. Past GroundFadeFar the result
+is exactly the macro look (the map look from the air).
 """
 
 import unreal
@@ -101,8 +115,9 @@ base = expr(unreal.MaterialExpressionMultiply, -450, -100)
 link(tex, "RGB", base, "A")
 link(detail, "", base, "B")
 
+_made = set()
 
-# ---- fire (HCP3): the replay's state texture, sampled by world position -------------------------
+
 def linear_black():
     """/Game/Ember/Generated/T_LinearBlack: a 4x4 black texture with sRGB off - the default for
     the linear-colour FireTex samplers (the engine's Black is sRGB, and a Linear Color sampler
@@ -113,6 +128,8 @@ def linear_black():
     import zlib
 
     full = f"{PATH}/T_LinearBlack"
+    if full in _made:
+        return unreal.load_asset(full)
     if eal.does_asset_exist(full):
         eal.delete_asset(full)
     w = h = 4
@@ -143,6 +160,7 @@ def linear_black():
                             unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
     eal.save_asset(full, only_if_is_dirty=False)
     unreal.log(f"EMBER_GENERATED {full}")
+    _made.add(full)
     return tex
 
 
@@ -160,6 +178,100 @@ def custom(name, x, y, inputs, code, out=unreal.CustomMaterialOutputType.CMOT_FL
     return c
 
 
+GROUND_CODE = r"""
+float fade = saturate((FadeFar - length(WP - Cam)) / max(FadeFar - FadeNear, 1.0)) * On;
+float3 vn = normalize(VN);
+NormalWS = vn;
+Rough = R0;
+if (fade <= 0.0) { return Base; }
+float2 p = WP.xy;
+float2 q = float2(p.x * 0.8 - p.y * 0.6, p.x * 0.6 + p.y * 0.8) * 0.37 + 1731.0;
+float t = saturate(Nlo * 0.5 + 0.5);
+float4 c0 = lerp(Texture2DSample(LC, LCSampler, p / RL), Texture2DSample(LC, LCSampler, q / RL), t);
+float4 n0 = lerp(Texture2DSample(LN, LNSampler, p / RL), Texture2DSample(LN, LNSampler, q / RL), t);
+float4 c1 = lerp(Texture2DSample(GC, GCSampler, p / RG), Texture2DSample(GC, GCSampler, q / RG), t);
+float4 n1 = lerp(Texture2DSample(GN, GNSampler, p / RG), Texture2DSample(GN, GNSampler, q / RG), t);
+float4 c2 = lerp(Texture2DSample(RC, RCSampler, p / RR), Texture2DSample(RC, RCSampler, q / RR), t);
+float4 n2 = lerp(Texture2DSample(RN, RNSampler, p / RR), Texture2DSample(RN, RNSampler, q / RR), t);
+float4 c3 = lerp(Texture2DSample(SC, SCSampler, p / RS), Texture2DSample(SC, SCSampler, q / RS), t);
+float4 n3 = lerp(Texture2DSample(SN, SNSampler, p / RS), Texture2DSample(SN, SNSampler, q / RS), t);
+float4 w = saturate(Mix);
+float ws = saturate(1.0 - dot(w, float4(1, 1, 1, 1)));
+// height blend: the taller set wins where two meet (crisp, natural transitions)
+float4 hb = w + float4(c0.a, c1.a, c2.a, c3.a) * HC * step(0.001, w);
+float hs = ws + 0.5 * HC * step(0.001, ws);
+float top = max(max(max(hb.x, hb.y), max(hb.z, hb.w)), hs) - 0.25;
+float4 bw = max(hb - top, 0.0);
+float bs = max(hs - top, 0.0);
+float sum = dot(bw, float4(1, 1, 1, 1)) + bs + 1e-5;
+bw /= sum; bs /= sum;
+float3 mul = 2.0 * (bw.x * c0.rgb + bw.y * c1.rgb + bw.z * c2.rgb + bw.w * c3.rgb) + bs;
+float2 slope = bw.x * (n0.rg * 2 - 1) + bw.y * (n1.rg * 2 - 1) + bw.z * (n2.rg * 2 - 1) + bw.w * (n3.rg * 2 - 1);
+float rough = bw.x * n0.b + bw.y * n1.b + bw.z * n2.b + bw.w * n3.b + bs * R0;
+float ao = bw.x * n0.a + bw.y * n1.a + bw.z * n2.a + bw.w * n3.a + bs;
+NormalWS = normalize(vn + float3(slope * NS * fade, 0.0));
+Rough = lerp(R0, rough, fade);
+return Base * lerp(1.0, mul * ao, fade);
+"""
+
+mixtex = expr(unreal.MaterialExpressionTextureSampleParameter2D, -850, -420)
+mixtex.set_editor_property("parameter_name", "GroundMix")
+mixtex.set_editor_property("texture", linear_black())
+mixtex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+link(add, "", mixtex, "UVs")
+
+ground = custom("EmberGround", -250, -300,
+                ["Base", "Mix", "WP", "Cam", "VN", "Nlo", "On", "FadeNear", "FadeFar", "NS", "HC",
+                 "R0", "LC", "LN", "GC", "GN", "RC", "RN", "SC", "SN", "RL", "RG", "RR", "RS"],
+                GROUND_CODE)
+outs = []
+for oname, otype in (("NormalWS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
+                     ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)):
+    co = unreal.CustomOutput()
+    co.set_editor_property("output_name", oname)
+    co.set_editor_property("output_type", otype)
+    outs.append(co)
+ground.set_editor_property("additional_outputs", outs)
+link(base, "", ground, "Base")
+link(mixtex, "RGBA", ground, "Mix")
+# low-frequency noise (~25 m) picks between the two detail scales, so neither tiling repeats
+wp_lo = expr(unreal.MaterialExpressionMultiply, -1200, -560)
+link(wp, "", wp_lo, "A")
+lo_scale = expr(unreal.MaterialExpressionConstant, -1400, -560)
+lo_scale.set_editor_property("r", 0.0004)
+link(lo_scale, "", wp_lo, "B")
+noise_lo = expr(unreal.MaterialExpressionNoise, -1050, -560)
+noise_lo.set_editor_property("scale", 1.0)
+noise_lo.set_editor_property("levels", 2)
+noise_lo.set_editor_property("output_min", -1.0)
+noise_lo.set_editor_property("output_max", 1.0)
+link(wp_lo, "", noise_lo, "World Position")
+link(noise_lo, "", ground, "Nlo")
+link(wp, "", ground, "WP")
+link(expr(unreal.MaterialExpressionCameraPositionWS, -650, -640), "", ground, "Cam")
+link(expr(unreal.MaterialExpressionVertexNormalWS, -650, -700), "", ground, "VN")
+link(scalar("GroundOn", 0.0, -650, -760), "", ground, "On")
+link(scalar("GroundFadeNear", 15000.0, -650, -820), "", ground, "FadeNear")
+link(scalar("GroundFadeFar", 40000.0, -650, -880), "", ground, "FadeFar")
+link(scalar("GroundNormal", 1.0, -650, -940), "", ground, "NS")
+link(scalar("GroundHeight", 0.6, -650, -1000), "", ground, "HC")
+link(scalar("Roughness", 0.92, -650, -1060), "", ground, "R0")
+for i, (set_name, pin, rep) in enumerate((("Litter", "L", 250.0), ("Grass", "G", 300.0),
+                                          ("Rock", "R", 400.0), ("Shrub", "S", 300.0))):
+    for kind in ("C", "N"):
+        obj = expr(unreal.MaterialExpressionTextureObjectParameter, -1000, -1200 - 120 * (2 * i + (kind == "N")))
+        obj.set_editor_property("parameter_name", f"Tex_{set_name}_{kind}")
+        t = unreal.load_asset(f"/Game/Ember/Generated/Ground/T_Ground_{set_name}_{kind}")
+        if t is None:
+            raise RuntimeError(f"T_Ground_{set_name}_{kind} missing: t_ground.py must run first")
+        obj.set_editor_property("texture", t)
+        if kind == "N":
+            obj.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_MASKS)
+        link(obj, "", ground, f"{pin}{kind}")
+    link(scalar(f"Rep_{set_name}", rep, -1200, -1200 - 240 * i), "", ground, f"R{pin}")
+
+
+# ---- fire (HCP3): the replay's state texture, sampled by world position -------------------------
 rect = expr(unreal.MaterialExpressionVectorParameter, -1400, 600)
 rect.set_editor_property("parameter_name", "FireRect")
 rect.set_editor_property("default_value", unreal.LinearColor(0.0, 0.0, 1.0, 1.0))
@@ -189,7 +301,7 @@ fcol = custom("EmberFireGround", -450, 450, ["Base", "F", "N", "On"], (
     "float3 old = lerp(float3(0.028, 0.022, 0.017), float3(0.075, 0.063, 0.052), ash * ash);\n"
     "float3 charc = lerp(fresh, old, saturate(age_h / 72.0));\n"
     "return lerp(Base, charc, burned);\n"))
-link(base, "", fcol, "Base")
+link(ground, "", fcol, "Base")
 link(ftex, "RGBA", fcol, "F")
 link(noise, "", fcol, "N")
 link(fire_on, "", fcol, "On")
@@ -222,8 +334,9 @@ link(wp, "", femi, "WP")
 link(expr(unreal.MaterialExpressionCameraPositionWS, -650, 900), "", femi, "Cam")
 to_property(femi, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
-rough = scalar("Roughness", 0.92, -450, 150)
-to_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+to_property(ground, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
+to_property(ground, "NormalWS", unreal.MaterialProperty.MP_NORMAL)
+mat.set_editor_property("tangent_space_normal", False)
 
 mel.recompile_material(mat)
 eal.save_asset(FULL, only_if_is_dirty=False)

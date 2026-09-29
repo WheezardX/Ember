@@ -116,6 +116,11 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	{
 		ExposureBias = static_cast<float>(Ev);
 	}
+	double Leak = 0;
+	if (J->TryGetNumberField(TEXT("skylight_leaking"), Leak))
+	{
+		SkylightLeaking = static_cast<float>(Leak);
+	}
 	for (const TSharedPtr<FJsonValue>& V : J->GetArrayField(TEXT("bookmarks")))
 	{
 		const TSharedPtr<FJsonObject>& O = V->AsObject();
@@ -141,6 +146,12 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 		B.PitchDeg = O->GetNumberField(TEXT("pitch_deg"));
 		B.FovDeg = O->GetNumberField(TEXT("fov_deg"));
 		B.Sun = O->GetStringField(TEXT("sun"));
+		double BEv = 0.0;
+		if (O->TryGetNumberField(TEXT("exposure_bias"), BEv))  // null / absent = scenario exposure
+		{
+			B.bExposure = true;
+			B.ExposureBias = BEv;
+		}
 		Bookmarks.Add(B);
 	}
 	const TArray<TSharedPtr<FJsonValue>>* OrbitArr = nullptr;
@@ -196,6 +207,7 @@ bool AEmberHarness::Start(const FString& PlanPath, AEmberEnvironment* Env)
 	if (Environment)
 	{
 		Environment->SetExposure(ExposureBias);
+		Environment->SetSkylightLeaking(SkylightLeaking);
 	}
 	ShotHandle = UGameViewportClient::OnScreenshotCaptured().AddUObject(this, &AEmberHarness::OnScreenshot);
 	State = EState::LoadWorld;
@@ -255,6 +267,10 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
 	{
 		PC->SetViewTarget(Camera);
+	}
+	if (Environment)
+	{
+		Environment->SetExposure(B.bExposure ? static_cast<float>(B.ExposureBias) : ExposureBias);
 	}
 	if (Environment && !Environment->SetSun(B.Sun))
 	{
@@ -736,6 +752,25 @@ void AEmberHarness::Tick(float DeltaSeconds)
 	}
 
 	case EState::Warmup:
+		// Placement measured the ground on whatever LOD was loaded then; the finer tiles that
+		// stream in around the camera can sit above it (a close-up ended up underground: black).
+		// Raise-only, so cameras that were already clear never move.
+		if (Camera && Terrain)
+		{
+			const emberworld::Frame& F = Terrain->GetFrame();
+			FVector Loc = Camera->GetActorLocation();
+			double Gz = 0.0;
+			if (Terrain->GroundHeightAt(F.anchor_x + Loc.X / 100.0, F.anchor_y - Loc.Y / 100.0, Gz))
+			{
+				const double MinZ = Terrain->WorldToUE(0.0, 0.0, Gz + 3.0).Z;
+				if (Loc.Z < MinZ)
+				{
+					UE_LOG(LogEmberHarness, Display, TEXT("camera lifted %.2f m clear of the streamed-in ground"), (MinZ - Loc.Z) / 100.0);
+					Loc.Z = MinZ;
+					Camera->SetActorLocation(Loc);
+				}
+			}
+		}
 		if (CompilesPending())
 		{
 			return;

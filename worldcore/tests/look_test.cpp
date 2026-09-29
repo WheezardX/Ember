@@ -187,3 +187,70 @@ TEST_CASE("look: supersampled composition is seamless across a tile edge") {
     CHECK(compared > 0);
     CHECK(equal == compared);
 }
+
+namespace {
+
+// Uniform 5x5 inputs on the native grid; returns the centre pixel's ground mix (0..1).
+std::array<float, 4> centre_mix(const TerrainLook& L, int fb, float cc, float slope_rise_per_px = 0) {
+    LookInputs in;
+    in.width = in.height = 5;
+    in.pixel_m = 10.0;
+    for (int y = 0; y < 5; ++y)
+        for (int x = 0; x < 5; ++x) in.dem.push_back(1000.0f + slope_rise_per_px * x);
+    in.fbfm40.assign(25, fb);
+    in.cc.assign(25, cc);
+    TerrainLook native = L;
+    native.supersample = 1;
+    native.boundary_warp_px = 0;
+    native.blur_radius_px = 0;
+    Albedo a = compose_albedo(native, in);
+    REQUIRE(a.mix.size() == a.bgra.size());
+    const uint8_t* p = &a.mix[(2 * 5 + 2) * 4];
+    return {p[0] / 255.0f, p[1] / 255.0f, p[2] / 255.0f, p[3] / 255.0f};
+}
+
+}  // namespace
+
+TEST_CASE("look: ground mix follows the fuel model, canopy and slope (ground plane v1)") {
+    LookResult lr = load_look(look_path());
+    REQUIRE_MESSAGE(lr.ok(), lr.error);
+    const TerrainLook& L = lr.look;
+    REQUIRE(L.has_ground);
+    const auto litter = centre_mix(L, 183, 0.0f);          // TL3
+    CHECK(litter[kLitter] > 0.8f);
+    const auto grass = centre_mix(L, 102, 0.0f);           // GR2, open
+    CHECK(grass[kGrass] > 0.85f);
+    CHECK(grass[kLitter] < 0.01f);
+    const auto shaded = centre_mix(L, 102, 100.0f);        // same grass under full canopy
+    CHECK(shaded[kGrass] < grass[kGrass] * 0.3f);
+    CHECK(shaded[kLitter] > 0.6f);
+    const auto cliff = centre_mix(L, 102, 0.0f, 20.0f);    // 63 deg: fully rock
+    CHECK(cliff[kRock] > 0.99f);
+    const auto water = centre_mix(L, 98, 0.0f);            // no detail on water
+    CHECK(water[0] + water[1] + water[2] + water[3] == 0.0f);
+}
+
+TEST_CASE("look: supersampled ground mix is aligned with the albedo, and mips are plain averages") {
+    LookResult lr = load_look(look_path());
+    REQUIRE(lr.ok());
+    LookInputs in;
+    in.width = in.height = 8;
+    in.pixel_m = 10.0;
+    for (int y = 0; y < 8; ++y)
+        for (int x = 0; x < 8; ++x) {
+            in.dem.push_back(x == 0 && y == 0 ? std::numeric_limits<float>::quiet_NaN() : 1000.0f);
+            in.fbfm40.push_back(x < 4 ? 102 : 183);
+            in.cc.push_back(0.0f);
+        }
+    Albedo a = compose_albedo(lr.look, in);
+    REQUIRE(a.mix.size() == a.bgra.size());
+    for (size_t k = 0; k < a.bgra.size() / 4; ++k) {
+        if (a.bgra[k * 4 + 3] == 0) {   // nodata texels carry no ground either
+            CHECK(a.mix[k * 4 + 0] + a.mix[k * 4 + 1] + a.mix[k * 4 + 2] + a.mix[k * 4 + 3] == 0);
+        }
+    }
+    const auto mips = build_mix_mips(a);
+    CHECK(mips.back().width == 1);
+    CHECK(mips.back().height == 1);
+    CHECK(mips[1].bgra.size() == static_cast<size_t>(mips[1].width) * mips[1].height * 4);
+}

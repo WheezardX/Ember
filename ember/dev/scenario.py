@@ -36,6 +36,9 @@ class Bookmark(_Strict):
     pitch_deg: float = -30.0    # negative looks down
     fov_deg: float = 60.0
     sun: str = "noon"           # a key into the UE sun presets (dawn | noon | dusk | ...)
+    # Exposure for this view (EV100 bias); None = the scenario's. A camera under closed canopy
+    # needs a few stops more than the open-sky views the scenario exposure is set for.
+    exposure_bias: float | None = None
 
     @model_validator(mode="after")
     def _one_target(self) -> Bookmark:
@@ -102,6 +105,10 @@ class ScenarioMeta(_Strict):
     budget: str = "interactive" # key into viz/budgets.toml
     perf_frames: int = 0        # >0: frames measured after the last capture -> facts/perf.json
     exposure_bias: float = -2.0  # manual exposure EV100 bias (captures must not auto-expose)
+    # Lumen skylight leaking (post-process, 0..1): an ambient floor so a forest floor under closed
+    # canopy is dim, not black (ground plane v1: close-ups under trees rendered pure black).
+    # 0 = engine default (every scenario before the ground plane).
+    skylight_leaking: float = 0.0
     fixed_lod: int | None = None  # load one LOD everywhere (fixtures); None = stream (C3)
     lod_refine_factor: float = 1.5  # streaming: refine while distance < factor * tile span
     look: str = "viz/looks/terrain_default.toml"  # repo-relative look file, or "clay"

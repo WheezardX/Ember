@@ -103,22 +103,12 @@ bool AEmberTerrainActor::SetLook(const FString& LookPath, FString& OutError)
 	return true;
 }
 
-void AEmberTerrainActor::BindLook(int32 Section, const emberworld::TileEntry& Tile)
+// A transient texture with a full CPU mip chain (NeverStream: a single-mip transient texture
+// sampled at distance returned black - found building HCP1).
+static UTexture2D* MakeMippedTexture(const std::vector<emberworld::Albedo>& Mips, EPixelFormat Format, bool bSRGB)
 {
-	const double T0 = FPlatformTime::Seconds();
-	emberworld::LookInputs In;
-	std::string Err;
-	if (!emberworld::load_look_inputs(*Region, Tile, In, Err))
-	{
-		UE_LOG(LogEmberWorld, Warning, TEXT("look inputs z%d/x%d/y%d: %s"), Tile.lod, Tile.x, Tile.y, UTF8_TO_TCHAR(Err.c_str()));
-		return;
-	}
-	const emberworld::Albedo A = emberworld::compose_albedo(*Look, In);
-	// Full CPU mip chain + NeverStream: a single-mip transient texture sampled at distance
-	// returned garbage (black) — found while building HCP1 (worldcore build_mips).
-	const std::vector<emberworld::Albedo> Mips = emberworld::build_mips(A);
-	UTexture2D* Tex = UTexture2D::CreateTransient(A.width, A.height, PF_B8G8R8A8);
-	Tex->SRGB = true;
+	UTexture2D* Tex = UTexture2D::CreateTransient(Mips[0].width, Mips[0].height, Format);
+	Tex->SRGB = bSRGB;
 	Tex->Filter = TF_Trilinear;
 	Tex->AddressX = TA_Clamp;
 	Tex->AddressY = TA_Clamp;
@@ -141,10 +131,31 @@ void AEmberTerrainActor::BindLook(int32 Section, const emberworld::TileEntry& Ti
 		Mip.BulkData.Unlock();
 	}
 	Tex->UpdateResource();
+	return Tex;
+}
+
+void AEmberTerrainActor::BindLook(int32 Section, const emberworld::TileEntry& Tile)
+{
+	const double T0 = FPlatformTime::Seconds();
+	emberworld::LookInputs In;
+	std::string Err;
+	if (!emberworld::load_look_inputs(*Region, Tile, In, Err))
+	{
+		UE_LOG(LogEmberWorld, Warning, TEXT("look inputs z%d/x%d/y%d: %s"), Tile.lod, Tile.x, Tile.y, UTF8_TO_TCHAR(Err.c_str()));
+		return;
+	}
+	const emberworld::Albedo A = emberworld::compose_albedo(*Look, In);
+	UTexture2D* Tex = MakeMippedTexture(emberworld::build_mips(A), PF_B8G8R8A8, true);
+	UTexture2D* MixTex = A.mix.empty() ? nullptr : MakeMippedTexture(emberworld::build_mix_mips(A), PF_R8G8B8A8, false);
 
 	UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(TerrainMaster, this);
 	const double Full = Region->tile_px + 2.0 * Region->overlap_px;
 	MID->SetTextureParameterValue(TEXT("Albedo"), Tex);
+	if (MixTex)
+	{
+		MID->SetTextureParameterValue(TEXT("GroundMix"), MixTex);
+		MID->SetScalarParameterValue(TEXT("GroundOn"), 1.0f);
+	}
 	MID->SetScalarParameterValue(TEXT("AlbedoScale"), Region->tile_px / Full);
 	MID->SetScalarParameterValue(TEXT("AlbedoOffset"), Region->overlap_px / Full);
 	ApplyFire(MID);
@@ -160,16 +171,27 @@ void AEmberTerrainActor::BindLook(int32 Section, const emberworld::TileEntry& Ti
 		}
 		UTexture* Bound = nullptr;
 		MID->GetTextureParameterValue(FMaterialParameterInfo(TEXT("Albedo")), Bound);
-		UE_LOG(LogEmberWorld, Log, TEXT("look z%d/x%d/y%d: mean sRGB (%.0f, %.0f, %.0f) over %llu px; bound=%s"),
+		double MixSum[4] = {0, 0, 0, 0};
+		for (size_t i = 0; i + 3 < A.mix.size(); i += 4)
+		{
+			for (int c = 0; c < 4; ++c) MixSum[c] += A.mix[i + c];
+		}
+		const double MixN = A.mix.empty() ? 1.0 : A.mix.size() / 4.0 * 255.0;
+		float GroundOn = -1.0f;
+		MID->GetScalarParameterValue(FMaterialParameterInfo(TEXT("GroundOn")), GroundOn);
+		UE_LOG(LogEmberWorld, Log, TEXT("look z%d/x%d/y%d: mean sRGB (%.0f, %.0f, %.0f) over %llu px; bound=%s; ground mix (%.2f, %.2f, %.2f, %.2f) on=%.0f"),
 			Tile.lod, Tile.x, Tile.y, N ? Sum[0] / N : 0.0, N ? Sum[1] / N : 0.0, N ? Sum[2] / N : 0.0,
-			(unsigned long long)N, Bound == Tex ? TEXT("yes") : TEXT("NO"));
+			(unsigned long long)N, Bound == Tex ? TEXT("yes") : TEXT("NO"),
+			MixSum[0] / MixN, MixSum[1] / MixN, MixSum[2] / MixN, MixSum[3] / MixN, GroundOn);
 	}
 	if (SectionTextures.Num() <= Section)
 	{
 		SectionTextures.SetNum(Section + 1);
 		SectionMaterials.SetNum(Section + 1);
+		SectionMixTextures.SetNum(Section + 1);
 	}
 	SectionTextures[Section] = Tex;
+	SectionMixTextures[Section] = MixTex;
 	SectionMaterials[Section] = MID;
 	ComposeMs += (FPlatformTime::Seconds() - T0) * 1000.0;
 }
@@ -327,6 +349,7 @@ void AEmberTerrainActor::UnloadTile(uint64 Key)
 		{
 			SectionTextures[L->Section] = nullptr;
 			SectionMaterials[L->Section] = nullptr;
+			SectionMixTextures[L->Section] = nullptr;
 		}
 		FreeSections.Add(L->Section);
 		Loaded.Remove(Key);

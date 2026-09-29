@@ -36,6 +36,9 @@ public:
 	/** Manual exposure, EV100 bias. */
 	void SetExposure(float Ev100Bias);
 
+	/** Lumen skylight leaking (0 = engine default): ambient floor under closed canopy. */
+	void SetSkylightLeaking(float Leak);
+
 	UPROPERTY(Transient) TObjectPtr<ADirectionalLight> Sun;
 	UPROPERTY(Transient) TObjectPtr<ASkyLight> Sky;
 	UPROPERTY(Transient) TObjectPtr<ASkyAtmosphere> Atmosphere;

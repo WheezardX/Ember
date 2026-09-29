@@ -106,6 +106,9 @@ public:
 	TArray<TObjectPtr<UTexture2D>> SectionTextures;
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> SectionMaterials;
+	// Ground mix per section (look [ground]): linear RGBA weights litter / grass / rock / shrub.
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTexture2D>> SectionMixTextures;
 	UPROPERTY(Transient)
 	TObjectPtr<class UTexture> FireTexture;
 	FLinearColor FireRect = FLinearColor(0, 0, 1, 1);

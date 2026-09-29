@@ -9,6 +9,16 @@ script = "m_ember_gray.py"
 outputs = ["/Game/Ember/Generated/M_EmberGray"]
 
 [[generator]]
+script = "t_ground.py"
+depends = ["ground_tex_host.py"]
+outputs = [
+  "/Game/Ember/Generated/Ground/T_Ground_Litter_C", "/Game/Ember/Generated/Ground/T_Ground_Litter_N",
+  "/Game/Ember/Generated/Ground/T_Ground_Grass_C", "/Game/Ember/Generated/Ground/T_Ground_Grass_N",
+  "/Game/Ember/Generated/Ground/T_Ground_Rock_C", "/Game/Ember/Generated/Ground/T_Ground_Rock_N",
+  "/Game/Ember/Generated/Ground/T_Ground_Shrub_C", "/Game/Ember/Generated/Ground/T_Ground_Shrub_N",
+]
+
+[[generator]]
 script = "m_terrain.py"
 outputs = ["/Game/Ember/Generated/M_Terrain", "/Game/Ember/Generated/T_LinearBlack"]
 

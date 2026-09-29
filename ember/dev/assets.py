@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
+import sys
 import time
 import tomllib
 from dataclasses import dataclass, field
@@ -62,8 +64,12 @@ def run_generator(eng: Engine, gen: Generator, log_dir: Path) -> tuple[bool, str
     cmd = [str(eng.editor_cmd_exe), str(eng.project), "-run=pythonscript",
            f"-script={gen.script.as_posix()}", "-unattended", "-nosplash", "-nosound",
            "-NoLiveCoding", f"-abslog={log}"]
+    # Generators that need numpy (texture synthesis) call back into this host Python.
+    env = dict(os.environ)
+    env["EMBER_HOST_PYTHON"] = sys.executable
     t = time.perf_counter()
-    p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       env=env)
     secs = time.perf_counter() - t
     text = log.read_text(encoding="utf-8", errors="replace") if log.exists() else p.stdout
     missing = [a for a in gen.outputs if f"EMBER_GENERATED {a}" not in text]

@@ -1,0 +1,87 @@
+# Ground plane v1 (EPIC_5_PLAN 8f): close-ups of what lies on the ground, one site per detail
+# set, picked from the Three Queens fuels by class (nearest uniform patch to the AOI centre):
+#   litter  TL5 (185), canopy cover > 50 %            grass   GR2 (102), open, 19 deg
+#   rock    49 deg slope (talus/cliff blend)           shrub   SH (141-149), cover < 30 %
+# litter/shrub cameras sit in a gap: >= 2 m clear of any crown (a camera inside a generated
+# conifer's crown renders black - the crowns reach the ground).
+# plus one mid-distance view to judge the fade from detail to the map look (150-400 m).
+render_scenario_version = 1
+
+[scenario]
+name = "S_ground_tq"
+description = "Ground plane v1: litter / grass / rock / shrub close-ups + the detail fade, Three Queens"
+world = "terrain:three_queens_2026"
+resolution = [1920, 1080]
+look = "viz/looks/terrain_default.toml"
+lod_refine_factor = 1.5
+vegetation = true
+veg_radius_m = 1500
+veg_near_radius_m = 400
+exposure_bias = -2.0
+skylight_leaking = 0.25
+
+[[bookmarks]]
+name = "litter"
+target_frac = [0.4951, 0.5018]
+distance_m = 8
+yaw_deg = 180
+pitch_deg = -26
+fov_deg = 60
+sun = "afternoon"
+exposure_bias = 1.0          # under > 50 % canopy: ~3 stops over the open-sky views
+
+[[bookmarks]]
+name = "grass"
+target_frac = [0.5257, 0.5125]
+distance_m = 14
+yaw_deg = 0
+pitch_deg = -28
+fov_deg = 60
+sun = "afternoon"
+
+[[bookmarks]]
+name = "rock"
+target_frac = [0.4415, 0.5119]
+distance_m = 18
+yaw_deg = 0
+pitch_deg = -20
+fov_deg = 60
+sun = "afternoon"
+
+[[bookmarks]]
+name = "shrub"
+target_frac = [0.3048, 0.7507]
+distance_m = 8
+yaw_deg = 180
+pitch_deg = -26
+fov_deg = 60
+sun = "afternoon"
+
+[[bookmarks]]
+name = "fade_mid"            # the grass site from 250 m: near detail -> map look across the frame
+target_frac = [0.5257, 0.5125]
+distance_m = 250
+yaw_deg = 0
+pitch_deg = -14
+fov_deg = 60
+sun = "afternoon"
+
+[[captures]]
+name = "litter"
+bookmark = "litter"
+
+[[captures]]
+name = "grass"
+bookmark = "grass"
+
+[[captures]]
+name = "rock"
+bookmark = "rock"
+
+[[captures]]
+name = "shrub"
+bookmark = "shrub"
+
+[[captures]]
+name = "fade_mid"
+bookmark = "fade_mid"

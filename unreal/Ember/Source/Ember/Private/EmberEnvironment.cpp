@@ -102,6 +102,15 @@ bool AEmberEnvironment::SetSun(const FString& Preset)
 	return true;
 }
 
+void AEmberEnvironment::SetSkylightLeaking(float Leak)
+{
+	if (Post && Leak > 0.f)
+	{
+		Post->Settings.bOverride_LumenSkylightLeaking = true;
+		Post->Settings.LumenSkylightLeaking = Leak;
+	}
+}
+
 void AEmberEnvironment::SetExposure(float Ev100Bias)
 {
 	ExposureBias = Ev100Bias;
