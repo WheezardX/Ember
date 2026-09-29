@@ -319,6 +319,45 @@ plane: flame intensity variety (the uniform orange carpet), ground-level fire lo
 paint, marbled char, burned stands keep crowns), smoke near the camera, wind from a real field,
 exposure. Capture moved to NVENC (13 -> 3 min per Jolly run). Next: U6.
 
+## 8f. Ground plane v1 (started 2026-09-29) - then a simple fly camera
+
+Brad (2026-09-29): "lets work on terrain, after that I'll want the simple camera and the ability to
+launch the client with a scenario and fly around in it. As you work, consider more opportunities to
+optimize our pipeline for speed." Upstream done first: U11/U12 (canopy heights, per-tree ground),
+season freeze (no Sentinel re-fetch while iterating), goldens re-blessed (455c337).
+
+Today the ground is the per-tile macro albedo (10 m data, 2.5 m texels) plus brightness noise: at
+eye level it reads as flat tan. v1 keeps the macro colour as the far/map look and adds, near the
+camera, what the fuel model says is on the ground (8d decisions: FBFM40 drives it, procedural
+textures from code until licensed scans, own ~1.5 ms budget line, char/ash in the same pass).
+
+- **GP1 harness: wait for shaders** before the first capture (the cold run after a build captured
+  grey fallback materials, 2026-09-29) - reliability and no wasted re-runs.
+- **GP2 ground mix** (worldcore/look): a second per-tile texture, RGBA = weights of four ground
+  sets - litter/duff (TL, TU, SB), grass (GR, GS, agriculture), rock/scree (NB9, steep slopes),
+  shrub soil (SH) - with the same boundary warp and blur as the albedo so they line up. Rules in
+  `viz/looks/*.toml`.
+- **GP3 detail sets** (assets from code): per set a tiling albedo-variation + normal + roughness
+  texture generated in Python (numpy, no scans), 2-4 m repeat, anti-tiling (two scales, rotated).
+  M_Terrain: macro colour x detail variation, detail normals, blended by the mix, fading out by
+  ~300 m to the macro look (the map look holds from the air).
+- **GP4 ground cover**: near-only instances (<= ~80 m): grass tufts, fern and shrub clumps (fall
+  colour: vine maple / huckleberry, per the Three Queens field photo), rocks, logs, stumps.
+  Deterministic hash placement in worldcore by FBFM40 + canopy cover + slope, like the scatter;
+  generated meshes; own tier and budget line.
+- **GP5 fire on the ground**: char and ash over the detail sets; burned cover blackened or gone;
+  logs and stumps smoulder after the front (field photo: hollow stump burning inside, green crowns
+  around it).
+- **GP6 review**: `S_ground_tq` / `S_ground_teanaway` close bookmarks (forest floor, meadow, talus,
+  shrub, burned ground), budgets, bundle for Brad.
+- **Then F1-lite**: a free-fly / orbit camera and `ember-dev play <scenario>` to launch the client
+  and fly around (pulled forward from HCP6).
+
+Speed candidates to take along the way (each output-identical, measured): shader wait (GP1); one
+UE launch for several scenarios (today each run pays ~40 s of engine start); cache composed per-tile
+ground textures on disk keyed by inputs + look (today composed on every load); stage-scoped
+Terrain re-runs (`terrain veg` exists; canopy/tile only).
+
 ## 9. Notes for later epics
 
 - **Epic 6:** C1 readers, F3 shell, camera rigs, and the state player are its foundation; the command-issuing UI plugs into Epic 4's suppression schema on top of this scene. National cartographic view is new work there, not a HCP5 overlay retrofit.
