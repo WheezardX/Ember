@@ -183,29 +183,34 @@ def grass(n: int):
 
 
 def rock(n: int):
-    """Talus / scree: angular stones (Voronoi), cracks, fines between, grey-brown with lichen."""
+    """Talus / scree: separate rounded stones (Voronoi cells inset from their edges, so they read
+    as stones, not cracked mud), darker fines and pebbles in the gaps, grain, lichen."""
     rng = np.random.default_rng(303)
-    f1, edge, sid = voronoi(n, rng, int(90 * (n / 1024) ** 2) + 8)
-    g1, gedge, gid = voronoi(n, rng, int(420 * (n / 1024) ** 2) + 30)
-    small = spectral(n, rng, 2.0, 2, 16) > 0.2          # patches where small stones take over
-    f1 = np.where(small, g1 * 2.2, f1)
-    edge = np.where(small, gedge * 2.0, edge)
+    s = n / 1024
+    f1, edge, sid = voronoi(n, rng, int(110 * s * s) + 8)
+    g1, gedge, gid = voronoi(n, rng, int(500 * s * s) + 30)
+    small = spectral(n, rng, 2.0, 2, 16) > 0.25          # patches of finer scree
+    edge = np.where(small, gedge * 1.6, edge)
     sid = np.where(small, gid, sid)
-    dome = np.clip(1.0 - f1 / (np.percentile(f1, 95) + 1e-6), 0, 1) ** 0.6
+    warp = spectral(n, rng, 2.2, 6, 64) * 3.0 * s       # irregular stone outlines
+    gapw = 7.0 * s
+    body = np.clip((edge + warp - gapw) / (14.0 * s), 0, 1)  # 0 in the gap, 1 inside a stone
+    dome = body ** 0.5
+    stone_m = body > 0.02
     grain = spectral(n, rng, 1.6, 8, None)
-    crack = np.clip(1.0 - edge / 6.0, 0, 1)
     stone = palette(np.clip(sid * 0.8 + grain * 0.06 + 0.1, 0, 1),
                     [(0, "#5E5A55"), (0.4, "#7D776F"), (0.75, "#948C80"), (1, "#6E6154")])
-    fines = palette(np.clip(spectral(n, rng, 2.0, 4, 256) * 0.2 + 0.5, 0, 1),
-                    [(0, "#4B443C"), (1, "#6A6155")])
-    lichen = np.clip(spectral(n, rng, 2.8, 6, 96) * 0.8 - 1.1, 0, 1) * (dome > 0.3)
+    fines = palette(np.clip(spectral(n, rng, 2.0, 4, 256) * 0.2 + 0.4, 0, 1),
+                    [(0, "#2F2A25"), (1, "#4E463D")])
+    peb_h = np.clip(spectral(n, rng, 1.2, 60, 200) * 1.2 - 1.0, 0, 1) * ~stone_m
+    lichen = np.clip(spectral(n, rng, 2.8, 6, 96) * 0.8 - 1.1, 0, 1) * (dome > 0.5)
     lichen_col = palette(np.clip(sid, 0, 1), [(0, "#9A9A62"), (0.5, "#B8B090"), (1, "#8C7A3E")])
-    gap = (crack > 0.5) | (dome < 0.08)
-    rgb = np.where(gap[..., None], fines, stone * (0.85 + 0.15 * dome[..., None]))
+    rgb = np.where(stone_m[..., None], stone * (0.7 + 0.3 * dome[..., None]),
+                   fines * (1.0 + 0.6 * peb_h[..., None]))
     rgb = rgb * (1 - lichen[..., None]) + lichen_col * lichen[..., None]
-    height = dome * 1.0 - crack * 0.4 + grain * 0.03
-    rough = np.where(gap, 0.95, 0.7 + 0.1 * grain)
-    return finish(rgb, height, rough, relief=9.0)
+    height = dome * 1.0 + peb_h * 0.25 + grain * 0.03
+    rough = np.where(stone_m, 0.7 + 0.1 * grain, 0.95)
+    return finish(rgb, height, rough, relief=10.0)
 
 
 def shrub(n: int):
