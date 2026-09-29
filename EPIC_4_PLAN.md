@@ -307,6 +307,16 @@ Linux leg of the determinism matrix, which only runs in CI.
       ground under it, then the per-cell max; "dsm_minus_dem" stays selectable. Deliberate
       method change: canopy and everything downstream re-bakes; Ember forest goldens
       (S_tq_forest, S_forest_teanaway, scatter conformance) need re-blessing on the re-bake.
+- [x] U12 (Epic 2, CHM gridding + tree ground) - DONE 2026-09-29 upstream (Terrain 03230ee):
+      the CHM took the tallest point within res x sqrt(2) (14 m) of each cell centre, so one
+      tree set the height of ~6 cells (Big Grass: open flat cells at 10 m with no point above
+      0.3 m); scatter reads the CHM as each tree's height ceiling, so stands came out taller and
+      more uniform. Now `canopy.gridding = "cell"`: points inside the cell only; empty cells
+      take their neighbours' median, deeper survey gaps stay NODATA. Also
+      `vegetation.ground_z = "tree"`: an instance's z is the DEM bilinear at the tree, not the
+      cell centre (Ember worldcore mirrors it, fa75064; Ember already snapped trees to the
+      rendered surface, so no visual change there). Re-bake + re-bless together with U11.
+      Open: slope/rock cutoff for scatter on cliffs (Brad: TBD).
 
 **Model-quality candidates noted, deliberately not tuned (would be fitting one fire)**
 - [ ] CP5: RH/T→moisture response too strong relative to wind for timber (model grows fastest
