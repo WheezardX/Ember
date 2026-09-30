@@ -400,6 +400,12 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   S_jolly_hcp4/head_eye_503h (eye-level fire), S_ground_tq/litter (under canopy, lowered
   exposure floor). Suspects: Lumen / translucency temporal history, auto exposure amplifying it.
   Find the source and restore the tight thresholds.
+- **Fly-around verdicts (Brad, 2026-09-30, S_jolly_play after ground v2):** active fire area
+  "pretty good for where we are ... enough to prove out the tech and show a clear path forward"
+  (fire look parked until the fundamentals are done); hitching much improved; logs on slopes
+  much better; distant views read better (no haze added yet - smoke plumes / palette /
+  exposure; real haze is still item 5). Wants the in-client control help readable (H toggles
+  it, but it is one long run-on debug line - make it a multi-line block).
 - **Ground still flat - no volume (Brad, 2026-09-30, after ground v2):** better, but the bump
   does not read; it still feels flat. Why (agent): ground v2's relief is normal perturbation
   only - no silhouette, no self-shadowing, no parallax - and under canopy the light is soft
