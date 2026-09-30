@@ -345,6 +345,35 @@ def wind_vane(name: str = typer.Argument(..., help="Replay scenario with a fixed
     typer.secho(f"wind vane {dst}", fg=typer.colors.GREEN)
 
 
+@app.command("ref-camera")
+def ref_camera(photo: Path = typer.Argument(..., help="A photo with EXIF GPS"),
+               name: str = typer.Option(None, "--name", help="Bookmark name (default: file stem)")
+               ) -> None:
+    """Print an absolute-camera bookmark for a reference photo (EXIF GPS / bearing / focal)."""
+    from ember.dev import refcam
+
+    r = refcam.bookmark_from_photo(photo, name)
+    if r["taken"]:
+        typer.echo(f"# taken {r['taken']} (pick the nearest sun preset)")
+    for n in r["notes"]:
+        typer.secho(f"# NOTE {n}", fg=typer.colors.YELLOW)
+    typer.echo(refcam.bookmark_toml(r["bookmark"]))
+
+
+@app.command("ref-pair")
+def ref_pair(name: str, run: str = typer.Option(None, "--run", help="Run dir (default: latest).")
+             ) -> None:
+    """photo | render | edge-overlay images for every capture with a `reference` photo."""
+    from ember.dev import refcam
+
+    run_dir = _resolve_run(name, run)
+    for e in refcam.ref_pairs(_sc(name), run_dir, ue.repo_root()):
+        if e["pair"]:
+            typer.secho(f"{e['capture']}: {e['pair']}", fg=typer.colors.GREEN)
+        else:
+            typer.secho(f"{e['capture']}: {e['error']}", fg=typer.colors.RED)
+
+
 @app.command("forest-report")
 def forest_report(region: str = typer.Argument(..., help="Terrain region, e.g. three_queens_2026"),
                   out: str = typer.Option(None, "--out",

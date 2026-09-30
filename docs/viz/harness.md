@@ -123,6 +123,34 @@ capture = "overview_n"           # optional; default: every capture
 Bookmark targets address the **data extent** — the valid AOI — not the tile grid, which can
 extend past it (teanaway_dev: 1.44 km of data in a 1.92 km tile grid).
 
+### Reference cameras (EPIC_5_PLAN 8i R1)
+
+A bookmark can instead be an **absolute camera**, for matching a real photo:
+
+```toml
+[[bookmarks]]
+name = "kachess_ridge"
+camera_lonlat = [-121.2032, 47.4069]   # or camera_xy = [x, y] in the world's CRS (metres)
+camera_agl_m = 1.7                     # default; or camera_alt_m (the DEM's datum, NOT GPS altitude)
+yaw_deg = 200                          # compass bearing the camera looks toward
+pitch_deg = 0
+fov_deg = 69.4                         # horizontal; a phone's 26 mm-equivalent main camera
+
+[[captures]]
+name = "kachess_ridge"
+bookmark = "kachess_ridge"
+reference = "store/reference/tq/kachess_ridge.jpg"   # optional: the photo
+```
+
+`ember-dev ref-camera photo.jpg` prints that stanza from the photo's EXIF (GPS, compass
+direction if the phone wrote it, 35 mm-equivalent focal length, time taken). Pitch is not in
+EXIF: start level and refine against the pair. `ember-dev ref-pair <scenario>` writes
+`<run>/refpairs/<capture>_pair.jpg`: photo | render | the render's skyline and ridge edges over
+the photo (for lining up the pose). Give the scenario the photo's aspect ratio (phones: 4:3) so
+nothing is cropped. Absolute cameras are kept 0.3 m over the ground (not the 3 m of orbit
+bookmarks) and cannot start an orbit. Scene facts report `camera.world_x_m / world_y_m /
+world_z_m / agl_m / bearing_deg`; `S_refcam_tq` asserts a camera lands where asked.
+
 ## Evaluate: what PASS means
 
 * **Golden diff** per capture: SSIM on luminance, globally and on a 4×4 region grid; the region

@@ -161,13 +161,32 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 		{
 			B.bFrac = false;
 		}
+		else if (O->TryGetArrayField(TEXT("camera_xy"), T) && T->Num() == 2)
+		{
+			B.bCamera = true;
+			B.CamX = (*T)[0]->AsNumber();
+			B.CamY = (*T)[1]->AsNumber();
+			double Z = 0.0;
+			if (O->TryGetNumberField(TEXT("camera_alt_m"), Z))
+			{
+				B.bCamAgl = false;
+				B.CamZ = Z;
+			}
+			else if (O->TryGetNumberField(TEXT("camera_agl_m"), Z))
+			{
+				B.CamZ = Z;
+			}
+		}
 		else
 		{
 			OutError = TEXT("bookmark without target: ") + B.Name;
 			return false;
 		}
-		B.Target = FVector2D((*T)[0]->AsNumber(), (*T)[1]->AsNumber());
-		B.DistanceM = O->GetNumberField(TEXT("distance_m"));
+		if (!B.bCamera)
+		{
+			B.Target = FVector2D((*T)[0]->AsNumber(), (*T)[1]->AsNumber());
+			B.DistanceM = O->GetNumberField(TEXT("distance_m"));
+		}
 		B.YawDeg = O->GetNumberField(TEXT("yaw_deg"));
 		B.PitchDeg = O->GetNumberField(TEXT("pitch_deg"));
 		B.FovDeg = O->GetNumberField(TEXT("fov_deg"));
@@ -266,26 +285,41 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 		OutError = TEXT("no region loaded");
 		return false;
 	}
-	double Wx, Wy;
-	BookmarkTargetXY(B, Wx, Wy);
-	double Wz = R->heightmap.z_min;
-	if (B.TargetZ > TNumericLimits<double>::Lowest())
+	const FRotator Rot(B.PitchDeg, B.YawDeg - 90.0, 0.0);  // compass -> UE yaw (X = east)
+	FVector Loc;
+	if (B.bCamera)
 	{
-		Wz = B.TargetZ;
+		// Absolute camera (a reference photo's pose): exactly where it was asked for, only kept
+		// out of the ground (0.3 m); eye height would be lifted by the 3 m rule below.
+		double Gz = R->heightmap.z_min;
+		Terrain->GroundHeightAt(B.CamX, B.CamY, Gz);
+		const double Z = FMath::Max(B.bCamAgl ? Gz + B.CamZ : B.CamZ, Gz + 0.3);
+		Loc = Terrain->WorldToUE(B.CamX, B.CamY, Z);
+		CameraClearanceM = FMath::Min(3.0, Z - Gz);
 	}
 	else
 	{
-		Terrain->GroundHeightAt(Wx, Wy, Wz);
-	}
-	const FVector Target = Terrain->WorldToUE(Wx, Wy, Wz);
-	const FRotator Rot(B.PitchDeg, B.YawDeg - 90.0, 0.0);  // compass -> UE yaw (X = east)
-	FVector Loc = Target - Rot.Vector() * (B.DistanceM * 100.0);
-	// Never inside the ground (flyovers cross ridges): keep 3 m over the rendered surface.
-	const emberworld::Frame& F = Terrain->GetFrame();
-	double Gz = 0.0;
-	if (Terrain->GroundHeightAt(F.anchor_x + Loc.X / 100.0, F.anchor_y - Loc.Y / 100.0, Gz))
-	{
-		Loc.Z = FMath::Max(Loc.Z, Terrain->WorldToUE(0.0, 0.0, Gz + 3.0).Z);
+		double Wx, Wy;
+		BookmarkTargetXY(B, Wx, Wy);
+		double Wz = R->heightmap.z_min;
+		if (B.TargetZ > TNumericLimits<double>::Lowest())
+		{
+			Wz = B.TargetZ;
+		}
+		else
+		{
+			Terrain->GroundHeightAt(Wx, Wy, Wz);
+		}
+		const FVector Target = Terrain->WorldToUE(Wx, Wy, Wz);
+		Loc = Target - Rot.Vector() * (B.DistanceM * 100.0);
+		// Never inside the ground (flyovers cross ridges): keep 3 m over the rendered surface.
+		const emberworld::Frame& F = Terrain->GetFrame();
+		double Gz = 0.0;
+		if (Terrain->GroundHeightAt(F.anchor_x + Loc.X / 100.0, F.anchor_y - Loc.Y / 100.0, Gz))
+		{
+			Loc.Z = FMath::Max(Loc.Z, Terrain->WorldToUE(0.0, 0.0, Gz + 3.0).Z);
+		}
+		CameraClearanceM = 3.0;
 	}
 
 	if (!Camera)
@@ -517,6 +551,12 @@ void AEmberHarness::NextPhase()
 
 void AEmberHarness::BookmarkTargetXY(const FBookmark& B, double& Wx, double& Wy) const
 {
+	if (B.bCamera)
+	{
+		Wx = B.CamX;   // absolute cameras have no target: where they stand
+		Wy = B.CamY;
+		return;
+	}
 	// Bookmarks address the valid data (the AOI), not the tile grid's padded extent.
 	const emberworld::Region* R = Terrain->GetRegion();
 	const emberworld::Bounds E = Terrain->GetDataExtent();
@@ -1084,7 +1124,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			double Gz = 0.0;
 			if (Terrain->GroundHeightAt(F.anchor_x + Loc.X / 100.0, F.anchor_y - Loc.Y / 100.0, Gz))
 			{
-				const double MinZ = Terrain->WorldToUE(0.0, 0.0, Gz + 3.0).Z;
+				const double MinZ = Terrain->WorldToUE(0.0, 0.0, Gz + CameraClearanceM).Z;
 				if (Loc.Z < MinZ)
 				{
 					UE_LOG(LogEmberHarness, Display, TEXT("camera lifted %.2f m clear of the streamed-in ground"), (MinZ - Loc.Z) / 100.0);

@@ -27,11 +27,19 @@ class _Strict(BaseModel):
 
 class Bookmark(_Strict):
     name: str
-    # Exactly one of target_frac (0..1 of the grid, x east, y south — pack index order)
-    # or target_cell ([x, y] cell index).
+    # Exactly one of target_frac (0..1 of the grid, x east, y south — pack index order),
+    # target_cell ([x, y] cell index) - orbit-style, the camera sits distance_m back from the
+    # target - or an absolute camera (EPIC_5_PLAN 8i R1, reference photos): camera_xy (metres,
+    # the world's CRS) or camera_lonlat (WGS84 degrees), at camera_agl_m above the ground
+    # (default 1.7, eye height) or camera_alt_m (metres, the DEM's vertical datum - NOT a phone's
+    # GPS altitude, which is ellipsoidal and ~20 m off in the PNW). yaw / pitch / fov as below.
     target_frac: tuple[float, float] | None = None
     target_cell: tuple[int, int] | None = None
-    distance_m: float = Field(gt=0)
+    camera_xy: tuple[float, float] | None = None
+    camera_lonlat: tuple[float, float] | None = None
+    camera_agl_m: float | None = None
+    camera_alt_m: float | None = None
+    distance_m: float | None = Field(default=None, gt=0)
     yaw_deg: float = 0.0        # compass bearing the camera *looks toward* (0 = north)
     pitch_deg: float = -30.0    # negative looks down
     fov_deg: float = 60.0
@@ -44,11 +52,28 @@ class Bookmark(_Strict):
     # canopy the scene meters below the default floor and would stay clamped dark.
     exposure_ev_min: float | None = None
 
+    @property
+    def absolute(self) -> bool:
+        return self.camera_xy is not None or self.camera_lonlat is not None
+
     @model_validator(mode="after")
     def _one_target(self) -> Bookmark:
-        if (self.target_frac is None) == (self.target_cell is None):
-            raise ValueError(f"bookmark {self.name!r}: give exactly one of "
-                             "target_frac / target_cell")
+        given = [f for f in ("target_frac", "target_cell", "camera_xy", "camera_lonlat")
+                 if getattr(self, f) is not None]
+        if len(given) != 1:
+            raise ValueError(f"bookmark {self.name!r}: give exactly one of target_frac / "
+                             "target_cell / camera_xy / camera_lonlat")
+        if self.absolute:
+            if self.distance_m is not None:
+                raise ValueError(f"bookmark {self.name!r}: an absolute camera has no distance_m")
+            if self.camera_agl_m is not None and self.camera_alt_m is not None:
+                raise ValueError(f"bookmark {self.name!r}: camera_agl_m or camera_alt_m, not both")
+        else:
+            if self.distance_m is None:
+                raise ValueError(f"bookmark {self.name!r}: distance_m is required")
+            if self.camera_agl_m is not None or self.camera_alt_m is not None:
+                raise ValueError(f"bookmark {self.name!r}: camera_agl_m / camera_alt_m need "
+                                 "camera_xy or camera_lonlat")
         return self
 
 
@@ -64,6 +89,9 @@ class Capture(_Strict):
     ssim_min: float = 0.995
     region_ssim_min: float = 0.98
     golden: bool = True         # False: captured and shown, never diffed (e.g. WIP views)
+    # A real photo of this view (8i R1): `ember-dev ref-pair` writes photo | render. Path relative
+    # to the repo (e.g. store/reference/...); absent files are reported, not fatal.
+    reference: str | None = None
 
 
 class Orbit(_Strict):
@@ -194,10 +222,14 @@ class RenderScenario(_Strict):
             raise ValueError("duplicate fire probe names")
         if self.scenario.perf_bookmark is not None and self.scenario.perf_bookmark not in names:
             raise ValueError(f"perf_bookmark {self.scenario.perf_bookmark!r} is not a bookmark")
+        absolute = {b.name for b in self.bookmarks if b.absolute}
         for o in self.orbits:
             for b in (o.bookmark, o.to_bookmark):
                 if b is not None and b not in names:
                     raise ValueError(f"orbit {o.name!r} references unknown bookmark {b!r}")
+                if b in absolute:
+                    raise ValueError(f"orbit {o.name!r}: {b!r} is an absolute camera "
+                                     "(orbits and flyovers need a target)")
         for a in self.asserts:
             if a.capture is not None and a.capture not in caps:
                 raise ValueError(f"assert on {a.fact!r} references unknown capture {a.capture!r}")

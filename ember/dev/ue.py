@@ -184,6 +184,27 @@ def orbit_encoder() -> tuple[str | None, str]:
     return ff, ("h264_nvenc" if "h264_nvenc" in p.stdout else "libx264")
 
 
+def world_crs(sc: LoadedScenario) -> str:
+    """The world's projected CRS (Terrain's manifest), e.g. 'EPSG:32610'."""
+    m = json.loads((sc.world_path / "manifest.json").read_text(encoding="utf-8"))
+    return m["crs"]
+
+
+def _plan_bookmark(sc: LoadedScenario, b) -> dict:
+    """A bookmark for the harness: an absolute camera given in lon/lat is resolved to the
+    world's CRS here, so the harness only ever sees metres; eye height is the default."""
+    d = b.model_dump()
+    if b.absolute:
+        if b.camera_lonlat is not None:
+            from pyproj import Transformer
+
+            tr = Transformer.from_crs("EPSG:4326", world_crs(sc), always_xy=True)
+            d["camera_xy"] = list(tr.transform(*b.camera_lonlat))
+        if b.camera_agl_m is None and b.camera_alt_m is None:
+            d["camera_agl_m"] = 1.7
+    return d
+
+
 def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0) -> Path:
     s = sc.spec
     plan = {
@@ -223,7 +244,7 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "water_dir": _water_dir(sc),
         "perf_bookmark": s.scenario.perf_bookmark,
         "perf_orbit": s.scenario.perf_orbit,
-        "bookmarks": [b.model_dump() for b in s.bookmarks],
+        "bookmarks": [_plan_bookmark(sc, b) for b in s.bookmarks],
         "captures": [c.model_dump() for c in s.captures],
         "orbits": [o.model_dump() for o in s.orbits],
         "fire_probes": [p.model_dump() for p in s.fire_probes],

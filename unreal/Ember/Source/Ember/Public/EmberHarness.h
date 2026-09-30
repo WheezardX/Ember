@@ -45,6 +45,11 @@ private:
 		double DistanceM = 1000, YawDeg = 0, PitchDeg = -30, FovDeg = 60;
 		FString Sun = TEXT("noon");
 		double TargetZ = TNumericLimits<double>::Lowest();  // > Lowest: aim height override (m)
+		// Absolute camera (8i R1, reference photos): stands at (CamX, CamY) in the world's CRS,
+		// CamZ metres above the ground (bCamAgl) or at that altitude; yaw / pitch / fov as usual.
+		bool bCamera = false;
+		double CamX = 0, CamY = 0, CamZ = 1.7;
+		bool bCamAgl = true;
 		bool bExposure = false;    // true: this view's own exposure (EV100 bias)
 		double ExposureBias = 0.0;
 		bool bEvMin = false;       // true: this view's own auto-exposure floor (EV100)
@@ -96,6 +101,7 @@ private:
 	/** The pose of an orbit/flyover frame (before any height override). */
 	bool OrbitPose(const FOrbit& O, int32 Frame, FBookmark& Out, FString& OutError) const;
 	void BookmarkTargetXY(const FBookmark& B, double& Wx, double& Wy) const;
+	double CameraClearanceM = 3.0;   // the warmup lift keeps the camera this far over the ground
 	/** Flyovers: a smooth aim height per frame so the camera holds altitude like a drone instead
 	 * of tracing every 10 m bump of the ground under the aim point. */
 	void PrepareFlyoverHeights(const FOrbit& O);

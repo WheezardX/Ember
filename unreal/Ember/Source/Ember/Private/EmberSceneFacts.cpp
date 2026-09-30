@@ -149,6 +149,25 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 			const FRotator R = PC->PlayerCameraManager->GetCameraRotation();
 			Cam->SetArrayField(TEXT("rotation_pyr"), { Num(R.Pitch), Num(R.Yaw), Num(R.Roll) });
 			Cam->SetNumberField(TEXT("fov_deg"), PC->PlayerCameraManager->GetFOVAngle());
+			// In the world's CRS (8i R1: a reference camera must land where its photo was taken).
+			const FVector L = PC->PlayerCameraManager->GetCameraLocation();
+			for (TActorIterator<AEmberTerrainActor> It(W); It; ++It)
+			{
+				const emberworld::Frame& Fr = It->GetFrame();
+				const double Wx = Fr.anchor_x + L.X / 100.0;
+				const double Wy = Fr.anchor_y - L.Y / 100.0;
+				const double Wz = L.Z / 100.0 - It->WorldToUE(0.0, 0.0, 0.0).Z / 100.0;
+				Cam->SetNumberField(TEXT("world_x_m"), Wx);
+				Cam->SetNumberField(TEXT("world_y_m"), Wy);
+				Cam->SetNumberField(TEXT("world_z_m"), Wz);
+				double Gz = 0.0;
+				if (It->GroundHeightAt(Wx, Wy, Gz))
+				{
+					Cam->SetNumberField(TEXT("agl_m"), Wz - Gz);
+				}
+				Cam->SetNumberField(TEXT("bearing_deg"), FMath::Fmod(R.Yaw + 90.0 + 360.0, 360.0));
+				break;
+			}
 		}
 	}
 	F->SetObjectField(TEXT("camera"), Cam);

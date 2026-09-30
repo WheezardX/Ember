@@ -1,0 +1,113 @@
+# Reference cameras (EPIC_5_PLAN 8i R1): absolute-camera bookmarks land exactly where asked.
+#   eye   by WGS84 lon/lat at the default eye height (1.7 m over the ground) - how a phone photo's
+#         EXIF GPS becomes a camera (`ember-dev ref-camera photo.jpg`); UTM 635560.38, 5251948.11
+#   high  by world x/y (EPSG:32610) at a fixed altitude (the DEM's datum), looking down
+# 4:3 like a phone photo, so photo | render pairs need no crop. No reference photos yet: they
+# arrive with Brad's field shoot (8i R4) as `reference = "store/reference/..."` on a capture.
+render_scenario_version = 1
+
+[scenario]
+name = "S_refcam_tq"
+description = "8i R1: absolute reference cameras (lon/lat at eye height, x/y at altitude) land where asked"
+world = "terrain:three_queens_2026"
+resolution = [1600, 1200]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 2000
+
+[[bookmarks]]
+name = "eye"
+camera_lonlat = [-121.2032, 47.4069]
+yaw_deg = 200
+pitch_deg = 0
+fov_deg = 69.4                # a phone's 26 mm-equivalent main camera, landscape
+sun = "afternoon"
+
+[[bookmarks]]
+name = "high"
+camera_xy = [635000.0, 5250000.0]
+camera_alt_m = 2300
+yaw_deg = 45
+pitch_deg = -20
+fov_deg = 69.4
+sun = "afternoon"
+
+[[captures]]
+name = "eye"
+bookmark = "eye"
+
+[[captures]]
+name = "high"
+bookmark = "high"
+
+[[assert]]
+fact = "camera.agl_m"
+op = ">="
+value = 1.65
+capture = "eye"
+
+[[assert]]
+fact = "camera.agl_m"
+op = "<="
+value = 1.75
+capture = "eye"
+
+[[assert]]
+fact = "camera.world_x_m"
+op = ">="
+value = 635559.9
+capture = "eye"
+
+[[assert]]
+fact = "camera.world_x_m"
+op = "<="
+value = 635560.9
+capture = "eye"
+
+[[assert]]
+fact = "camera.world_y_m"
+op = ">="
+value = 5251947.6
+capture = "eye"
+
+[[assert]]
+fact = "camera.world_y_m"
+op = "<="
+value = 5251948.6
+capture = "eye"
+
+[[assert]]
+fact = "camera.bearing_deg"
+op = ">="
+value = 199.9
+capture = "eye"
+
+[[assert]]
+fact = "camera.bearing_deg"
+op = "<="
+value = 200.1
+capture = "eye"
+
+[[assert]]
+fact = "camera.world_z_m"
+op = ">="
+value = 2299.9
+capture = "high"
+
+[[assert]]
+fact = "camera.world_z_m"
+op = "<="
+value = 2300.1
+capture = "high"
+
+[[assert]]
+fact = "camera.world_x_m"
+op = ">="
+value = 634999.9
+capture = "high"
+
+[[assert]]
+fact = "camera.world_x_m"
+op = "<="
+value = 635000.1
+capture = "high"
