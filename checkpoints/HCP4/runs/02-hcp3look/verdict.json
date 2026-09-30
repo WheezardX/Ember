@@ -1,0 +1,155 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_jolly_hcp4_ab",
+  "run_dir": "C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4_ab\\20260930-121933",
+  "evaluated_utc": "2026-09-30T19:20:24Z",
+  "pass": true,
+  "summary": {
+    "captures": 6,
+    "match": 0,
+    "new": 6,
+    "mismatch": 0,
+    "missing": 0,
+    "checks": 6,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "mixed_oblique_460h",
+      "bookmark": "mixed_oblique",
+      "image": "captures\\mixed_oblique_460h.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "mixed_side_460h",
+      "bookmark": "mixed_side",
+      "image": "captures\\mixed_side_460h.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "crown_oblique_503h",
+      "bookmark": "crown_oblique",
+      "image": "captures\\crown_oblique_503h.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "crown_close_503h",
+      "bookmark": "crown_close",
+      "image": "captures\\crown_close_503h.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "spot_side_459h",
+      "bookmark": "spot_side",
+      "image": "captures\\spot_side_459h.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    },
+    {
+      "name": "head_eye_503h",
+      "bookmark": "head_eye",
+      "image": "captures\\head_eye_503h.png",
+      "golden": null,
+      "diff": null,
+      "status": "new"
+    }
+  ],
+  "orbits": [],
+  "checks": [
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "mixed_oblique_460h",
+      "ok": true,
+      "actual": false,
+      "expected": "== False"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "mixed_side_460h",
+      "ok": true,
+      "actual": false,
+      "expected": "== False"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "crown_oblique_503h",
+      "ok": true,
+      "actual": false,
+      "expected": "== False"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "crown_close_503h",
+      "ok": true,
+      "actual": false,
+      "expected": "== False"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "spot_side_459h",
+      "ok": true,
+      "actual": false,
+      "expected": "== False"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "head_eye_503h",
+      "ok": true,
+      "actual": false,
+      "expected": "== False"
+    }
+  ],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_jolly_hcp4_ab",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_jolly_hcp4_ab.toml",
+    "world": "C:\\Projects\\Terrain\\store\\jolly_mountain_2017",
+    "started": "20260930-121933",
+    "seconds": 50.0,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "66ba17a+dirty",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_jolly_hcp4_ab/20260930-121933/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4_ab\\20260930-121933\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ],
+    "orbits": []
+  }
+}

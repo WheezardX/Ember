@@ -1,0 +1,73 @@
+{
+  "hcp": "HCP4",
+  "runs": [
+    {
+      "label": "hcp4",
+      "dir": "01-hcp4",
+      "source": "C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4\\20260930-122431",
+      "pass": true,
+      "summary": {
+        "captures": 6,
+        "match": 6,
+        "new": 0,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 18,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "hcp3look",
+      "dir": "02-hcp3look",
+      "source": "C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4_ab\\20260930-121933",
+      "pass": true,
+      "summary": {
+        "captures": 6,
+        "match": 0,
+        "new": 6,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 6,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "film",
+      "dir": "03-film",
+      "source": "C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4_film\\20260930-122158",
+      "pass": true,
+      "summary": {
+        "captures": 1,
+        "match": 0,
+        "new": 0,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 0,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    },
+    {
+      "label": "perf",
+      "dir": "04-perf",
+      "source": "C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4_perf\\20260930-122025",
+      "pass": true,
+      "summary": {
+        "captures": 1,
+        "match": 0,
+        "new": 0,
+        "mismatch": 0,
+        "missing": 0,
+        "checks": 2,
+        "checks_failed": 0,
+        "run_exit_code": 0
+      },
+      "loop_timings": null
+    }
+  ]
+}

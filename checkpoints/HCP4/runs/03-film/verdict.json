@@ -1,0 +1,84 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_jolly_hcp4_film",
+  "run_dir": "C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4_film\\20260930-122158",
+  "evaluated_utc": "2026-09-30T19:23:45Z",
+  "pass": true,
+  "summary": {
+    "captures": 1,
+    "match": 0,
+    "new": 0,
+    "mismatch": 0,
+    "missing": 0,
+    "checks": 0,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "plume_wide_500h",
+      "bookmark": "plume_wide",
+      "image": "captures\\plume_wide_500h.png",
+      "golden": null,
+      "diff": null,
+      "status": "unchecked"
+    }
+  ],
+  "orbits": [
+    {
+      "name": "plume_shift",
+      "frames": 300,
+      "mp4": "orbits/plume_shift.mp4",
+      "error": "",
+      "encoded_by": "harness",
+      "camera_csv": "orbits/plume_shift.camera.csv"
+    }
+  ],
+  "checks": [],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_jolly_hcp4_film",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_jolly_hcp4_film.toml",
+    "world": "C:\\Projects\\Terrain\\store\\jolly_mountain_2017",
+    "started": "20260930-122158",
+    "seconds": 105.6,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "66ba17a+dirty",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_jolly_hcp4_film/20260930-122158/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4_film\\20260930-122158\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ],
+    "orbits": [
+      {
+        "name": "plume_shift",
+        "frames": 300,
+        "mp4": "orbits/plume_shift.mp4",
+        "error": "",
+        "encoded_by": "harness",
+        "camera_csv": "orbits/plume_shift.camera.csv"
+      }
+    ]
+  }
+}

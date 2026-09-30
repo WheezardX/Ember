@@ -1,0 +1,95 @@
+# HCP4 bundle (EPIC_5_PLAN 8h): a fixed-heading timelapse of the CA run over 494-510 h, when the
+# stream's wind swings ~90 degrees (NW -> N). `ember-dev wind-vane` burns the stream's wind into
+# the frames as a vane turned to the camera heading, so plume vs wind can be checked by eye.
+# Bookmarks copied from S_jolly_hcp4; keep them in sync.
+render_scenario_version = 1
+
+[scenario]
+name = "S_jolly_hcp4_film"
+description = "HCP4 bundle film: plume vs the stream's wind over a 90 degree wind shift (494-510 h)"
+world = "terrain:jolly_mountain_2017"
+replay = "../../runs/cp5/cp5-jolly-shadow-ca.replay.json"
+resolution = [2560, 1440]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 4000
+wind_from_replay = true
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "mixed_oblique"        # 460 h: the whole active area from upwind (NNW), looking downwind
+target_frac = [0.414, 0.543]
+distance_m = 5000
+yaw_deg = 157
+pitch_deg = -32
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "mixed_side"           # 460 h: from the flank, wind crossing the frame left to right
+target_frac = [0.414, 0.543]
+distance_m = 3500
+yaw_deg = 247
+pitch_deg = -22
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "crown_oblique"        # 503 h: the crown-fire run, from upwind (WNW)
+target_frac = [0.489, 0.511]
+distance_m = 3000
+yaw_deg = 125
+pitch_deg = -25
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "crown_close"          # 503 h: the head from 900 m
+target_frac = [0.489, 0.511]
+distance_m = 900
+yaw_deg = 125
+pitch_deg = -15
+fov_deg = 60
+sun = "afternoon"
+
+[[bookmarks]]
+name = "spot_side"            # 459 h: a spotting cluster across the wind (brands fly left to right)
+target_frac = [0.535, 0.578]
+distance_m = 1200
+yaw_deg = 237
+pitch_deg = -15
+fov_deg = 60
+sun = "afternoon"
+
+[[bookmarks]]
+name = "head_eye"             # 503 h: eye level, 120 m ahead of a crown-fire head (669 m/h toward 148),
+target_frac = [0.5725, 0.7065]  # looking back into it
+distance_m = 120
+yaw_deg = 328
+pitch_deg = -6
+fov_deg = 70
+sun = "afternoon"
+
+[[bookmarks]]
+name = "plume_wide"           # 494-510 h: the whole fire from the SW flank, high; the wind swings
+target_frac = [0.489, 0.511]  # from NW to N over the window, so the plume must swing with it
+distance_m = 11000
+yaw_deg = 60
+pitch_deg = -38
+fov_deg = 60
+sun = "afternoon"
+
+[[captures]]
+name = "plume_wide_500h"
+bookmark = "plume_wide"
+t_s = 1800000
+golden = false
+
+[[orbits]]
+name = "plume_shift"
+bookmark = "plume_wide"
+degrees = 0
+t_from_s = 1778400
+t_to_s = 1836000
+frames = 300
+fps = 30

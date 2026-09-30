@@ -1,0 +1,192 @@
+{
+  "format": "ember-run-plan",
+  "version": 1,
+  "scenario": "S_jolly_hcp4",
+  "world": "C:/Projects/Terrain/store/jolly_mountain_2017",
+  "replay": "C:/Projects/Ember/runs/cp5/cp5-jolly-shadow-ca.replay.json",
+  "out_dir": "C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431",
+  "resolution": [
+    2560,
+    1440
+  ],
+  "perf_frames": 0,
+  "exposure_bias": -2.0,
+  "skylight_leaking": 0.0,
+  "exposure_mode": "auto",
+  "exposure_ev_min": 0.5,
+  "exposure_ev_max": 10.0,
+  "auto_exposure_bias": -1.3,
+  "fixed_lod": null,
+  "lod_refine_factor": 1.5,
+  "look": "C:/Projects/Ember/viz/looks/terrain_default.toml",
+  "vegetation": true,
+  "veg_radius_m": 4000.0,
+  "ground_cover": false,
+  "ground_cover_radius_m": 60.0,
+  "veg_near_radius_m": 500.0,
+  "veg_mid_min_height_m": 12.0,
+  "wind_strength": 6.0,
+  "wind_from_replay": true,
+  "fire_classes": true,
+  "wind_from_deg": 270.0,
+  "smoke": true,
+  "smoke_wind_ms": 8.0,
+  "firebrands": true,
+  "flames": true,
+  "veg_lineup": false,
+  "exec_cmds": [],
+  "perf_exec_cmds": [],
+  "water_dir": "C:/Projects/Ember/store/render/jolly_mountain_2017/water",
+  "perf_bookmark": null,
+  "perf_orbit": null,
+  "bookmarks": [
+    {
+      "name": "mixed_oblique",
+      "target_frac": [
+        0.414,
+        0.543
+      ],
+      "target_cell": null,
+      "distance_m": 5000.0,
+      "yaw_deg": 157.0,
+      "pitch_deg": -32.0,
+      "fov_deg": 55.0,
+      "sun": "afternoon",
+      "exposure_bias": null,
+      "exposure_ev_min": null
+    },
+    {
+      "name": "mixed_side",
+      "target_frac": [
+        0.414,
+        0.543
+      ],
+      "target_cell": null,
+      "distance_m": 3500.0,
+      "yaw_deg": 247.0,
+      "pitch_deg": -22.0,
+      "fov_deg": 55.0,
+      "sun": "afternoon",
+      "exposure_bias": null,
+      "exposure_ev_min": null
+    },
+    {
+      "name": "crown_oblique",
+      "target_frac": [
+        0.489,
+        0.511
+      ],
+      "target_cell": null,
+      "distance_m": 3000.0,
+      "yaw_deg": 125.0,
+      "pitch_deg": -25.0,
+      "fov_deg": 55.0,
+      "sun": "afternoon",
+      "exposure_bias": null,
+      "exposure_ev_min": null
+    },
+    {
+      "name": "crown_close",
+      "target_frac": [
+        0.489,
+        0.511
+      ],
+      "target_cell": null,
+      "distance_m": 900.0,
+      "yaw_deg": 125.0,
+      "pitch_deg": -15.0,
+      "fov_deg": 60.0,
+      "sun": "afternoon",
+      "exposure_bias": null,
+      "exposure_ev_min": null
+    },
+    {
+      "name": "spot_side",
+      "target_frac": [
+        0.535,
+        0.578
+      ],
+      "target_cell": null,
+      "distance_m": 1200.0,
+      "yaw_deg": 237.0,
+      "pitch_deg": -15.0,
+      "fov_deg": 60.0,
+      "sun": "afternoon",
+      "exposure_bias": null,
+      "exposure_ev_min": null
+    },
+    {
+      "name": "head_eye",
+      "target_frac": [
+        0.5725,
+        0.7065
+      ],
+      "target_cell": null,
+      "distance_m": 120.0,
+      "yaw_deg": 328.0,
+      "pitch_deg": -6.0,
+      "fov_deg": 70.0,
+      "sun": "afternoon",
+      "exposure_bias": null,
+      "exposure_ev_min": null
+    }
+  ],
+  "captures": [
+    {
+      "name": "mixed_oblique_460h",
+      "bookmark": "mixed_oblique",
+      "t_s": 1656000,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "mixed_side_460h",
+      "bookmark": "mixed_side",
+      "t_s": 1656000,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "crown_oblique_503h",
+      "bookmark": "crown_oblique",
+      "t_s": 1810800,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "crown_close_503h",
+      "bookmark": "crown_close",
+      "t_s": 1810800,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "spot_side_459h",
+      "bookmark": "spot_side",
+      "t_s": 1652520,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    },
+    {
+      "name": "head_eye_503h",
+      "bookmark": "head_eye",
+      "t_s": 1810800,
+      "warmup_frames": 30,
+      "ssim_min": 0.995,
+      "region_ssim_min": 0.98,
+      "golden": true
+    }
+  ],
+  "orbits": [],
+  "fire_probes": []
+}

@@ -1,0 +1,22 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_jolly_hcp4",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 38.751351300626993,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/captures/mixed_oblique_460h.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/facts/mixed_oblique_460h.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/captures/mixed_side_460h.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/facts/mixed_side_460h.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/captures/crown_oblique_503h.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/facts/crown_oblique_503h.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/captures/crown_close_503h.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/facts/crown_close_503h.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/captures/spot_side_459h.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/facts/spot_side_459h.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/captures/head_eye_503h.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/facts/head_eye_503h.json"
+	]
+}

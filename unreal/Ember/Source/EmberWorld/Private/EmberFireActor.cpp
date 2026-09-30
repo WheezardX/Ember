@@ -67,7 +67,7 @@ bool AEmberFireActor::Load(const FString& ReplayPath, AEmberTerrainActor* Terrai
 	{
 		// Does the stream report intensity? (the playback model writes 1 everywhere)
 		const emberworld::fire::State End = Stream.at(EndS);
-		for (size_t I = 0; I < End.intensity.size() && !bIntensityReported; ++I)
+		for (size_t I = 0; bUseIntensity && I < End.intensity.size() && !bIntensityReported; ++I)
 		{
 			bIntensityReported = End.phase[I] >= emberworld::fire::Burning && End.intensity[I] >= 2;
 		}

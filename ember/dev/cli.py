@@ -333,6 +333,18 @@ def split(name: str = typer.Argument(..., help="Replay scenario, e.g. S_jolly_fi
     typer.secho(f"split {dst} (3D crop {crop})", fg=typer.colors.GREEN)
 
 
+@app.command("wind-vane")
+def wind_vane(name: str = typer.Argument(..., help="Replay scenario with a fixed-heading timelapse"),
+              orbit: str = typer.Option(..., "--orbit"),
+              run: str = typer.Option(None, "--run", help="Run dir (default: latest)."),
+              out: Path = typer.Option(None, "--out")) -> None:
+    """Burn the stream's wind into a timelapse MP4 as a vane (plume vs wind check, HCP4)."""
+    from ember.dev import windvane
+
+    dst = windvane.overlay(_sc(name), _resolve_run(name, run), orbit, out)
+    typer.secho(f"wind vane {dst}", fg=typer.colors.GREEN)
+
+
 @app.command("forest-report")
 def forest_report(region: str = typer.Argument(..., help="Terrain region, e.g. three_queens_2026"),
                   out: str = typer.Option(None, "--out",

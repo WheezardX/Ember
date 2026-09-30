@@ -1,0 +1,13 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_jolly_hcp4_perf",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 20.836300902068615,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4_perf/20260930-122025/captures/head_eye_503h.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4_perf/20260930-122025/facts/head_eye_503h.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4_perf/20260930-122025/facts/perf.json"
+	]
+}

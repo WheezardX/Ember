@@ -1,0 +1,14 @@
+{
+	"format": "ember-run-status",
+	"version": 1,
+	"scenario": "S_jolly_hcp4_film",
+	"exit_code": 0,
+	"error": "",
+	"elapsed_s": 94.997076403349638,
+	"written": [
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4_film/20260930-122158/captures/plume_wide_500h.png",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4_film/20260930-122158/facts/plume_wide_500h.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4_film/20260930-122158/facts/orbit_plume_shift.json",
+		"C:/Projects/Ember/runs/viz/S_jolly_hcp4_film/20260930-122158/frames/plume_shift"
+	]
+}

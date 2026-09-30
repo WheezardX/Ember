@@ -115,6 +115,7 @@ private:
 	bool bVegetation = false;
 	bool bGroundCover = false;
 	bool bWindFromReplay = false;
+	bool bFireClasses = true;   // false: draw the stream as if it had no intensity (HCP4 A/B)
 	double GroundCoverRadiusM = 60.0;
 	double VegRadiusM = 1500.0;
 	double VegNearRadiusM = 500.0;

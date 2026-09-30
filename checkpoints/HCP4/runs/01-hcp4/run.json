@@ -1,0 +1,36 @@
+{
+  "format": "ember-viz-run",
+  "version": 1,
+  "scenario": "S_jolly_hcp4",
+  "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_jolly_hcp4.toml",
+  "world": "C:\\Projects\\Terrain\\store\\jolly_mountain_2017",
+  "started": "20260930-122431",
+  "seconds": 49.4,
+  "process_exit_code": 0,
+  "exit_code": 0,
+  "error": "",
+  "git": "66ba17a+dirty",
+  "engine": {
+    "pinned": "5.8.3",
+    "installed": "5.8.3"
+  },
+  "command": [
+    "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+    "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+    "-game",
+    "-RenderOffscreen",
+    "-unattended",
+    "-nosplash",
+    "-nosound",
+    "-NoLoadingScreen",
+    "-windowed",
+    "-ResX=2560",
+    "-ResY=1440",
+    "-EmberRun=C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/plan.json",
+    "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4\\20260930-122431\\log\\Ember.log",
+    "-log",
+    "-NoVerifyGC",
+    "-ExecCmds=DisableAllScreenMessages"
+  ],
+  "orbits": []
+}

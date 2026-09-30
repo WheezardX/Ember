@@ -1,0 +1,341 @@
+{
+  "format": "ember-viz-verdict",
+  "version": 1,
+  "scenario": "S_jolly_hcp4",
+  "run_dir": "C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4\\20260930-122431",
+  "evaluated_utc": "2026-09-30T19:25:38Z",
+  "pass": true,
+  "summary": {
+    "captures": 6,
+    "match": 6,
+    "new": 0,
+    "mismatch": 0,
+    "missing": 0,
+    "checks": 18,
+    "checks_failed": 0,
+    "run_exit_code": 0
+  },
+  "captures": [
+    {
+      "name": "mixed_oblique_460h",
+      "bookmark": "mixed_oblique",
+      "image": "captures\\mixed_oblique_460h.png",
+      "golden": "viz\\goldens\\S_jolly_hcp4\\mixed_oblique_460h.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 0.9982436545327625,
+        "region_ssim_min": 0.9976271603572485,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.3274817686631944,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\mixed_oblique_460h.png"
+    },
+    {
+      "name": "mixed_side_460h",
+      "bookmark": "mixed_side",
+      "image": "captures\\mixed_side_460h.png",
+      "golden": "viz\\goldens\\S_jolly_hcp4\\mixed_side_460h.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 0.9993469193221952,
+        "region_ssim_min": 0.9986611249767561,
+        "worst_region": [
+          0,
+          2
+        ],
+        "mean_abs_luma": 0.09465225911458333,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\mixed_side_460h.png"
+    },
+    {
+      "name": "crown_oblique_503h",
+      "bookmark": "crown_oblique",
+      "image": "captures\\crown_oblique_503h.png",
+      "golden": "viz\\goldens\\S_jolly_hcp4\\crown_oblique_503h.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 0.9987644064376756,
+        "region_ssim_min": 0.9980227191388411,
+        "worst_region": [
+          0,
+          0
+        ],
+        "mean_abs_luma": 0.20465147352430557,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\crown_oblique_503h.png"
+    },
+    {
+      "name": "crown_close_503h",
+      "bookmark": "crown_close",
+      "image": "captures\\crown_close_503h.png",
+      "golden": "viz\\goldens\\S_jolly_hcp4\\crown_close_503h.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 0.9995596314082474,
+        "region_ssim_min": 0.9990204134089132,
+        "worst_region": [
+          0,
+          3
+        ],
+        "mean_abs_luma": 0.05295095160590277,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\crown_close_503h.png"
+    },
+    {
+      "name": "spot_side_459h",
+      "bookmark": "spot_side",
+      "image": "captures\\spot_side_459h.png",
+      "golden": "viz\\goldens\\S_jolly_hcp4\\spot_side_459h.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 0.9997458065124777,
+        "region_ssim_min": 0.9990785488794612,
+        "worst_region": [
+          2,
+          3
+        ],
+        "mean_abs_luma": 0.015922265624999998,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\spot_side_459h.png"
+    },
+    {
+      "name": "head_eye_503h",
+      "bookmark": "head_eye",
+      "image": "captures\\head_eye_503h.png",
+      "golden": "viz\\goldens\\S_jolly_hcp4\\head_eye_503h.png",
+      "diff": {
+        "ok": true,
+        "reason": "match",
+        "ssim": 0.9883761873415037,
+        "region_ssim_min": 0.9794783829378727,
+        "worst_region": [
+          3,
+          3
+        ],
+        "mean_abs_luma": 1.2992584960937499,
+        "grid": [
+          4,
+          4
+        ]
+      },
+      "status": "match",
+      "heatmap": "diff\\head_eye_503h.png"
+    }
+  ],
+  "orbits": [],
+  "checks": [
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "mixed_oblique_460h",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.burning_head",
+      "capture": "mixed_oblique_460h",
+      "ok": true,
+      "actual": 501,
+      "expected": "> 100"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.spots_total",
+      "capture": "mixed_oblique_460h",
+      "ok": true,
+      "actual": 309,
+      "expected": "== 309"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "mixed_side_460h",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.burning_head",
+      "capture": "mixed_side_460h",
+      "ok": true,
+      "actual": 501,
+      "expected": "> 100"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.spots_total",
+      "capture": "mixed_side_460h",
+      "ok": true,
+      "actual": 309,
+      "expected": "== 309"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "crown_oblique_503h",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.burning_head",
+      "capture": "crown_oblique_503h",
+      "ok": true,
+      "actual": 463,
+      "expected": "> 100"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.spots_total",
+      "capture": "crown_oblique_503h",
+      "ok": true,
+      "actual": 309,
+      "expected": "== 309"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "crown_close_503h",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.burning_head",
+      "capture": "crown_close_503h",
+      "ok": true,
+      "actual": 463,
+      "expected": "> 100"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.spots_total",
+      "capture": "crown_close_503h",
+      "ok": true,
+      "actual": 309,
+      "expected": "== 309"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "spot_side_459h",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.burning_head",
+      "capture": "spot_side_459h",
+      "ok": true,
+      "actual": 403,
+      "expected": "> 100"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.spots_total",
+      "capture": "spot_side_459h",
+      "ok": true,
+      "actual": 309,
+      "expected": "== 309"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.intensity_reported",
+      "capture": "head_eye_503h",
+      "ok": true,
+      "actual": true,
+      "expected": "== True"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.burning_head",
+      "capture": "head_eye_503h",
+      "ok": true,
+      "actual": 463,
+      "expected": "> 100"
+    },
+    {
+      "kind": "assert",
+      "name": "fire.spots_total",
+      "capture": "head_eye_503h",
+      "ok": true,
+      "actual": 309,
+      "expected": "== 309"
+    }
+  ],
+  "run": {
+    "format": "ember-viz-run",
+    "version": 1,
+    "scenario": "S_jolly_hcp4",
+    "scenario_file": "C:\\Projects\\Ember\\viz\\scenarios\\S_jolly_hcp4.toml",
+    "world": "C:\\Projects\\Terrain\\store\\jolly_mountain_2017",
+    "started": "20260930-122431",
+    "seconds": 49.4,
+    "process_exit_code": 0,
+    "exit_code": 0,
+    "error": "",
+    "git": "66ba17a+dirty",
+    "engine": {
+      "pinned": "5.8.3",
+      "installed": "5.8.3"
+    },
+    "command": [
+      "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+      "C:\\Projects\\Ember\\unreal\\Ember\\Ember.uproject",
+      "-game",
+      "-RenderOffscreen",
+      "-unattended",
+      "-nosplash",
+      "-nosound",
+      "-NoLoadingScreen",
+      "-windowed",
+      "-ResX=2560",
+      "-ResY=1440",
+      "-EmberRun=C:/Projects/Ember/runs/viz/S_jolly_hcp4/20260930-122431/plan.json",
+      "-abslog=C:\\Projects\\Ember\\runs\\viz\\S_jolly_hcp4\\20260930-122431\\log\\Ember.log",
+      "-log",
+      "-NoVerifyGC",
+      "-ExecCmds=DisableAllScreenMessages"
+    ],
+    "orbits": []
+  }
+}
