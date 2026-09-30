@@ -401,6 +401,36 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   pulls are free and fast; only outputs travel. Three Queens: ~1.9 GB downloaded vs ~0.55 GB
   output (~0.3 GB the renderer needs). Needs: containerised terrain env, output sync (S3).
 
+## 8h. HCP4 plan - "The fire reads" (started 2026-09-30)
+
+Brad (2026-09-30): "Start HCP4, after that one I think we need loop back to some of the issues I
+called out. I'm worried about implementing too much before fixing some fundamental issues." So
+HCP4 stays tight, and the next round after it is the 8g list (fundamentals), not new features.
+
+**Data first.** The HCP3 Jolly replay is a *playback* of observed arrival (Epic 4 CP2): every
+cell is intensity class 1, no spot fires, one constant wind - nothing for "where it's hot, where
+it's heading". HCP4 renders the Epic 4 *model* run of Jolly instead: `runs/cp5/cp5-jolly-shadow-
+ca` (ember-ca, same 800 x 627 x 30 m grid as the render world, 5 days at 60 s ticks, intensity
+classes 1-3 over 4 k / 85 k / 181 k cells, 309 spot fires, wind changing every tick). The
+playback stays the HCP3 truth-to-observation scene.
+
+- **H4-0 plumbing:** the fire actor exposes intensity class, the tick's wind (u, v) and spot
+  events; facts report them; scenario `S_jolly_hcp4` on the CA run.
+- **H4-1 intensity classes:** FireTex carries the class; flames, glow and tree response by class
+  (low surface fire under standing green crowns, scorched crowns, crown-fire torching only at the
+  top class) - fixes the uniform "orange carpet" and "burned stands keep crowns".
+- **H4-2 wind from the stream:** smoke plume and tree sway take the tick's wind, so the plume can
+  never contradict the wind; a wind vane in the review captures.
+- **H4-3 heading:** the head reads hotter and brighter than flanks and backing fire (class +
+  flame lean downwind).
+- **H4-4 spots and embers:** spot fires light up where the stream says; ember streaks from the
+  head toward them.
+- **H4-5 eye-level fire (carried from HCP3 / GP5):** flames with shape instead of paint, no
+  torching blowout, no char contour rings, less red bounce on trunks.
+- **Bundle:** intensity-class A/B stills, spot / ember moments, plume vs wind-vane MP4, perf with
+  full VFX (budget holds). Night pass and exposure work only if time is left (exposure is on the
+  8g list anyway).
+
 ## 9. Notes for later epics
 
 - **Epic 6:** C1 readers, F3 shell, camera rigs, and the state player are its foundation; the command-issuing UI plugs into Epic 4's suppression schema on top of this scene. National cartographic view is new work there, not a HCP5 overlay retrofit.
