@@ -543,6 +543,24 @@ playback stays the HCP3 truth-to-observation scene.
   heading legibility from altitude, judged against real reference next time (8i), not by eye
   against nothing.
 
+## 8h+. Current push (Brad, 2026-09-30, after the S_jolly_play fly-around)
+
+In order:
+1. Play client: readable help overlay (H), fire clock as date / local time + elapsed since
+   ignition, camera spotlight (L). (Sun from the fire clock: later.)
+2. Items 4-6: haze / fog, tile fade-in, far field (planned against the likely top-down /
+   oblique game camera).
+3. Ground volume (real near-camera geometry + 3-D debris, not only stronger normals).
+4. Trees and down wood: hung-up trees anchored on real trees, fallen-tree mesh with foliage
+   variants, density from CBH (ladder fuels); brush popping out on approach; springy limbs
+   re-check in wind.
+5. Burned area mosaic (bare black stems / consumed / fallen / scorched fringe / survivors).
+
+Deferred until reference material exists: smoke volume (column, pall, interior smoke) and
+smouldering logs (smoke / ash). Waiting: river / shore edges, fire lines and fuel removal,
+determinism of three close-up views, class legibility from altitude.
+**After this push: focus on reference material** (8i: library, field shoot, look targets).
+
 ## 8i. Reference and targets (from VISUAL_FIDELITY_MEMO, Brad + Fable, 2026-09-30)
 
 Source: `docs/memos/VISUAL_FIDELITY_MEMO.md` (suggestions, not directives). The gap it names is
