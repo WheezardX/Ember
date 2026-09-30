@@ -136,7 +136,7 @@ def play(name: str,
         raise typer.Exit(2) from None
     typer.echo(f"playing {sc.name} (pid {proc.pid}); log {run_dir / 'log' / 'Ember.log'}")
     typer.echo("  mouse look | WASD | E/Space up, Q/C down | Shift x4, Ctrl x0.25 | wheel speed")
-    typer.echo("  G walk/fly | 1-5 sun | P play fire, , . -/+1 h, [ ] rate | H help | Esc quit")
+    typer.echo("  G walk/fly | 1-5 sun | P play fire, , . -/+1 h, [ ] rate | L lamp | H help | Esc quit")
     if wait:
         proc.wait()
 

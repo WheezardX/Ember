@@ -91,7 +91,14 @@ void AEmberFlyPawn::Tick(float DeltaSeconds)
 
 	FVector Loc = GetActorLocation();
 	double Gz = 0.0;
-	const bool bGround = GroundZ(Loc, Gz);
+	bool bGround = GroundZ(Loc, Gz);
+	if (!bGround && Terrain && Terrain->GetRegion())
+	{
+		// Off the map there is no ground below: measure against the region's lowest ground, or
+		// the speed collapsed to its 4 m/s floor at altitude and the camera seemed frozen (Brad).
+		Gz = Terrain->WorldToUE(0.0, 0.0, Terrain->GetRegion()->heightmap.z_min).Z;
+		bGround = true;
+	}
 	AglM = bGround ? (Loc.Z - Gz) / 100.0 : -1.0;
 
 	// Speed grows with height: ~4 m/s at eye level, ~0.8 x height above ~5 m (800 m/s at 1 km).
@@ -117,6 +124,18 @@ void AEmberFlyPawn::Tick(float DeltaSeconds)
 	if (!Move.IsNearlyZero())
 	{
 		Loc += Move.GetSafeNormal() * SpeedMs * 100.0 * DeltaSeconds;
+	}
+	if (Terrain && Terrain->GetRegion())
+	{
+		// Stay within 2 km of the data: past it there is nothing to see and no way to tell where
+		// the map went.
+		const emberworld::Bounds E = Terrain->GetDataExtent();
+		const emberworld::Frame& F = Terrain->GetFrame();
+		const double Margin = 2000.0;
+		const double Wx = FMath::Clamp(F.anchor_x + Loc.X / 100.0, E.min_x - Margin, E.max_x + Margin);
+		const double Wy = FMath::Clamp(F.anchor_y - Loc.Y / 100.0, E.min_y - Margin, E.max_y + Margin);
+		Loc.X = (Wx - F.anchor_x) * 100.0;
+		Loc.Y = (F.anchor_y - Wy) * 100.0;
 	}
 	if (GroundZ(Loc, Gz))
 	{
