@@ -460,6 +460,60 @@ playback stays the HCP3 truth-to-observation scene.
 - **Bundle:** intensity-class A/B stills, spot / ember moments, plume vs wind-vane MP4, perf with
   full VFX (budget holds). Night pass and exposure work only if time is left (exposure is on the
   8g list anyway).
+- **SIGNED OFF by Brad 2026-09-30** (bundle `checkpoints/HCP4`, commit 7763377). His read of the
+  class A/B: "only that first image looks any different" - i.e. legibility at distance did not
+  land; only the 900 m view (surface-fire stands keep green crowns) reads. Carried: class /
+  heading legibility from altitude, judged against real reference next time (8i), not by eye
+  against nothing.
+
+## 8i. Reference and targets (from VISUAL_FIDELITY_MEMO, Brad + Fable, 2026-09-30)
+
+Source: `docs/memos/VISUAL_FIDELITY_MEMO.md` (suggestions, not directives). The gap it names is
+real and HCP4 demonstrated it: the loop is strong on mechanics and has no grounded targets - the
+class A/B was judged "subtle" by the agent and "no different" by Brad, with nothing to compare
+either against. D9's model-eyes step (A3) was never built; reference pairs are what would make it
+worth building (VLMs are good at "how do these two differ", weak at open-ended taste).
+
+Proposed shape (agent's recommendation, pending Brad):
+- **R1 reference cameras** (small, agent): a bookmark form with an absolute camera - lat/lon or
+  CRS x/y, height above ground or altitude, bearing, pitch, horizontal FOV - so a photo's pose
+  reproduces exactly; `ember-dev ref-pair` renders the match and writes photo | render
+  side-by-sides for bundles.
+- **R2 NAIP colour probe** (small, agent; advisory first): per landcover class, hue/value
+  distributions from NAIP over the AOI vs the renderer's top-down capture; a scene-facts check
+  that runs advisory until tolerances are tuned. Pull only the COG overviews needed for colour
+  statistics (~10 m), not full 0.6 m tiles: tens of MB per AOI, logged in the download ledger.
+- **R3 reference library** (agent scaffolding + human curation): `store/reference/` beside the
+  tile store (outside git, bucket later with the cloud-bake work), manifest in the repo with
+  subject tags, location / date, source and a licence class (`shippable` = public domain /
+  BNE-owned, e.g. federal NIFC / USFS / InciWeb / BLM media; `reference-only` = everything else,
+  never an input to a shipped asset). Manifest joins the existing provenance / B4 pattern.
+- **R4 field shoot** (Brad, human session): named viewpoints in the TQ / Teanaway AOI with GPS,
+  bearing and lens noted; ground-level per fuel class; a nearby burn scar. Not an asset session,
+  so outside B4's one-per-phase cap. Plus an annotation session on fire-behaviour clips (backing
+  vs crown run, column behaviour) - the HCP4 legibility bar needs it.
+- **R5 A3 reviewer on pairs** (agent, after R1/R3): model-eyes compares render vs reference and
+  tags differences; advisory, never gating (D9 unchanged).
+- **Later, per need:** image generation (look bible first - curated target frames checked in
+  with their prompts as source; custom wildfire texture classes second, conditioned on shippable
+  reference; commercial terms checked first; not for flipbooks, impostors or base terrain).
+  Blender MCP as a *discovery* tool for the tree / shrub generators when the model upgrades come
+  (treegen.py stays the production path - pure Python, seeded, deterministic, already has an
+  offline preview); a session's deliverable is the updated generator, never a .blend.
+
+Open questions (memo §6) with the agent's proposed answers - for Brad to confirm:
+1. Library location: `store/reference/` locally now, bucket with the cloud-bake work; the
+   manifest joins the provenance schema.
+2. NAIP probe: advisory until tuned on real captures, then gating like other scene facts.
+3. Reference-camera tolerance: FOV exact from the lens; position from photo GPS, refined by
+   matching the ridgeline; atmosphere handled by the comparison (structure and hue, not absolute
+   exposure) plus shooting notes (time, sun, haze) mapped to the nearest sun / fog preset.
+4. Image-conditioned generation via Codex: unknown - Brad to check; look bible can start prompt-only.
+5. Human sessions: field shoot and annotation are not asset sessions (no cap); SpeedTree /
+   EmberGen weekends stay under B4's cap.
+
+Sequencing proposal: R1 + R2 first (days, agent-only) so the 8g fundamentals round has targets
+to hit; R3 scaffolding alongside; R4 whenever Brad can get out; R5 once pairs exist.
 
 ## 9. Notes for later epics
 
