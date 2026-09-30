@@ -23,6 +23,17 @@ struct FEmberSmokeSource
 	float Cluster = 0.f;     // Strength summed over the 5 x 5 bins around (1.5 km): plume height
 };
 
+/** One firebrand from the stream (HCP4 H4-4), launched within the last RecentBrandS of sim time. */
+struct FEmberFirebrand
+{
+	double X0 = 0.0, Y0 = 0.0;   // launch cell centre, metres (region CRS)
+	double X1 = 0.0, Y1 = 0.0;   // landing cell centre
+	double AgeS = 0.0;           // sim seconds since launch
+	double LandAgeS = 0.0;       // sim seconds since landing (< 0: still in the air)
+	bool bIgnited = false;       // it started a spot fire
+	uint32 Key = 0;              // index in the stream: stable per-brand seeds
+};
+
 /**
  * The fire state player (EPIC_5_PLAN D1, D7). Loads an Epic 4 replay (+ its state stream) and,
  * for any sim time, writes the fire state into one texture over the replay's world grid:
@@ -76,6 +87,12 @@ public:
 	double CellM = 30.0;
 	int32 Nx = 0;
 	int32 Ny = 0;
+
+	/** Firebrands launched in the last RecentBrandS (rebuilt by SetTime), oldest first. */
+	TArray<FEmberFirebrand> Firebrands;
+	static constexpr double RecentBrandS = 1800.0;
+	int32 SpotsTotal = 0;        // firebrands in the whole run (facts)
+	int32 SpotsIgnitedTotal = 0;
 
 	/** Smoke sources for the current time (rebuilt by SetTime). */
 	TArray<FEmberSmokeSource> SmokeSources;

@@ -72,6 +72,12 @@ bool AEmberFireActor::Load(const FString& ReplayPath, AEmberTerrainActor* Terrai
 			bIntensityReported = End.phase[I] >= emberworld::fire::Burning && End.intensity[I] >= 2;
 		}
 	}
+	SpotsTotal = static_cast<int32>(Stream.spots().size());
+	SpotsIgnitedTotal = 0;
+	for (const emberworld::fire::Spot& S : Stream.spots())
+	{
+		SpotsIgnitedTotal += S.ignited;
+	}
 	UE_LOG(LogEmberFire, Log, TEXT("fire replay %s: model %s, %dx%d cells of %.0f m, t %d..%d s, %u ticks"),
 		*ReplayPath, *ModelId, Nx, Ny, CellM, StartS, EndS, Stream.ticks());
 	SetTime(StartS);
@@ -145,6 +151,27 @@ void AEmberFireActor::SetTime(double TSeconds)
 		P[1] = bBurned ? static_cast<uint8>(64 + 63 * Cls) : 0;
 		P[2] = bBurning ? static_cast<uint8>(85 * Cls) : 0;
 		P[3] = Spread[I];
+	}
+	Firebrands.Reset();
+	const std::vector<emberworld::fire::Spot>& Spots = Stream.spots();
+	for (size_t K = 0; K < Spots.size(); ++K)
+	{
+		const emberworld::fire::Spot& S = Spots[K];
+		const double Age = TSeconds - S.launch_s;
+		if (Age < 0.0 || Age > RecentBrandS || S.src >= static_cast<uint32>(N) || S.dst >= static_cast<uint32>(N))
+		{
+			continue;
+		}
+		FEmberFirebrand B;
+		B.X0 = Grid.origin_x + (S.src % Nx + 0.5) * CellM;
+		B.Y0 = Grid.origin_y - (S.src / Nx + 0.5) * CellM;
+		B.X1 = Grid.origin_x + (S.dst % Nx + 0.5) * CellM;
+		B.Y1 = Grid.origin_y - (S.dst / Nx + 0.5) * CellM;
+		B.AgeS = Age;
+		B.LandAgeS = S.landed ? TSeconds - S.land_s : -1.0;
+		B.bIgnited = S.ignited;
+		B.Key = static_cast<uint32>(K);
+		Firebrands.Add(B);
 	}
 	SmokeSources.Reset();
 	for (int32 K = 0; K < Bins.Num(); ++K)

@@ -436,6 +436,11 @@ playback stays the HCP3 truth-to-observation scene.
   pre-existing; threshold loosened until H4-5 finds the source).
 - **H4-4 spots and embers:** spot fires light up where the stream says; ember streaks from the
   head toward them.
+- **H4-4 done (first pass, 2026-09-30):** worldcore reads the stream's spot records (exact vs
+  Epic 4's reader: 309 brands, 22 ignited, 42-331 m, peak 456-462 h). `AEmberFirebrandActor`:
+  brands of the last 20 sim min draw as spark showers launch -> landing; an ignited brand marks
+  its landing cell with a ground flare for 30 min. New capture `spot_side_459h` (busiest 20 min
+  of spotting). First look was a neat arch ("rainbow"), now a loose shower of short streaks.
 - **H4-5 eye-level fire (carried from HCP3 / GP5):** flames with shape instead of paint, no
   torching blowout, no char contour rings, less red bounce on trunks.
 - **Note (Brad, 2026-09-30, not in scope yet):** the burned interior goes straight to black, but

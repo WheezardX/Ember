@@ -5,6 +5,8 @@
 #   t (h)   burning c1 / c2 / c3     wind            spots / 30 min
 #   460     124 / 1125 / 1636        5.5 m/s from 337  up to 21  (mixed fire + spotting)
 #   503      16 /  638 / 3394        3.3 m/s from 305             (peak crown fire)
+#   459.03   busiest 20 min of spotting (17 brands); 6 around (0.535, 0.58), one ignites
+#            (lands 458.84 h); wind 5.7 m/s from 327
 # Wind comes from the replay (wind_from_replay): the smoke plume and the trees follow the fire's
 # own wind, so the plume can never contradict it.
 render_scenario_version = 1
@@ -57,6 +59,15 @@ pitch_deg = -15
 fov_deg = 60
 sun = "afternoon"
 
+[[bookmarks]]
+name = "spot_side"            # 459 h: a spotting cluster across the wind (brands fly left to right)
+target_frac = [0.535, 0.578]
+distance_m = 1200
+yaw_deg = 237
+pitch_deg = -15
+fov_deg = 60
+sun = "afternoon"
+
 [[captures]]
 name = "mixed_oblique_460h"
 bookmark = "mixed_oblique"
@@ -77,6 +88,11 @@ name = "crown_close_503h"
 bookmark = "crown_close"
 t_s = 1810800
 
+[[captures]]
+name = "spot_side_459h"
+bookmark = "spot_side"
+t_s = 1652520
+
 [[assert]]
 fact = "fire.intensity_reported"
 op = "=="
@@ -86,3 +102,8 @@ value = true
 fact = "fire.burning_head"     # H4-3: some burning cells spread >= 67 m/h (the head)
 op = ">"
 value = 100
+
+[[assert]]
+fact = "fire.spots_total"   # H4-4: the CA run's firebrands reach the renderer
+op = "=="
+value = 309

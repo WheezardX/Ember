@@ -59,6 +59,24 @@ Facts: `smoke.{sources, plumes, puffs, max_top_m}`.
 Not yet (HCP4): plume/HUD wind-vane agreement from a real wind field, intensity-driven column
 heights from the sim, shadows from the plume, night/glow pass, Niagara embers.
 
+## Firebrands and spot fires (`AEmberFirebrandActor`; HCP4 H4-4)
+
+The stream's spot records (formats.md §4 TICK spots: launch cell, landing cell, launch / land time,
+ignited) are read once by worldcore (`Stream::spots()`). For the shown time the fire actor lists the
+firebrands launched in the last 30 sim minutes; the firebrand actor draws:
+
+- **showers:** each brand launched in the last 20 sim minutes is a loose shower of short spark
+  streaks from its launch cell to its landing cell (up out of the column, gliding down downwind,
+  cooling yellow -> red), fading with age;
+- **new spot fires:** a brand that ignited marks its landing cell with a ground flare for 30 sim
+  minutes after landing (the CA already burns the cell; the flare says "this one jumped").
+
+Sparks keep a minimum on-screen size (0.25 % of the distance) so a 150 m shower reads from altitude.
+Everything is a pure function of (brand, sim time, camera): deterministic stills, free scrubbing.
+`M_Firebrand` is additive and unlit, depth-faded into the ground. Facts: `fire.spots_total`,
+`fire.spots_ignited_total`, `fire.spots_recent`, `firebrands.showers / spot_glows / sprites`.
+Scenario field `firebrands = true` (default).
+
 ## Probes
 
 `[[fire_probes]]` (name, x, y in the replay grid's CRS) report `fire.probes.<name>` = the phase

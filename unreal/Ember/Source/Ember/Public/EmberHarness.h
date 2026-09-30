@@ -13,6 +13,7 @@ class AEmberGroundCoverActor;
 class AEmberEnvironment;
 class AEmberFireActor;
 class AEmberSmokeActor;
+class AEmberFirebrandActor;
 class ACameraActor;
 
 /**
@@ -127,6 +128,7 @@ private:
 	FString ReplayPath;        // Epic 4 replay (.replay.json) -> fire state player
 	bool bSmoke = true;        // smoke v0 plumes with the replay
 	double SmokeWindMs = 8.0;
+	bool bFirebrands = true;   // H4-4 ember showers / spot-fire glows with the replay
 	TArray<AEmberFireActor::FProbe> FireProbes;
 	FString PerfBookmark;  // "clay" or an absolute viz/looks/*.toml path
 	TArray<FBookmark> Bookmarks;
@@ -171,6 +173,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<AEmberEnvironment> Environment;
 	UPROPERTY(Transient) TObjectPtr<AEmberFireActor> Fire;
 	UPROPERTY(Transient) TObjectPtr<AEmberSmokeActor> Smoke;
+	UPROPERTY(Transient) TObjectPtr<AEmberFirebrandActor> Firebrands;
 	void SetFireTime(double SimS, double ClockS);
 	UPROPERTY(Transient) TObjectPtr<ACameraActor> Camera;
 };

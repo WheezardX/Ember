@@ -57,6 +57,13 @@ struct State {
     Metrics metrics;
 };
 
+// One firebrand (formats.md §4 TICK spots): launched from cell src, lands in cell dst.
+struct Spot {
+    uint32_t src = 0, dst = 0;     // cell indices (row-major, row 0 = north)
+    int32_t launch_s = 0, land_s = 0;
+    bool landed = false, ignited = false;
+};
+
 class EMBERWORLD_CORE_API Stream {
 public:
     // Loads and indexes the whole file. Empty string = ok, else the reason.
@@ -68,6 +75,8 @@ public:
     int32_t end_s() const { return ticks_.empty() ? start_s() : ticks_.back().t_s; }
     // Every cell's arrival time (seconds since t0), -1 = never, over the whole run.
     const std::vector<int32_t>& final_arrival() const { return arrival_; }
+    // Every firebrand of the run, in stream order (tick order = launch order).
+    const std::vector<Spot>& spots() const { return spots_; }
 
     // The state as of time t_s: the last tick whose t_s <= t (the initial keyframe before any).
     State at(int32_t t_s) const;
@@ -81,6 +90,7 @@ private:
     std::vector<KeyRec> keyframes_;
     std::vector<TickRec> ticks_;
     std::vector<int32_t> arrival_;
+    std::vector<Spot> spots_;
 };
 
 struct ReplayInfo {

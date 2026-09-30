@@ -146,7 +146,19 @@ std::string Stream::parse() {
                 c.p += kDirty;
                 if (idx < n && arr >= 0 && arrival_[idx] < 0) arrival_[idx] = arr;  // written once
             }
-            c.skip_array(kSpot);
+            const uint32_t ns = c.get<uint32_t>();
+            if (!c.need(static_cast<size_t>(ns) * kSpot)) break;
+            for (uint32_t i = 0; i < ns; ++i) {
+                Spot s;
+                std::memcpy(&s.src, bytes_.data() + c.p, 4);
+                std::memcpy(&s.dst, bytes_.data() + c.p + 4, 4);
+                std::memcpy(&s.launch_s, bytes_.data() + c.p + 8, 4);
+                std::memcpy(&s.land_s, bytes_.data() + c.p + 12, 4);
+                s.landed = bytes_[c.p + 16] != 0;
+                s.ignited = bytes_[c.p + 17] != 0;
+                c.p += kSpot;
+                spots_.push_back(s);
+            }
             c.skip_array(kOverlay);
             c.skip_array(kRejected);
             t.metrics = read_metrics(c);

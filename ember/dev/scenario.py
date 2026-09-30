@@ -147,6 +147,7 @@ class ScenarioMeta(_Strict):
     wind_from_deg: float = 270.0
     smoke: bool = True           # replay scenarios: smoke v0 plumes (bend with wind_from_deg)
     smoke_wind_ms: float = 8.0   # plume drift speed (m/s)
+    firebrands: bool = True      # replay scenarios: spot-fire ember showers + new spot glows (H4-4)
     veg_lineup: bool = False    # B3 silhouette sheet: one tree per species at the first capture's
     #                             target (row across the view) + a 1.8 m post, no scattered trees
     exec_cmds: list[str] = Field(default_factory=list)  # console commands after world load

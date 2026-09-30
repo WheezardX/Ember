@@ -74,6 +74,44 @@ TEST_CASE("fire: Jolly Mountain CP2 playback stream matches Epic 4's reader") {
     CHECK(std::to_string(fnv1a(a.data(), a.size() * 4)) == exp.at("final_arrival_fnv1a64").get<std::string>());
 }
 
+TEST_CASE("fire: Jolly CA run spot fires match Epic 4's reader") {
+    std::ifstream f(data("fire_jolly_ca_spots.expected.json"));
+    const auto exp = nlohmann::json::parse(f);
+    const std::string path = repo_path(exp.at("stream").get<std::string>());
+    if (!std::filesystem::exists(path)) {
+        MESSAGE("CP5 CA stream not present - skipped (" << path << ")");
+        return;
+    }
+    Stream s;
+    REQUIRE(s.open(path) == "");
+    const std::vector<Spot>& sp = s.spots();
+    REQUIRE(sp.size() == exp.at("count").get<size_t>());
+    int64_t landed = 0, ignited = 0, src = 0, dst = 0, launch = 0, land = 0;
+    for (const Spot& x : sp) {
+        landed += x.landed;
+        ignited += x.ignited;
+        src += x.src;
+        dst += x.dst;
+        launch += x.launch_s;
+        land += x.land_s;
+    }
+    CHECK(landed == exp.at("landed").get<int64_t>());
+    CHECK(ignited == exp.at("ignited").get<int64_t>());
+    CHECK(src == exp.at("sum_src").get<int64_t>());
+    CHECK(dst == exp.at("sum_dst").get<int64_t>());
+    CHECK(launch == exp.at("sum_launch_s").get<int64_t>());
+    CHECK(land == exp.at("sum_land_s").get<int64_t>());
+    for (const auto& [which, x] : {std::pair{"first", sp.front()}, std::pair{"last", sp.back()}}) {
+        const auto& e = exp.at(which);
+        INFO(which);
+        CHECK(x.src == e.at("src").get<uint32_t>());
+        CHECK(x.dst == e.at("dst").get<uint32_t>());
+        CHECK(x.launch_s == e.at("launch_s").get<int32_t>());
+        CHECK(x.land_s == e.at("land_s").get<int32_t>());
+        CHECK(x.ignited == (e.at("ignited").get<int>() != 0));
+    }
+}
+
 TEST_CASE("fire: replay points at its stream and world grid") {
     const std::string path = repo_path("runs/cp2/cp2-jolly-playback.replay.json");
     if (!std::filesystem::exists(path)) return;

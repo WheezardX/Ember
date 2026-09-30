@@ -1,6 +1,7 @@
 #include "EmberHarness.h"
 
 #include "EmberSmokeActor.h"
+#include "EmberFirebrandActor.h"
 
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
@@ -88,6 +89,7 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetNumberField(TEXT("wind_from_deg"), WindFromDeg);
 	J->TryGetBoolField(TEXT("smoke"), bSmoke);
 	J->TryGetNumberField(TEXT("smoke_wind_ms"), SmokeWindMs);
+	J->TryGetBoolField(TEXT("firebrands"), bFirebrands);
 	J->TryGetBoolField(TEXT("veg_lineup"), bVegLineup);
 	J->TryGetStringField(TEXT("perf_bookmark"), PerfBookmark);
 	J->TryGetStringField(TEXT("perf_orbit"), PerfOrbit);
@@ -294,6 +296,10 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 	if (Smoke)
 	{
 		Smoke->Rebuild(Loc, Rot);  // camera-facing, back-to-front puffs
+	}
+	if (Firebrands)
+	{
+		Firebrands->Rebuild(Loc, Rot);
 	}
 	Camera->GetCameraComponent()->SetFieldOfView(B.FovDeg);
 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
@@ -615,6 +621,14 @@ void AEmberHarness::SetFireTime(double SimS, double ClockS)
 			Smoke->Rebuild(Camera->GetActorLocation(), Camera->GetActorRotation());
 		}
 	}
+	if (Firebrands)
+	{
+		Firebrands->SetBrands(Fire->Firebrands);
+		if (Camera)
+		{
+			Firebrands->Rebuild(Camera->GetActorLocation(), Camera->GetActorRotation());
+		}
+	}
 	if (Terrain) Terrain->SetFireTime(ClockS);
 	if (Vegetation) Vegetation->SetFireTime(ClockS);
 	if (Cover) Cover->SetFireTime(ClockS);
@@ -805,6 +819,10 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 			Smoke->SetClock(PlayClock);
 			Smoke->Rebuild(FlyPawn->GetActorLocation(), PC->GetControlRotation());
 		}
+		if (Firebrands)
+		{
+			Firebrands->Rebuild(FlyPawn->GetActorLocation(), PC->GetControlRotation());
+		}
 	}
 	if (GEngine)
 	{
@@ -966,6 +984,15 @@ void AEmberHarness::Tick(float DeltaSeconds)
 					return;
 				}
 				Smoke->SetWind(WindFromDeg, SmokeWindMs);
+			}
+			if (bFirebrands)
+			{
+				Firebrands = GetWorld()->SpawnActor<AEmberFirebrandActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+				if (!Firebrands->Init(Terrain, Err))
+				{
+					Finish(2, TEXT("firebrands: ") + Err);
+					return;
+				}
 			}
 			SetFireTime(Fire->EndS, 0.0);  // default: the final footprint
 		}

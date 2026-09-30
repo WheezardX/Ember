@@ -1,0 +1,27 @@
+{
+ "stream": "runs/cp5/cp5-jolly-shadow-ca.ess",
+ "oracle": "ember/sim/stream.py iter_frames (Epic 4 reader)",
+ "count": 309,
+ "landed": 309,
+ "ignited": 22,
+ "sum_src": 92153654,
+ "sum_dst": 93143182,
+ "sum_launch_s": 513790800,
+ "sum_land_s": 513809346,
+ "first": {
+  "src": 295411,
+  "dst": 297813,
+  "launch_s": 1608120,
+  "land_s": 1608180,
+  "landed": 1,
+  "ignited": 1
+ },
+ "last": {
+  "src": 248480,
+  "dst": 250081,
+  "launch_s": 1750920,
+  "land_s": 1750980,
+  "landed": 1,
+  "ignited": 0
+ }
+}

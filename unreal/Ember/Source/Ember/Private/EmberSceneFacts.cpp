@@ -22,6 +22,7 @@
 #include "EmberEnvironment.h"
 #include "EmberFireActor.h"
 #include "EmberSmokeActor.h"
+#include "EmberFirebrandActor.h"
 #include "EmberTerrainActor.h"
 #include "EmberGroundCoverActor.h"
 #include "EmberVegetationActor.h"
@@ -247,6 +248,9 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		FireJ->SetNumberField(TEXT("burning_class2"), static_cast<double>(It->CellsByClass[2]));
 		FireJ->SetNumberField(TEXT("burning_class3"), static_cast<double>(It->CellsByClass[3]));
 		FireJ->SetNumberField(TEXT("burning_head"), static_cast<double>(It->CellsHead));
+		FireJ->SetNumberField(TEXT("spots_total"), It->SpotsTotal);
+		FireJ->SetNumberField(TEXT("spots_ignited_total"), It->SpotsIgnitedTotal);
+		FireJ->SetNumberField(TEXT("spots_recent"), It->Firebrands.Num());
 		FireJ->SetNumberField(TEXT("wind_ms"), It->WindSpeedMs());
 		FireJ->SetNumberField(TEXT("wind_from_deg"), It->WindFromDeg());
 		TSharedRef<FJsonObject> ProbesJ = MakeShared<FJsonObject>();
@@ -271,6 +275,17 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		break;
 	}
 	F->SetObjectField(TEXT("smoke"), SmokeJ);
+
+	TSharedRef<FJsonObject> BrandJ = MakeShared<FJsonObject>();
+	BrandJ->SetBoolField(TEXT("enabled"), false);
+	for (TActorIterator<AEmberFirebrandActor> It(W); It; ++It)
+	{
+		BrandJ->SetBoolField(TEXT("enabled"), true);
+		BrandJ->SetNumberField(TEXT("showers"), It->NumShowers);
+		BrandJ->SetNumberField(TEXT("spot_glows"), It->NumSpotGlows);
+		BrandJ->SetNumberField(TEXT("sprites"), It->NumSprites);
+	}
+	F->SetObjectField(TEXT("firebrands"), BrandJ);
 
 	TSharedRef<FJsonObject> Env = MakeShared<FJsonObject>();
 	for (TActorIterator<AEmberEnvironment> It(W); It; ++It)
