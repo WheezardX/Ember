@@ -9,6 +9,7 @@
 #include "Engine/PostProcessVolume.h"
 #include "Engine/SkyLight.h"
 #include "Engine/World.h"
+#include "Curves/CurveFloat.h"
 
 AEmberEnvironment::AEmberEnvironment()
 {
@@ -109,6 +110,51 @@ void AEmberEnvironment::SetSkylightLeaking(float Leak)
 		Post->Settings.bOverride_LumenSkylightLeaking = true;
 		Post->Settings.LumenSkylightLeaking = Leak;
 	}
+}
+
+void AEmberEnvironment::SetAutoExposure(float MinEv, float MaxEv, float BiasEv, float SpeedEv, float DarkAdapt, float DayEv)
+{
+	if (!Post)
+	{
+		return;
+	}
+	FPostProcessSettings& S = Post->Settings;
+	S.bOverride_AutoExposureMethod = true;
+	S.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
+	S.bOverride_AutoExposureMinBrightness = true;
+	S.AutoExposureMinBrightness = MinEv;
+	S.bOverride_AutoExposureMaxBrightness = true;
+	S.AutoExposureMaxBrightness = MaxEv;
+	S.bOverride_AutoExposureLowPercent = true;
+	S.AutoExposureLowPercent = 10.f;
+	S.bOverride_AutoExposureHighPercent = true;
+	S.AutoExposureHighPercent = 90.f;
+	S.bOverride_AutoExposureSpeedUp = true;
+	S.AutoExposureSpeedUp = SpeedEv;
+	S.bOverride_AutoExposureSpeedDown = true;
+	S.AutoExposureSpeedDown = SpeedEv;
+	S.bOverride_AutoExposureBias = true;
+	S.AutoExposureBias = BiasEv;
+	// Partial adaptation below daylight: a scene DayEv - x metres darker is lifted by only
+	// DarkAdapt * x (compensation curve over the metered EV100), so a forest floor or a dusk
+	// view becomes readable without turning into noon.
+	if (!ExposureCurve)
+	{
+		ExposureCurve = NewObject<UCurveFloat>(this);
+	}
+	FRichCurve& C = ExposureCurve->FloatCurve;
+	C.Reset();
+	C.AddKey(DayEv - 10.f, -(1.f - DarkAdapt) * 10.f);
+	C.AddKey(DayEv, 0.f);
+	C.AddKey(DayEv + 10.f, 0.f);
+	for (auto It = C.GetKeyHandleIterator(); It; ++It)
+	{
+		C.SetKeyInterpMode(*It, RCIM_Linear);
+	}
+	S.bOverride_AutoExposureBiasCurve = true;
+	S.AutoExposureBiasCurve = ExposureCurve;
+	ExposureBias = BiasEv;
+	bAutoExposure = true;
 }
 
 void AEmberEnvironment::SetExposure(float Ev100Bias)

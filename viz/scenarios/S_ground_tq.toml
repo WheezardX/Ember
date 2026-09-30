@@ -30,6 +30,7 @@ pitch_deg = -26
 fov_deg = 60
 sun = "afternoon"
 exposure_bias = 1.0          # under > 50 % canopy: ~3 stops over the open-sky views
+exposure_ev_min = -1.5       # auto: same view, floor lowered so the forest floor can adapt
 
 [[bookmarks]]
 name = "grass"

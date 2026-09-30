@@ -12,6 +12,7 @@ resolution = [2560, 1440]
 budget = "batch"
 fixed_lod = 14
 look = "clay"
+exposure_mode = "manual"  # side-by-side with gdaldem: fixed exposure
 exposure_bias = -2.0
 exec_cmds = ["ShowFlag.Fog 0", "ShowFlag.Atmosphere 0"]
 

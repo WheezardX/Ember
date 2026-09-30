@@ -88,7 +88,13 @@ replay = "..."                   # optional .replay.json (fire state; Phase 2)
 resolution = [2560, 1440]
 budget = "interactive"           # key into viz/budgets.toml
 perf_frames = 300                # 0 = no perf window
-exposure_bias = -2.0             # manual EV100 bias; captures never auto-expose
+exposure_mode = "auto"           # default; histogram metering, EV100 [0.5, 10], bias -1.3
+                                 # (exposure_ev_min / exposure_ev_max / auto_exposure_bias).
+                                 # Captures adapt instantly, so stills stay deterministic;
+                                 # play mode adapts at 1.5 stops/s. A bookmark may set its own
+                                 # exposure_ev_min (closed canopy meters below the floor).
+exposure_bias = -2.0             # manual EV100 bias (exposure_mode = "manual": calibration
+                                 # fixtures S_terrain_gray / S_tq_hillshade)
 
 [[bookmarks]]                    # orbit-style: survives terrain edits
 name = "overview_n"
@@ -129,7 +135,7 @@ extend past it (teanaway_dev: 1.44 km of data in a 1.92 km tile grid).
 * The run itself succeeded (`run_status.json` exit 0).
 
 Why the thresholds are tight (0.995 / 0.98): two unchanged runs are **pixel-identical** on the
-runner (fixed exposure, fixed warmup, no DOF/motion blur). The HCP0 calibration found that the
+runner (instant-adapting or fixed exposure, fixed warmup, no DOF/motion blur). The HCP0 calibration found that the
 first defaults (0.97 / 0.90) let both a real material change and a flipped-normal regression
 pass. Tight thresholds are cheap because noise is zero; loosen per capture (with a comment) for
 views that are legitimately non-deterministic (Niagara, later).

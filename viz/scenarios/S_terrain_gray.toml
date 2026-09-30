@@ -10,6 +10,7 @@ budget = "interactive"
 perf_frames = 300
 fixed_lod = 14       # the fixture: finest LOD everywhere, so tile/triangle asserts stay exact
 look = "clay"        # clay fixture: goldens independent of the terrain look
+exposure_mode = "manual"  # fixed-exposure calibration fixture
 exposure_bias = -2.0   # chosen by the HCP0 sweep (checkpoints/HCP0)
 
 [[bookmarks]]

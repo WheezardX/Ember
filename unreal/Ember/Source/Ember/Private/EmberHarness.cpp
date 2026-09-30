@@ -128,6 +128,15 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	{
 		ExposureBias = static_cast<float>(Ev);
 	}
+	FString ExpMode;
+	if (J->TryGetStringField(TEXT("exposure_mode"), ExpMode))
+	{
+		bAutoExposure = ExpMode == TEXT("auto");
+	}
+	double ExpV = 0;
+	if (J->TryGetNumberField(TEXT("exposure_ev_min"), ExpV)) ExposureEvMin = static_cast<float>(ExpV);
+	if (J->TryGetNumberField(TEXT("exposure_ev_max"), ExpV)) ExposureEvMax = static_cast<float>(ExpV);
+	if (J->TryGetNumberField(TEXT("auto_exposure_bias"), ExpV)) AutoExposureBias = static_cast<float>(ExpV);
 	double Leak = 0;
 	if (J->TryGetNumberField(TEXT("skylight_leaking"), Leak))
 	{
@@ -163,6 +172,11 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 		{
 			B.bExposure = true;
 			B.ExposureBias = BEv;
+		}
+		if (O->TryGetNumberField(TEXT("exposure_ev_min"), BEv))
+		{
+			B.bEvMin = true;
+			B.EvMin = BEv;
 		}
 		Bookmarks.Add(B);
 	}
@@ -220,6 +234,11 @@ bool AEmberHarness::Start(const FString& PlanPath, AEmberEnvironment* Env)
 	if (Environment)
 	{
 		Environment->SetExposure(ExposureBias);
+		if (bAutoExposure)
+		{
+			// captures: adapt at once (each still settles on the same value); play: natural pace
+			Environment->SetAutoExposure(ExposureEvMin, ExposureEvMax, AutoExposureBias, bPlay ? 1.5f : 200.f);
+		}
 		Environment->SetSkylightLeaking(SkylightLeaking);
 	}
 	ShotHandle = UGameViewportClient::OnScreenshotCaptured().AddUObject(this, &AEmberHarness::OnScreenshot);
@@ -281,7 +300,12 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 	{
 		PC->SetViewTarget(Camera);
 	}
-	if (Environment)
+	if (Environment && bAutoExposure)  // auto: a view may lower (or raise) the metering floor
+	{
+		Environment->SetAutoExposure(B.bEvMin ? static_cast<float>(B.EvMin) : ExposureEvMin, ExposureEvMax,
+		                             AutoExposureBias, bPlay ? 1.5f : 200.f);
+	}
+	else if (Environment)
 	{
 		Environment->SetExposure(B.bExposure ? static_cast<float>(B.ExposureBias) : ExposureBias);
 	}

@@ -45,6 +45,8 @@ private:
 		double TargetZ = TNumericLimits<double>::Lowest();  // > Lowest: aim height override (m)
 		bool bExposure = false;    // true: this view's own exposure (EV100 bias)
 		double ExposureBias = 0.0;
+		bool bEvMin = false;       // true: this view's own auto-exposure floor (EV100)
+		double EvMin = 0.0;
 	};
 	struct FOrbit
 	{
@@ -103,6 +105,8 @@ private:
 	int32 ResX = 1920, ResY = 1080, PerfFrames = 0;
 	float ExposureBias = -2.f;
 	float SkylightLeaking = 0.f;
+	bool bAutoExposure = false;
+	float ExposureEvMin = -4.f, ExposureEvMax = 4.f, AutoExposureBias = 0.f;
 	int32 FixedLod = -1;          // >= 0: load that LOD only (fixtures); -1: stream around the camera
 	double RefineFactor = 1.5;
 	FString LookPath = TEXT("clay");

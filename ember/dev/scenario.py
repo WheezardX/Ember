@@ -38,7 +38,11 @@ class Bookmark(_Strict):
     sun: str = "noon"           # a key into the UE sun presets (dawn | noon | dusk | ...)
     # Exposure for this view (EV100 bias); None = the scenario's. A camera under closed canopy
     # needs a few stops more than the open-sky views the scenario exposure is set for.
+    # Manual exposure only; auto exposure meters each view itself.
     exposure_bias: float | None = None
+    # Auto exposure: this view's metering floor (EV100); None = the scenario's. Under closed
+    # canopy the scene meters below the default floor and would stay clamped dark.
+    exposure_ev_min: float | None = None
 
     @model_validator(mode="after")
     def _one_target(self) -> Bookmark:
@@ -108,7 +112,17 @@ class ScenarioMeta(_Strict):
     # Perf along a path: the perf window flies this orbit / flyover in real time (one pose per
     # frame, no captures) so streaming and hitches are measured, not a parked camera.
     perf_orbit: str | None = None
-    exposure_bias: float = -2.0  # manual exposure EV100 bias (captures must not auto-expose)
+    exposure_bias: float = -2.0  # manual exposure EV100 bias (exposure_mode = "manual")
+    # Exposure (HCP4, Brad 2026-09-30: fix exposure before the fire look). "auto": histogram
+    # metering clamped to [exposure_ev_min, exposure_ev_max] (EV100), brightest 10 % ignored
+    # (flames, sun glints), adapting instantly in captures (deterministic) and at a natural
+    # pace in play mode; auto_exposure_bias compensates (EV). "manual": the fixed bias above.
+    # Defaults from the 2026-09-30 sweep over every still (runs/exp_sweep_d): daylight views
+    # land near the old manual -2 frames, dusk / backlit / under-canopy views lift 2-3 stops.
+    exposure_mode: Literal["manual", "auto"] = "auto"
+    exposure_ev_min: float = 0.5
+    exposure_ev_max: float = 10.0
+    auto_exposure_bias: float = -1.3
     # Lumen skylight leaking (post-process, 0..1): an ambient floor so a forest floor under closed
     # canopy is dim, not black (ground plane v1: close-ups under trees rendered pure black).
     # 0 = engine default (every scenario before the ground plane).

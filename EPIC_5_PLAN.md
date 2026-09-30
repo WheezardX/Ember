@@ -427,6 +427,14 @@ playback stays the HCP3 truth-to-observation scene.
   head toward them.
 - **H4-5 eye-level fire (carried from HCP3 / GP5):** flames with shape instead of paint, no
   torching blowout, no char contour rings, less red bounce on trunks.
+- **Note (Brad, 2026-09-30, not in scope yet):** the burned interior goes straight to black, but
+  a real fire keeps burning and smouldering inside the perimeter and keeps smoking. Consider
+  interior residual burning / smoulder / smoke later.
+- **Exposure first (Brad, 2026-09-30):** fixed before the look work - it affects every review.
+  DONE: histogram auto exposure is the scenario default (EV100 floor 0.5, ceiling 10, bias -1.3,
+  brightest 10 % ignored so flames do not pull the frame down; captures adapt instantly and stay
+  deterministic). Per-bookmark `exposure_ev_min` for views under closed canopy. The gray and
+  hillshade fixtures stay manual. All goldens re-blessed.
 - **Bundle:** intensity-class A/B stills, spot / ember moments, plume vs wind-vane MP4, perf with
   full VFX (budget holds). Night pass and exposure work only if time is left (exposure is on the
   8g list anyway).
