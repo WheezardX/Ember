@@ -110,11 +110,20 @@ def _local_low_percentile(z: np.ndarray, own: np.ndarray, body: np.ndarray) -> n
     ok = np.isfinite(lev)
     _, (ri, ci) = ndimage.distance_transform_edt(~ok, return_indices=True)
     lev = lev[ri, ci]
-    cells = np.repeat(np.repeat(lev, b, axis=0), b, axis=1)[:h, :w]
-    num = ndimage.uniform_filter(np.where(body, cells, 0.0), size=2 * b + 1)
-    den = ndimage.uniform_filter(body.astype(np.float64), size=2 * b + 1)
-    smooth = np.where(den > 0, num / np.maximum(den, 1e-9), cells)
-    return smooth[body]
+    # Bilinear between block centres: a continuous level field. Holding each block flat left
+    # 50 m terraces (Lake Kachess: 151 levels, steps to 14 cm - the "strips", 8g); the data's
+    # own variation stays (a reservoir flown at different pool heights, a river's gradient).
+    rr, cc = np.mgrid[0:h, 0:w].astype(np.float64)
+    u = (rr - (b - 1) / 2.0) / b
+    v = (cc - (b - 1) / 2.0) / b
+    cells = ndimage.map_coordinates(lev, [u, v], order=1, mode="nearest")
+    # then a masked mean along the body (twice): neighbouring blocks can differ by over a metre
+    # (pool heights between swaths), so spread each transition over ~100 m
+    for _ in range(2):
+        num = ndimage.uniform_filter(np.where(body, cells, 0.0), size=2 * b + 1)
+        den = ndimage.uniform_filter(body.astype(np.float64), size=2 * b + 1)
+        cells = np.where(den > 0, num / np.maximum(den, 1e-9), cells)
+    return cells[body]
 
 
 def build(region_dir: Path, out_dir: Path) -> dict:

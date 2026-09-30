@@ -385,8 +385,11 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   better distant texture). The game camera will likely be mostly top-down / oblique, which limits
   what is visible: plan LOD and streaming against that camera, not the free cam.
 - **Water:** river edges are blocky (10 m grid) - interpolate + spline overlays (hydrography
-  centrelines). The water surface breaks into strips with gaps, on lakes too (Lake Kachess), cause
-  undiagnosed (per-neighbourhood levels? per-row patches? tile edges?).
+  centrelines). The water surface broke into strips with gaps, on lakes too (Lake Kachess) - FIXED
+  2026-09-30: levels were flat 50 m blocks (reservoir swaths flown at different pool heights:
+  Kachess spans 1.5 m) drawn as disconnected per-cell quads. Now a continuous level field
+  (bilinear between blocks + smoothing; one level per lake would not work for reservoirs) on a
+  shared-vertex water mesh. Blocky shorelines remain (interpolation / splines still to do).
 - **Hitching while flying** - FIXED 2026-09-30 (S_stream_tq: 28 -> 0 frames over 33 ms, max 503 -> 12 ms). Was: tile compose, ground-cover cell builds (5 surface queries per
   instance, each scanning all loaded tiles; pending cells rebuilding every frame) and tree cell
   builds all run on the game thread. Move them async, index tile samplers spatially, throttle

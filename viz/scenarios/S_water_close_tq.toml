@@ -1,0 +1,38 @@
+# Water close-ups (8g: "the water looks like a series of strips with noticeable gaps"): low
+# oblique passes over Lake Kachess, where the reservoir's LiDAR was flown at different pool
+# heights. The surface must be one continuous sheet (no steps, no cracks).
+render_scenario_version = 1
+
+[scenario]
+name = "S_water_close_tq"
+description = "Water close-ups on Lake Kachess: continuous surface, no terraces or cracks"
+world = "terrain:three_queens_2026"
+resolution = [1920, 1080]
+look = "viz/looks/terrain_default.toml"
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "kachess_low"          # 60 m up, grazing across the water
+target_frac = [0.372, 0.792]
+distance_m = 400
+yaw_deg = 335
+pitch_deg = -8
+fov_deg = 60
+sun = "morning"
+
+[[bookmarks]]
+name = "kachess_down"         # looking down on the surface from 150 m
+target_frac = [0.372, 0.792]
+distance_m = 200
+yaw_deg = 20
+pitch_deg = -50
+fov_deg = 60
+sun = "noon"
+
+[[captures]]
+name = "kachess_low"
+bookmark = "kachess_low"
+
+[[captures]]
+name = "kachess_down"
+bookmark = "kachess_down"

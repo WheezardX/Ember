@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <set>
 #include <cstring>
 #include <cstdlib>
 #include <filesystem>
@@ -397,4 +398,33 @@ TEST_CASE("heightfield: SurfaceSampler::surface_at lies on the rendered triangle
         worst_tri = std::max(worst_tri, std::abs(z - Zc));
     }
     CHECK(worst_tri < 1e-3);        // on the triangles (float vertex positions)
+}
+
+TEST_CASE("heightfield: water surface is one connected mesh when the level varies (no cracks)") {
+    auto flat = [](double, double) { return 700.0; };
+    const auto root = testutil::write_synth_region("water_slope", flat);
+    auto rr = load_region(root.string());
+    REQUIRE(rr);
+    const Region& R = *rr.region;
+    const TileEntry& t = *R.find(5, 0, 0);
+    auto hr = read_tiff(R.path(t.height_tif));
+    REQUIRE(hr);
+    const Frame fr = region_frame(R);
+    // every pixel is water; the level climbs 5 cm per pixel eastward (a river / a reservoir
+    // flown at two pool heights)
+    Raster w = *hr.raster;
+    for (int y = 0; y < w.height; ++y)
+        for (int x = 0; x < w.width; ++x) {
+            const float v = static_cast<float>(699.0 + 0.05 * x);
+            std::memcpy(&w.data[(static_cast<size_t>(y) * w.width + x) * 4], &v, 4);
+        }
+    auto surf = build_water_mesh(R, t, w, fr);
+    REQUIRE(surf.ok());
+    const int tp = R.tile_px;
+    CHECK(surf.mesh.surface_triangles == 2 * tp * tp);
+    // shared corners: (tp+1)^2 vertices, not 4 per cell, and no two at the same x, y
+    CHECK(surf.mesh.positions.size() == static_cast<size_t>((tp + 1) * (tp + 1)));
+    std::set<std::pair<long long, long long>> xy;
+    for (const auto& p : surf.mesh.positions) xy.insert({std::llround(p.x), std::llround(p.y)});
+    CHECK(xy.size() == surf.mesh.positions.size());
 }

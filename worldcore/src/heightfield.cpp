@@ -329,6 +329,10 @@ namespace emberworld {
 
 MeshResult build_water_mesh(const Region& region, const TileEntry& tile, const Raster& level,
                             const Frame& frame, double lift_m) {
+    // One connected surface: a (tp+1)^2 corner grid shared by every water cell, each corner at
+    // the mean level of the water cells around it (apron cells included, so a neighbouring tile
+    // computes the same corner). Per-cell flat quads at their own level left a step and a crack
+    // at every level change - the "strips with gaps" on Lake Kachess (8g).
     MeshResult res;
     const int tp = region.tile_px, ov = region.overlap_px;
     if (level.width != tp + 2 * ov || level.height != tp + 2 * ov) {
@@ -336,29 +340,49 @@ MeshResult build_water_mesh(const Region& region, const TileEntry& tile, const R
         return res;
     }
     const double px = tile.content.width() / tp;
+    auto lv = [&](int i, int j, double& out) {  // cell (i, j) in content coordinates
+        const int x = i + ov, y = j + ov;
+        if (x < 0 || y < 0 || x >= level.width || y >= level.height) return false;
+        const double v = level.at(x, y);
+        if (level.is_nodata(v) || !std::isfinite(v)) return false;
+        out = v;
+        return true;
+    };
+    const int N = tp + 1;
+    std::vector<int64_t> index(static_cast<size_t>(N) * N, -1);
     TileMesh& m = res.mesh;
     m.min_z = 1e300;
     m.max_z = -1e300;
+    auto corner = [&](int ci, int cj) -> uint32_t {  // corner at the NW of cell (ci, cj)
+        int64_t& idx = index[static_cast<size_t>(cj) * N + ci];
+        if (idx >= 0) return static_cast<uint32_t>(idx);
+        double sum = 0.0, v = 0.0;
+        int n = 0;
+        for (int dj = -1; dj <= 0; ++dj)
+            for (int di = -1; di <= 0; ++di)
+                if (lv(ci + di, cj + dj, v)) {
+                    sum += v;
+                    ++n;
+                }
+        const double z = (n ? sum / n : 0.0) + lift_m;
+        const double x = tile.content.min_x + ci * px, y = tile.content.max_y - cj * px;
+        idx = static_cast<int64_t>(m.positions.size());
+        m.positions.push_back(frame.to_ue(x, y, z));
+        m.normals.push_back({0.0f, 0.0f, 1.0f});
+        m.uv0.push_back({static_cast<float>(x / 100.0), static_cast<float>(-y / 100.0)});
+        m.uv1.push_back({0.0f, 0.0f});
+        m.min_z = std::min(m.min_z, z);
+        m.max_z = std::max(m.max_z, z);
+        return static_cast<uint32_t>(idx);
+    };
+    double v = 0.0;
     for (int j = 0; j < tp; ++j)
         for (int i = 0; i < tp; ++i) {
-            const double lv = level.at(i + ov, j + ov);
-            if (level.is_nodata(lv) || !std::isfinite(lv)) continue;
-            const double z = lv + lift_m;
-            const double x0 = tile.content.min_x + i * px, x1 = x0 + px;
-            const double y0 = tile.content.max_y - j * px, y1 = y0 - px;  // north edge, south edge
-            const uint32_t a = static_cast<uint32_t>(m.positions.size());
-            const double xs[4] = {x0, x1, x0, x1}, ys[4] = {y0, y0, y1, y1};  // a b / c d
-            for (int k = 0; k < 4; ++k) {
-                m.positions.push_back(frame.to_ue(xs[k], ys[k], z));
-                m.normals.push_back({0.0f, 0.0f, 1.0f});
-                m.uv0.push_back({static_cast<float>(xs[k] / 100.0), static_cast<float>(-ys[k] / 100.0)});
-                m.uv1.push_back({0.0f, 0.0f});
-            }
+            if (!lv(i, j, v)) continue;
+            const uint32_t a = corner(i, j), b = corner(i + 1, j), c = corner(i, j + 1), d = corner(i + 1, j + 1);
             // same front-face rule as the terrain (see build_tile_mesh)
-            m.indices.insert(m.indices.end(), {a, a + 2, a + 1, a + 1, a + 2, a + 3});
+            m.indices.insert(m.indices.end(), {a, c, b, b, c, d});
             m.surface_triangles += 2;
-            m.min_z = std::min(m.min_z, z);
-            m.max_z = std::max(m.max_z, z);
         }
     return res;
 }
