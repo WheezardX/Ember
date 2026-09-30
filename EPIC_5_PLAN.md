@@ -411,6 +411,17 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   from that clock instead of the fixed 1-5 presets, so lighting matches the time shown.
   Plus a camera spotlight toggled with L (Brad: inspect dense foliage) - attached to the fly
   pawn, ~40 deg cone, 30-50 m range, warm white, no shadows (cheap); play mode only.
+- **Smoke far too thin for a fire this size (Brad, 2026-09-30, S_jolly_play):** smoke v0 draws
+  one plume per 300 m bin of recently burning cells (strength decays e^-(h since arrival)/1.5,
+  opacity <= 0.5, 20 k puff cap) - a big fire should put up a dense, towering column and a
+  broad smoke pall that fills the valleys downwind and dims the sun. Direction: plume density
+  from burning cells x intensity class (crown fire >> surface fire), a merged convection column
+  over the active front, a long-lived residual pall (hours) that drifts with the wind and
+  settles, and the smouldering interior smoking (ties to the interior-burning item). Check the
+  puff cap and budget at the same time.
+- **Springy limbs (8g item 3 follow-up):** "limbs don't look nearly so springy" after the
+  flutter change - wind is subtle in S_jolly_play (the stream's 2-5 m/s), so re-check in a
+  windy scene before closing.
 - **Ground still flat - no volume (Brad, 2026-09-30, after ground v2):** better, but the bump
   does not read; it still feels flat. Why (agent): ground v2's relief is normal perturbation
   only - no silhouette, no self-shadowing, no parallax - and under canopy the light is soft
