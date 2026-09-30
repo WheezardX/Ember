@@ -360,8 +360,8 @@ Terrain re-runs (`terrain veg` exists; canopy/tile only).
 
 ## 8g. Fly-through notes (Brad, 2026-09-29, first `ember-dev play` session)
 
-Notes only; nothing decided or scheduled yet. Ground plane v1 goldens (8 ground-level views)
-still await sign-off.
+Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED OFF by Brad
+(2026-09-29, "Yes for this checkpoint"); its 8 ground-level goldens re-blessed.
 
 - **Keep:** atmospheric lighting and the times of day work well; tree sway reads really well at
   distance; chunk streaming works as expected.
