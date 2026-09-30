@@ -11,6 +11,7 @@
 
 class AEmberTerrainActor;
 class UCameraComponent;
+class USpotLightComponent;
 
 UCLASS()
 class EMBER_API AEmberFlyPawn : public APawn
@@ -25,6 +26,11 @@ public:
 	TObjectPtr<UCameraComponent> Camera;
 	UPROPERTY(Transient)
 	TObjectPtr<AEmberTerrainActor> Terrain;
+	/** Inspection light on the camera (L in play mode): look into dense foliage. Off by default. */
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USpotLightComponent> Lamp;
+	void ToggleLamp();
+	bool IsLampOn() const;
 
 	/** Height of the camera above the ground (m); negative when no ground is loaded below. */
 	double GetAglM() const { return AglM; }

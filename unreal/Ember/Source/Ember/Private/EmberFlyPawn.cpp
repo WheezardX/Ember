@@ -1,6 +1,7 @@
 #include "EmberFlyPawn.h"
 
 #include "Camera/CameraComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
@@ -15,6 +16,29 @@ AEmberFlyPawn::AEmberFlyPawn()
 	Camera->bConstrainAspectRatio = false;
 	bUseControllerRotationPitch = true;
 	bUseControllerRotationYaw = true;
+	// Inspection lamp: warm white, ~40 deg cone, 40 m reach, no shadows (cheap in dense foliage).
+	// Bright enough to read under canopy at the auto exposure's forest-floor level.
+	Lamp = CreateDefaultSubobject<USpotLightComponent>(TEXT("Lamp"));
+	Lamp->SetupAttachment(Camera);
+	Lamp->SetMobility(EComponentMobility::Movable);
+	Lamp->SetIntensityUnits(ELightUnits::Candelas);
+	Lamp->SetIntensity(400.f);
+	Lamp->SetLightColor(FLinearColor(1.0f, 0.93f, 0.82f));
+	Lamp->SetAttenuationRadius(4000.f);
+	Lamp->SetInnerConeAngle(12.f);
+	Lamp->SetOuterConeAngle(22.f);
+	Lamp->SetCastShadows(false);
+	Lamp->SetVisibility(false);
+}
+
+void AEmberFlyPawn::ToggleLamp()
+{
+	Lamp->SetVisibility(!Lamp->IsVisible());
+}
+
+bool AEmberFlyPawn::IsLampOn() const
+{
+	return Lamp && Lamp->IsVisible();
 }
 
 bool AEmberFlyPawn::GroundZ(const FVector& UE, double& OutUEZ) const

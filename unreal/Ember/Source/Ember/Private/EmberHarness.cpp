@@ -34,6 +34,33 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogEmberHarness, Log, All);
 
+namespace
+{
+	/** "Sep 13 2017  14:05 PDT" for a Unix time, in US Pacific time (every world so far is in
+	 *  Washington; per-world time zones come with the timeline). US DST: 2nd Sunday of March
+	 *  02:00 local -> 1st Sunday of November 02:00 local (2007 rules). */
+	FString PacificTime(int64 Unix)
+	{
+		const FDateTime Utc = FDateTime::FromUnixTimestamp(Unix);
+		const int32 Y = Utc.GetYear();
+		auto NthSunday = [](int32 Year, int32 Month, int32 N)
+		{
+			const FDateTime First(Year, Month, 1);
+			const int32 Dow = static_cast<int32>(First.GetDayOfWeek());   // Monday = 0 .. Sunday = 6
+			return 1 + (6 - Dow + 7) % 7 + 7 * (N - 1);
+		};
+		// DST starts 02:00 PST = 10:00 UTC; ends 02:00 PDT = 09:00 UTC
+		const FDateTime DstOn(Y, 3, NthSunday(Y, 3, 2), 10);
+		const FDateTime DstOff(Y, 11, NthSunday(Y, 11, 1), 9);
+		const bool bDst = Utc >= DstOn && Utc < DstOff;
+		const FDateTime L = Utc + FTimespan::FromHours(bDst ? -7.0 : -8.0);
+		static const TCHAR* Months[] = {TEXT("Jan"), TEXT("Feb"), TEXT("Mar"), TEXT("Apr"), TEXT("May"), TEXT("Jun"),
+			TEXT("Jul"), TEXT("Aug"), TEXT("Sep"), TEXT("Oct"), TEXT("Nov"), TEXT("Dec")};
+		return FString::Printf(TEXT("%s %d %d  %02d:%02d %s"), Months[L.GetMonth() - 1], L.GetDay(), L.GetYear(),
+			L.GetHour(), L.GetMinute(), bDst ? TEXT("PDT") : TEXT("PST"));
+	}
+}
+
 AEmberHarness::AEmberHarness()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -831,6 +858,10 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 	{
 		bShowHelp = !bShowHelp;
 	}
+	if (PC->WasInputKeyJustPressed(EKeys::L))
+	{
+		FlyPawn->ToggleLamp();
+	}
 	static const TCHAR* Suns[] = {TEXT("dawn"), TEXT("morning"), TEXT("noon"), TEXT("afternoon"), TEXT("dusk")};
 	const FKey SunKeys[] = {EKeys::One, EKeys::Two, EKeys::Three, EKeys::Four, EKeys::Five};
 	for (int32 i = 0; i < 5; ++i)
@@ -893,18 +924,53 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 	}
 	if (GEngine)
 	{
-		const FString Status = FString::Printf(TEXT("%s   %s  %.0f m above ground   %.1f m/s (x%.2f)%s   %.0f fps"),
+		// On-screen debug messages draw newest key on top: add the bottom line first.
+		static const TCHAR* Help[] = {
+			TEXT("  Esc       quit"),
+			TEXT("  H         hide / show this help"),
+			TEXT("  L         lamp on / off (inspect dense foliage)"),
+			TEXT("  [  ]      fire playback rate  /2  x2"),
+			TEXT("  ,  .      fire time  -1 h  +1 h"),
+			TEXT("  P         play / pause the fire"),
+			TEXT("  1 - 5     sun: dawn  morning  noon  afternoon  dusk"),
+			TEXT("  G         walk (eye height, follows the ground) / fly"),
+			TEXT("  wheel     base speed      Shift x4   Ctrl x0.25"),
+			TEXT("  E Space   up       Q C   down"),
+			TEXT("  WASD      move     mouse   look"),
+			TEXT("CONTROLS"),
+		};
+		const int32 NHelp = UE_ARRAY_COUNT(Help);
+		for (int32 I = 0; I < NHelp; ++I)
+		{
+			if (bShowHelp)
+			{
+				GEngine->AddOnScreenDebugMessage(9100 + I, 0.f, FColor(210, 210, 200), Help[I]);
+			}
+			else
+			{
+				GEngine->RemoveOnScreenDebugMessage(9100 + I);
+			}
+		}
+		if (Fire)
+		{
+			// Fire clock (Brad, 8g): the date and local time of day being shown, and how long since
+			// ignition - "t = 503 h" alone said neither.
+			const int64 Unix = Fire->T0Unix + static_cast<int64>(PlayFireS);
+			const FString Local = PacificTime(Unix);
+			// Counted from the stream's t0 = the incident start (Jolly: Aug 11 2017 17:00 PDT); a
+			// model run's own first arrival can be weeks later (the CA run starts on day 19).
+			const double SinceH = PlayFireS / 3600.0;
+			const int32 Day = FMath::FloorToInt32(SinceH / 24.0) + 1;
+			const FString Clock = FString::Printf(TEXT("FIRE   %s   day %d   (%s%.0f h since the fire started)%s"),
+				*Local, Day, SinceH < 0 ? TEXT("") : TEXT("+"), SinceH,
+				bFirePlaying ? *FString::Printf(TEXT("   PLAYING %.3g h/s"), PlayRateH) : TEXT("   paused"));
+			GEngine->AddOnScreenDebugMessage(9002, 0.f, FColor(255, 190, 120), Clock);
+		}
+		const FString Status = FString::Printf(TEXT("%s   %s   %.0f m above ground   %.1f m/s (x%.2f)%s   %.0f fps"),
 			*Scenario, FlyPawn->IsWalking() ? TEXT("WALK") : TEXT("FLY"), FlyPawn->GetAglM(), FlyPawn->GetSpeedMs(),
-			FlyPawn->SpeedScale,
-			Fire ? *FString::Printf(TEXT("   fire t = %.1f h%s"), (PlayFireS - Fire->StartS) / 3600.0, bFirePlaying ? *FString::Printf(TEXT(" (playing %.2g h/s)"), PlayRateH) : TEXT("")) : TEXT(""),
+			FlyPawn->SpeedScale, FlyPawn->IsLampOn() ? TEXT("   LAMP") : TEXT(""),
 			DeltaSeconds > 0.f ? 1.0 / DeltaSeconds : 0.0);
 		GEngine->AddOnScreenDebugMessage(9001, 0.f, FColor::White, Status);
-		if (bShowHelp)
-		{
-			GEngine->AddOnScreenDebugMessage(9002, 0.f, FColor(200, 200, 200),
-				TEXT("mouse look | WASD move | E / Space up, Q / C down | Shift x4, Ctrl x0.25 | wheel: speed | G: walk / fly")
-				TEXT(" | 1-5: sun dawn..dusk | P: play fire, ',' '.': -/+ 1 h, '[' ']': rate | H: help | Esc: quit"));
-		}
 	}
 }
 

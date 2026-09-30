@@ -83,8 +83,7 @@ public:
 	int64 StreamBurned = 0;      // the stream's own metric at this tick
 	int64 T0Unix = 0;
 	int32 StartS = 0;
-	int32 EndS = 0;
-	FString ModelId;
+	int32 EndS = 0;	FString ModelId;
 	bool bIntensityReported = false;  // the stream carries intensity classes (>= 2 somewhere)
 	bool bUseIntensity = true;        // set before Load; false draws it as if it had none (A/B)
 	// The tick's grid-mean 10 m wind (stream metrics): velocity, the air moves TOWARD (u, v).

@@ -399,7 +399,12 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   pixel-identical run to run and have loosened thresholds - S_ground_fire_tq/front and
   S_jolly_hcp4/head_eye_503h (eye-level fire), S_ground_tq/litter (under canopy, lowered
   exposure floor). Suspects: Lumen / translucency temporal history, auto exposure amplifying it.
-  Find the source and restore the tight thresholds.
+  Find the source and restore the tight thresholds. New evidence (2026-09-30 evening):
+  S_ground_tq/trunk_slope - identical camera facts in every run, yet one run shows a whole
+  trunk elsewhere (ssim 0.88 vs the two runs after it, which agree): CONTENT differs, not only
+  lighting - suspect streaming-order dependence in near cover / vegetation (ground-cover cells
+  built before the finest LOD, snag placement, tier switches). S_jolly_hcp4/mixed_oblique_460h
+  borderline (0.978 / 0.994) as well.
 - **Fly-around verdicts (Brad, 2026-09-30, S_jolly_play after ground v2):** active fire area
   "pretty good for where we are ... enough to prove out the tech and show a clear path forward"
   (fire look parked until the fundamentals are done); hitching much improved; logs on slopes
