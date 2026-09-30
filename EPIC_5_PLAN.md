@@ -419,6 +419,18 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   over the active front, a long-lived residual pall (hours) that drifts with the wind and
   settles, and the smouldering interior smoking (ties to the interior-burning item). Check the
   puff cap and budget at the same time.
+- **Hung-up trees float / are bare poles (Brad, 2026-09-30, S_jolly_play):** leaners are plain
+  logs (no limbs), and they pitch up 20-40 deg from a random ground spot, so the top ends in mid
+  air or on a crown's outermost twigs - they read as floating. Cause: cover placement knows
+  nothing about the real trees. Direction (Brad): anchor on a tree first - pick an actual tree
+  from the vegetation scatter near the candidate, choose a contact point on its trunk (a
+  crotch / branch junction at 30-70 % of its height, inside the crown, never the crown's
+  outer edge); then place the foot on the ground downhill / to the side at a distance that
+  gives a 20-45 deg lean, and size the stem to span foot -> contact (reject if no sane foot:
+  too steep, off the surface, through another trunk). Foot dug in and on the rendered surface
+  (as logs). Mesh: a fallen tree, not a pole - dead limbs along the stem, broken crown remnant
+  at the top, root wad / snapped butt at the foot. Needs the cover build to read tree
+  positions (worldcore scatter is available to it).
 - **Springy limbs (8g item 3 follow-up):** "limbs don't look nearly so springy" after the
   flutter change - wind is subtle in S_jolly_play (the stream's 2-5 m/s), so re-check in a
   windy scene before closing.
