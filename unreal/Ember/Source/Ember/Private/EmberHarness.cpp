@@ -296,6 +296,7 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 		const double Z = FMath::Max(B.bCamAgl ? Gz + B.CamZ : B.CamZ, Gz + 0.3);
 		Loc = Terrain->WorldToUE(B.CamX, B.CamY, Z);
 		CameraClearanceM = FMath::Min(3.0, Z - Gz);
+		AbsCameraAglM = B.bCamAgl ? FMath::Max(0.3, B.CamZ) : -1.0;   // re-seated on the rendered surface in warmup
 	}
 	else
 	{
@@ -320,6 +321,7 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 			Loc.Z = FMath::Max(Loc.Z, Terrain->WorldToUE(0.0, 0.0, Gz + 3.0).Z);
 		}
 		CameraClearanceM = 3.0;
+		AbsCameraAglM = -1.0;
 	}
 
 	if (!Camera)
@@ -1127,7 +1129,19 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			const emberworld::Frame& F = Terrain->GetFrame();
 			FVector Loc = Camera->GetActorLocation();
 			double Gz = 0.0;
-			if (Terrain->GroundHeightAt(F.anchor_x + Loc.X / 100.0, F.anchor_y - Loc.Y / 100.0, Gz))
+			double Sz = 0.0;
+			if (AbsCameraAglM >= 0.0 && Terrain->SurfaceAt(F.anchor_x + Loc.X / 100.0, F.anchor_y - Loc.Y / 100.0, Sz))
+			{
+				// An absolute camera at eye height stands on the RENDERED surface: the disk DEM's
+				// nearest corner is metres off on a steep slope (a 32 deg camera ended up underground).
+				const double Want = Terrain->WorldToUE(0.0, 0.0, Sz + AbsCameraAglM).Z;
+				if (FMath::Abs(Want - Loc.Z) > 1.0)
+				{
+					Loc.Z = Want;
+					Camera->SetActorLocation(Loc);
+				}
+			}
+			else if (Terrain->GroundHeightAt(F.anchor_x + Loc.X / 100.0, F.anchor_y - Loc.Y / 100.0, Gz))
 			{
 				const double MinZ = Terrain->WorldToUE(0.0, 0.0, Gz + CameraClearanceM).Z;
 				if (Loc.Z < MinZ)

@@ -160,8 +160,9 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 				Cam->SetNumberField(TEXT("world_x_m"), Wx);
 				Cam->SetNumberField(TEXT("world_y_m"), Wy);
 				Cam->SetNumberField(TEXT("world_z_m"), Wz);
+				// Height over the rendered surface (the disk DEM's nearest corner as a fallback).
 				double Gz = 0.0;
-				if (It->GroundHeightAt(Wx, Wy, Gz))
+				if (It->SurfaceAt(Wx, Wy, Gz) || It->GroundHeightAt(Wx, Wy, Gz))
 				{
 					Cam->SetNumberField(TEXT("agl_m"), Wz - Gz);
 				}

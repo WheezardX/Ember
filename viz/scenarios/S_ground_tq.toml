@@ -68,6 +68,18 @@ pitch_deg = -14
 fov_deg = 60
 sun = "afternoon"
 
+[[bookmarks]]
+name = "trunk_slope"         # 8g tree grounding: a 32 deg south-facing timber slope (TL, cover 40-70 %),
+camera_xy = [635571.7, 5251732.3]  # seen across the slope from 14 m west at eye height, so
+yaw_deg = 90                 # trunk bases show in profile (downhill = right of frame)
+pitch_deg = -8
+fov_deg = 70
+sun = "afternoon"
+
+[[captures]]
+name = "trunk_slope"
+bookmark = "trunk_slope"
+
 [[captures]]
 name = "litter"
 bookmark = "litter"

@@ -232,7 +232,46 @@ AEmberVegetationActor::FPreparedVegPtr AEmberVegetationActor::PrepareTile(const 
 		T.Slot = Slot;
 		T.Variant = static_cast<int32>(VariantHash % static_cast<uint64>(SlotNumMeshes[Slot]));
 		T.HeightM = static_cast<float>(In.height_m);
+		// Grounding (Brad, 8g): on a slope the trunk's downhill side floated over the ground and
+		// every tree stood perfectly plumb. The rendered surface's slope at the trunk sinks the base
+		// by slope x trunk radius (+10 cm), and the tree leans a little downhill (15 % of the slope
+		// angle, <= 4 deg) plus up to 1.5 deg of per-tree tilt (a position hash, render policy).
+		double Gx = 0.0, Gy = 0.0;
+		if (bSurface)
+		{
+			double Ze = Z, Zw = Z, Zn = Z, Zs = Z;
+			if (Surface.height_at(In.x + 1.0, In.y, Ze) && Surface.height_at(In.x - 1.0, In.y, Zw)
+				&& Surface.height_at(In.x, In.y + 1.0, Zn) && Surface.height_at(In.x, In.y - 1.0, Zs))
+			{
+				Gx = 0.5 * (Ze - Zw);   // dz/dx, east
+				Gy = 0.5 * (Zn - Zs);   // dz/dy, north
+			}
+		}
+		const double Slope = FMath::Sqrt(Gx * Gx + Gy * Gy);
+		const double TrunkR = FMath::Clamp(0.015 * In.height_m, 0.1, 0.6);
+		Z -= Slope * TrunkR + 0.1;
+		const uint64 TiltHash = emberworld::scatter::hash64({static_cast<uint64>(FMath::RoundToInt64(In.x * 100.0)),
+			static_cast<uint64>(FMath::RoundToInt64(In.y * 100.0)), 0x7117ull});
+		const double TiltAz = (TiltHash & 0xFFFF) / 65536.0 * 2.0 * PI;
+		const double TiltDeg = ((TiltHash >> 16) & 0xFFFF) / 65536.0 * 1.5;
+		const double LeanDeg = FMath::Min(4.0, 0.15 * FMath::RadiansToDegrees(FMath::Atan(Slope)));
+		// Lean vector in the world plane (x east, y north): downhill + tilt, as angle x direction.
+		FVector2D Lean = FVector2D::ZeroVector;
+		if (Slope > 1e-6)
+		{
+			Lean += FVector2D(-Gx, -Gy) / Slope * LeanDeg;
+		}
+		Lean += FVector2D(FMath::Cos(TiltAz), FMath::Sin(TiltAz)) * TiltDeg;
 		T.Xf = FitInstance(SlotFirstMesh[Slot] + T.Variant, In.height_m, In.radius_m, In.yaw_rad, Terrain->WorldToUE(In.x, In.y, Z));
+		const double LeanTotal = Lean.Size();
+		if (LeanTotal > 1e-6)
+		{
+			// Tip the tree about its base: UE axes are x east, y south, so the world lean (e, n)
+			// is the UE direction (e, -n); rotating +Z toward it turns about Z x dir.
+			const FVector Dir(Lean.X / LeanTotal, -Lean.Y / LeanTotal, 0.0);
+			const FQuat Tip(FVector::CrossProduct(FVector::UpVector, Dir).GetSafeNormal(), FMath::DegreesToRadians(LeanTotal));
+			T.Xf.SetRotation(Tip * T.Xf.GetRotation());
+		}
 		const int32 Cx = FMath::Clamp(static_cast<int32>((In.x - Tile.content.min_x) / CW), 0, CellsPerSide - 1);
 		const int32 Cy = FMath::Clamp(static_cast<int32>((Tile.content.max_y - In.y) / CH), 0, CellsPerSide - 1);
 		VT.Cells[Cy * CellsPerSide + Cx].Trees.Add(VT.Trees.Add(MoveTemp(T)));

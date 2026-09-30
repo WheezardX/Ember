@@ -102,6 +102,7 @@ private:
 	bool OrbitPose(const FOrbit& O, int32 Frame, FBookmark& Out, FString& OutError) const;
 	void BookmarkTargetXY(const FBookmark& B, double& Wx, double& Wy) const;
 	double CameraClearanceM = 3.0;   // the warmup lift keeps the camera this far over the ground
+	double AbsCameraAglM = -1.0;     // >= 0: an absolute camera at this height over the rendered surface
 	/** Flyovers: a smooth aim height per frame so the camera holds altitude like a drone instead
 	 * of tracing every 10 m bump of the ground under the aim point. */
 	void PrepareFlyoverHeights(const FOrbit& O);

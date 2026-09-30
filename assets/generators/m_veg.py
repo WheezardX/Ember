@@ -148,10 +148,13 @@ def build_material():
         "float3 o = float3(D.xy * bend * sway * (0.7 + 0.6 * gust), -0.15 * bend * sway);\n"
         "float la = frac(Rnd * 13.7) * 6.2831853;\n"               # static lean, 0..12 cm/(10 m)^2
         "o.xy += float2(cos(la), sin(la)) * 12.0 * frac(Rnd * 3.3) * h * h;\n"
-        "float fp = dot(Local, float3(0.021, 0.017, 0.013)) + ph;\n"
-        "float fl = A * (S / 6.0) * (0.4 + 0.6 * gust) * (1.5 + 2.5 * h);\n"  # twig flutter, cm
-        "o += fl * float3(sin(T * 7.3 + fp) * D.x, sin(T * 6.1 + fp * 1.3) * D.y + "
-        "0.4 * sin(T * 8.7 + fp), 0.6 * sin(T * 9.1 + fp * 0.7));\n"
+        # Twig flutter, cm. Brad (8g): close up the branches looked springy - whole sprays
+        # bouncing in phase at ~1.3 Hz by up to 9 cm. Now smaller, slower and decorrelated over
+        # ~20 cm (neighbouring twigs out of step): a shimmer, not a bounce. Sway is unchanged.
+        "float fp = dot(Local, float3(0.053, 0.047, 0.041)) + ph;\n"
+        "float fl = A * (S / 6.0) * (0.4 + 0.6 * gust) * (0.5 + 0.9 * h);\n"
+        "o += fl * float3(sin(T * 3.9 + fp) * D.x, sin(T * 3.3 + fp * 1.3) * D.y + "
+        "0.3 * sin(T * 4.6 + fp), 0.4 * sin(T * 4.9 + fp * 0.7));\n"
         "return o;\n"))
     link(local, "", wind, "Local")
     link(opos, "", wind, "Pivot")
