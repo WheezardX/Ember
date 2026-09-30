@@ -346,7 +346,20 @@ femi = custom("EmberFireGlow", -450, 700,
     "float persist = RepClass * lerp(0.25, 0.6, saturate((cls - 1.0) * 0.5));\n"
     "float alive = lerp(persist, 1.0, front);\n"
     "float breakup = saturate(N * 1.0 + 0.75);\n"
-    "float flick = 0.7 + 0.3 * sin(T * 7.0 + N * 23.0) * sin(T * 3.1 + N * 11.0);\n"
+    # Flicker phase from a 1.5 m value noise, one period per blob. (It was N * 23: several sine
+    # periods across the smooth 2.5 m noise froze into concentric rings in every still - the
+    # "char contour rings" of HCP3 / GP5.)
+    "float2 fq = WP.xy / 150.0;\n"
+    "float2 fi = floor(fq), ff = frac(fq);\n"
+    "ff = ff * ff * (3.0 - 2.0 * ff);\n"
+    # corners wrapped into [0, 1024) before the sin hash (large-world coordinates lose it)
+    "float2 fc0 = fi - 1024.0 * floor(fi / 1024.0);\n"
+    "float2 fc1 = fc0 + 1.0; fc1 -= 1024.0 * floor(fc1 / 1024.0);\n"
+    "const float2 hk = float2(12.9898, 78.233);\n"
+    "float4 fh = frac(sin(float4(dot(fc0, hk), dot(float2(fc1.x, fc0.y), hk),\n"
+    "                            dot(float2(fc0.x, fc1.y), hk), dot(fc1, hk))) * 43758.5453);\n"
+    "float fph = lerp(lerp(fh.x, fh.y, ff.x), lerp(fh.z, fh.w, ff.x), ff.y) * 6.2832;\n"
+    "float flick = 0.7 + 0.3 * sin(T * 7.0 + fph) * sin(T * 3.1 + fph * 1.7);\n"
     "float3 flame = lerp(float3(3.0, 0.45, 0.04), float3(5.0, 1.8, 0.25), front) * flick;\n"
     # HCP4: the class reads as colour, not only brightness (IR-map legibility, design doc 5.2):
     # creeping surface fire a dim deep red, class 2 the orange above, crown fire yellow-white.
@@ -373,7 +386,10 @@ femi = custom("EmberFireGlow", -450, 700,
     "float smoulder = burning * (1.0 - front) * 0.07 * patch;\n"
     "float embers = saturate(F.g * 2.0) * (1.0 - saturate(F.r * 4.0)) * inside\n"
     "             * saturate(1.0 - age_h / 12.0) * patch * 0.08;\n"
-    "return G * (burning * clsk * alive * breakup * flame\n"
+    # H4-5: within the flame cards' range (AEmberFlameActor: full to 220 m, gone by 400 m) the
+    # cards are the flames; the ground under them is a glowing bed, not a white-hot wash.
+    "float cards = saturate((40000.0 - length(WP - Cam)) / 18000.0);\n"
+    "return G * (burning * clsk * alive * breakup * flame * lerp(1.0, 0.12, cards)\n"
     "            + (smoulder + embers) * float3(1.2, 0.18, 0.02));\n"))
 link(ftex, "RGBA", femi, "F")
 link(noise, "", femi, "N")

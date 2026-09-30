@@ -23,6 +23,7 @@
 #include "EmberFireActor.h"
 #include "EmberSmokeActor.h"
 #include "EmberFirebrandActor.h"
+#include "EmberFlameActor.h"
 #include "EmberTerrainActor.h"
 #include "EmberGroundCoverActor.h"
 #include "EmberVegetationActor.h"
@@ -286,6 +287,16 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		BrandJ->SetNumberField(TEXT("sprites"), It->NumSprites);
 	}
 	F->SetObjectField(TEXT("firebrands"), BrandJ);
+
+	TSharedRef<FJsonObject> FlameJ = MakeShared<FJsonObject>();
+	FlameJ->SetBoolField(TEXT("enabled"), false);
+	for (TActorIterator<AEmberFlameActor> It(W); It; ++It)
+	{
+		FlameJ->SetBoolField(TEXT("enabled"), true);
+		FlameJ->SetNumberField(TEXT("cells"), It->NumCells);
+		FlameJ->SetNumberField(TEXT("cards"), It->NumCards);
+	}
+	F->SetObjectField(TEXT("flames"), FlameJ);
 
 	TSharedRef<FJsonObject> Env = MakeShared<FJsonObject>();
 	for (TActorIterator<AEmberEnvironment> It(W); It; ++It)

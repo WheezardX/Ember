@@ -14,6 +14,7 @@ class AEmberEnvironment;
 class AEmberFireActor;
 class AEmberSmokeActor;
 class AEmberFirebrandActor;
+class AEmberFlameActor;
 class ACameraActor;
 
 /**
@@ -129,6 +130,7 @@ private:
 	bool bSmoke = true;        // smoke v0 plumes with the replay
 	double SmokeWindMs = 8.0;
 	bool bFirebrands = true;   // H4-4 ember showers / spot-fire glows with the replay
+	bool bFlames = true;       // H4-5 eye-level flame cards with the replay
 	TArray<AEmberFireActor::FProbe> FireProbes;
 	FString PerfBookmark;  // "clay" or an absolute viz/looks/*.toml path
 	TArray<FBookmark> Bookmarks;
@@ -174,6 +176,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<AEmberFireActor> Fire;
 	UPROPERTY(Transient) TObjectPtr<AEmberSmokeActor> Smoke;
 	UPROPERTY(Transient) TObjectPtr<AEmberFirebrandActor> Firebrands;
+	UPROPERTY(Transient) TObjectPtr<AEmberFlameActor> Flames;
 	void SetFireTime(double SimS, double ClockS);
 	UPROPERTY(Transient) TObjectPtr<ACameraActor> Camera;
 };

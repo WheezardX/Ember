@@ -23,14 +23,14 @@
       }
     },
     "m_terrain.py": {
-      "script_sha256": "e5a51b1fd8d5c8a23c6a069bf2e2675be0005751d9c15bc9febfee1374d9e8ea",
+      "script_sha256": "4db35ad7df5ba12646169c92216ff1b358b323c71e7112982f1a4723d753bcc3",
       "outputs": {
         "/Game/Ember/Generated/M_Terrain": "unreal/Ember/Content/Ember/Generated/M_Terrain.uasset",
         "/Game/Ember/Generated/T_LinearBlack": "unreal/Ember/Content/Ember/Generated/T_LinearBlack.uasset"
       }
     },
     "m_veg.py": {
-      "script_sha256": "4245aa689be8e30dc159efedfe4406880360d968c3cb90bc1529182dcb8fc115",
+      "script_sha256": "4cf366759deef908aff1c345634faf01da2d0d8d3bc4c8c502f018a0e5590408",
       "outputs": {
         "/Game/Ember/Generated/M_Veg": "unreal/Ember/Content/Ember/Generated/M_Veg.uasset"
       }
@@ -184,6 +184,12 @@
       "script_sha256": "2141f1b4e6ad0d638f14dd578bcd2179de366d76f859d9c2a75c4dad4e34d56f",
       "outputs": {
         "/Game/Ember/Generated/M_Firebrand": "unreal/Ember/Content/Ember/Generated/M_Firebrand.uasset"
+      }
+    },
+    "m_flame.py": {
+      "script_sha256": "f1dbeef6ce85584425d656cd32b23ba1ff66a1d1151adb4781530a17c8261727",
+      "outputs": {
+        "/Game/Ember/Generated/M_Flame": "unreal/Ember/Content/Ember/Generated/M_Flame.uasset"
       }
     },
     "ground_cover.py": {

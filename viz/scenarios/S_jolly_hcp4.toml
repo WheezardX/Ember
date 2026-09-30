@@ -68,6 +68,15 @@ pitch_deg = -15
 fov_deg = 60
 sun = "afternoon"
 
+[[bookmarks]]
+name = "head_eye"             # 503 h: eye level, 120 m ahead of a crown-fire head (669 m/h toward 148),
+target_frac = [0.5725, 0.7065]  # looking back into it
+distance_m = 120
+yaw_deg = 328
+pitch_deg = -6
+fov_deg = 70
+sun = "afternoon"
+
 [[captures]]
 name = "mixed_oblique_460h"
 bookmark = "mixed_oblique"
@@ -92,6 +101,11 @@ t_s = 1810800
 name = "spot_side_459h"
 bookmark = "spot_side"
 t_s = 1652520
+
+[[captures]]
+name = "head_eye_503h"
+bookmark = "head_eye"
+t_s = 1810800
 
 [[assert]]
 fact = "fire.intensity_reported"

@@ -217,6 +217,48 @@ void AEmberFireActor::SetTime(double TSeconds)
 		});
 }
 
+void AEmberFireActor::BurningNear(double X, double Y, double RadiusM, TArray<FEmberBurningCell>& Out) const
+{
+	Out.Reset();
+	if (State.phase.empty())
+	{
+		return;
+	}
+	const double Cx = (X - Grid.origin_x) / CellM - 0.5;
+	const double Cy = (Grid.origin_y - Y) / CellM - 0.5;
+	const int32 Rc = FMath::CeilToInt32(RadiusM / CellM);
+	const int32 X0 = FMath::Max(0, FMath::FloorToInt32(Cx) - Rc), X1 = FMath::Min(Nx - 1, FMath::CeilToInt32(Cx) + Rc);
+	const int32 Y0 = FMath::Max(0, FMath::FloorToInt32(Cy) - Rc), Y1 = FMath::Min(Ny - 1, FMath::CeilToInt32(Cy) + Rc);
+	const std::vector<int32_t>& Arrival = Stream.final_arrival();
+	const double R2 = FMath::Square(RadiusM / CellM);
+	for (int32 Iy = Y0; Iy <= Y1; ++Iy)
+	{
+		for (int32 Ix = X0; Ix <= X1; ++Ix)
+		{
+			if (FMath::Square(Ix - Cx) + FMath::Square(Iy - Cy) > R2)
+			{
+				continue;
+			}
+			const int32 I = Iy * Nx + Ix;
+			const uint8 Phase = State.phase[I];
+			const bool bArrived = Arrival[I] >= 0 && Arrival[I] <= TimeS;
+			// As SetTime draws it: a cell burns from its exact arrival time.
+			if (!(Phase == emberworld::fire::Burning || (bArrived && Phase == emberworld::fire::Unburned)))
+			{
+				continue;
+			}
+			FEmberBurningCell C;
+			C.X = Grid.origin_x + (Ix + 0.5) * CellM;
+			C.Y = Grid.origin_y - (Iy + 0.5) * CellM;
+			C.Cls = bIntensityReported ? FMath::Clamp(static_cast<int32>(State.intensity[I]), 1, 3) : 3;
+			C.AgeS = Arrival[I] >= 0 ? FMath::Max(0.0, TimeS - Arrival[I]) : 0.0;
+			C.Spread = Spread.IsValidIndex(I) ? Spread[I] / 255.f : 0.f;
+			C.Index = static_cast<uint32>(I);
+			Out.Add(C);
+		}
+	}
+}
+
 int32 AEmberFireActor::PhaseAt(double WorldX, double WorldY) const
 {
 	const int32 Cx = FMath::FloorToInt32((WorldX - Grid.origin_x) / CellM);

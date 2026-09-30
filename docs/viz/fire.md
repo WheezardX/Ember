@@ -59,6 +59,26 @@ Facts: `smoke.{sources, plumes, puffs, max_top_m}`.
 Not yet (HCP4): plume/HUD wind-vane agreement from a real wind field, intensity-driven column
 heights from the sim, shadows from the plume, night/glow pass, Niagara embers.
 
+## Eye-level flames (`AEmberFlameActor`; HCP4 H4-5)
+
+Near the camera the terrain's flame glow is a flat wash, so the flame actor stands procedural
+flame cards (`M_Flame`, additive, unlit) on every burning cell within 400 m (full to 220 m, fading
+out by 400 m, where the terrain glow takes over; M_Terrain dims its own flame term to a glowing bed
+over the same range). Per class: surface fire 14 cards per 30 m cell, 0.4-1.1 m; class 2 10 cards,
+1.2-3.5 m; crown fire 6 cards, 6-22 m (a stream without classes is class 3). Freshness and the head
+(FireTex A) scale the height as they scale the glow; cards closer than max(6 m, 1.2 x height) to
+the camera are skipped. The flame is defined in world units from the card centre (instance data,
+not the mesh UVs): a teardrop tongue whose edge and top the fire-clock noise tears, with a finer
+internal flicker; the card is oversized so the tongue never meets its edge. Stills freeze the
+fire clock, so captures stay deterministic. Tune the shape offline: the numpy mirror of the HLSL
+renders a strip of cards in seconds. Facts: `flames.cells`, `flames.cards`. Scenario field
+`flames = true` (default).
+
+M_Veg torching is now tongues of flame licking up through the crown (3-D value noise scrolling up
+on the fire clock) at a quarter of the old strength, not the whole crown painted orange. The old
+flicker phase (N x 23 over a smooth 2.5 m noise) froze into concentric contour rings in every
+still; it now comes from a 1.5 m value noise, one period per blob.
+
 ## Firebrands and spot fires (`AEmberFirebrandActor`; HCP4 H4-4)
 
 The stream's spot records (formats.md §4 TICK spots: launch cell, landing cell, launch / land time,

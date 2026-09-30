@@ -34,6 +34,16 @@ struct FEmberFirebrand
 	uint32 Key = 0;              // index in the stream: stable per-brand seeds
 };
 
+/** A burning cell as rendered (HCP4 H4-5 flame cards). */
+struct FEmberBurningCell
+{
+	double X = 0.0, Y = 0.0;     // cell centre, metres (region CRS)
+	int32 Cls = 3;               // intensity class 1..3 (3 when the stream has none)
+	double AgeS = 0.0;           // sim seconds since arrival
+	float Spread = 0.f;          // 0..1 (FireTex A): the head is fast
+	uint32 Index = 0;            // cell index: stable per-cell seeds
+};
+
 /**
  * The fire state player (EPIC_5_PLAN D1, D7). Loads an Epic 4 replay (+ its state stream) and,
  * for any sim time, writes the fire state into one texture over the replay's world grid:
@@ -98,6 +108,9 @@ public:
 	TArray<FEmberSmokeSource> SmokeSources;
 	static constexpr int32 SmokeBinCells = 10;       // 300 m bins on the 30 m grid
 	static constexpr double SmokeDecayH = 1.5;       // cells smoke e^-(h since arrival)/1.5
+
+	/** Burning cells (as rendered) whose centres lie within RadiusM of (X, Y), metres. */
+	void BurningNear(double X, double Y, double RadiusM, TArray<FEmberBurningCell>& Out) const;
 
 	/** The phase shown at a world point (metres, region CRS); -1 outside the grid. Probes. */
 	int32 PhaseAt(double WorldX, double WorldY) const;

@@ -443,6 +443,12 @@ playback stays the HCP3 truth-to-observation scene.
   of spotting). First look was a neat arch ("rainbow"), now a loose shower of short streaks.
 - **H4-5 eye-level fire (carried from HCP3 / GP5):** flames with shape instead of paint, no
   torching blowout, no char contour rings, less red bounce on trunks.
+  First pass done 2026-09-30: `AEmberFlameActor` flame cards (procedural `M_Flame`, height by class,
+  freshness and head) within 400 m; M_Terrain's flame term dims to a glowing bed under them; M_Veg
+  torching is sparse tongues at 1/4 strength; the contour rings were the frozen flicker phase
+  (N x 23), now a 1.5 m value noise. New capture `head_eye_503h`. Open: flames still read a
+  little sparse / candle-like; trunk bounce not separately addressed (the orange on trunks in the
+  afternoon views is mostly the low sun).
 - **Note (Brad, 2026-09-30, not in scope yet):** the burned interior goes straight to black, but
   a real fire keeps burning and smouldering inside the perimeter and keeps smoking. Consider
   interior residual burning / smoulder / smoke later.

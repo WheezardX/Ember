@@ -21,6 +21,19 @@ mel = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 
 
+def vnoise3(p, expr, out):
+    """HLSL for a smooth 3-D value noise of `expr` (small coordinates) into float `out` (0..1).
+    `p` prefixes the temporaries so several can live in one custom node."""
+    corner = "frac(sin(dot({i} + float3({x}, {y}, {z}), float3(12.9898, 78.233, 37.719))) * 43758.5453)"
+    c = [corner.format(i=f"{p}i", x=x, y=y, z=z) for z in (0, 1) for y in (0, 1) for x in (0, 1)]
+    return (
+        f"float3 {p} = {expr};\n"
+        f"float3 {p}i = floor({p}), {p}f = frac({p});\n"
+        f"{p}f = {p}f * {p}f * (3.0 - 2.0 * {p}f);\n"
+        f"float {out} = lerp(lerp(lerp({c[0]}, {c[1]}, {p}f.x), lerp({c[2]}, {c[3]}, {p}f.x), {p}f.y),\n"
+        f"                  lerp(lerp({c[4]}, {c[5]}, {p}f.x), lerp({c[6]}, {c[7]}, {p}f.x), {p}f.y), {p}f.z);\n")
+
+
 # ------------------------------------------------------------------ master material
 def build_material():
     full = f"{PATH}/M_Veg"
@@ -218,13 +231,18 @@ def build_material():
         "            * (1.0 - smoothstep(200.0, 400.0, Local.z));\n"
         "burning *= torch;\n"
         "float h = saturate(Local.z / 3000.0);\n"
-        "float flick = 0.6 + 0.4 * sin(T * 8.0 + Rnd * 40.0 + Local.z * 0.01);\n"
-        "float3 flame = lerp(float3(7.0, 1.2, 0.1), float3(10.0, 4.5, 0.8), h) * flick;\n"
-        "float3 e = burning * (0.25 + 0.75 * A) * flame;\n"
-        # smouldering wood: starts ~20 min after the front, fades over ~a day, in patches
+        # H4-5: tongues of flame licking up through the crown (3-D value noise scrolling upward
+        # on the fire clock), not the whole crown painted orange (the HCP3 "torching blowout").
+        + vnoise3("tq", "Local * 0.012 + float3(Rnd * 31.0, Rnd * 17.0, -T * 2.4)", "tn") +
+        "float tongue = saturate((tn - 0.58) * 5.0);\n"
+        "float3 flame = lerp(float3(5.0, 1.0, 0.1), float3(8.0, 3.6, 0.7), h * tn);\n"
+        # the flame shapes are M_Flame's cards now; the crown only glows through them
+        "float3 e = 0.25 * burning * (0.15 + 0.85 * A) * tongue * tongue * flame;\n"
+        # smouldering wood: starts ~20 min after the front, fades over ~a day, in patches (value
+        # noise; the old product of sines repeated every ~3 m and banded trunks)
         "float sm = Sm * saturate(F.g * 2.0) * On * (1.0 - A) * saturate(age_h / 0.3) * exp(-age_h / 20.0);\n"
-        "float3 q = WP * 0.02 + Rnd * 17.0;\n"
-        "float patch = saturate(sin(q.x) * sin(q.y * 1.3) * sin(q.z * 1.7) * 4.0 - 0.8);\n"
+        + vnoise3("sq", "Local * 0.035 + Rnd * 17.0", "sn") +
+        "float patch = saturate((sn - 0.66) * 6.0);\n"
         "float pulse = 0.75 + 0.25 * sin(T * 1.1 + Rnd * 30.0);\n"
         "e += sm * patch * pulse * float3(2.6, 0.38, 0.03);\n"
         "return G * e;\n"))

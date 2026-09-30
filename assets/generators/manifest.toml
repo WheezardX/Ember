@@ -172,6 +172,10 @@ script = "m_firebrand.py"
 outputs = ["/Game/Ember/Generated/M_Firebrand"]
 
 [[generator]]
+script = "m_flame.py"
+outputs = ["/Game/Ember/Generated/M_Flame"]
+
+[[generator]]
 script = "ground_cover.py"
 depends = ["groundgen.py", "treegen.py"]
 outputs = [

@@ -2,6 +2,7 @@
 
 #include "EmberSmokeActor.h"
 #include "EmberFirebrandActor.h"
+#include "EmberFlameActor.h"
 
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
@@ -90,6 +91,7 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetBoolField(TEXT("smoke"), bSmoke);
 	J->TryGetNumberField(TEXT("smoke_wind_ms"), SmokeWindMs);
 	J->TryGetBoolField(TEXT("firebrands"), bFirebrands);
+	J->TryGetBoolField(TEXT("flames"), bFlames);
 	J->TryGetBoolField(TEXT("veg_lineup"), bVegLineup);
 	J->TryGetStringField(TEXT("perf_bookmark"), PerfBookmark);
 	J->TryGetStringField(TEXT("perf_orbit"), PerfOrbit);
@@ -300,6 +302,10 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 	if (Firebrands)
 	{
 		Firebrands->Rebuild(Loc, Rot);
+	}
+	if (Flames)
+	{
+		Flames->Rebuild(Loc);
 	}
 	Camera->GetCameraComponent()->SetFieldOfView(B.FovDeg);
 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
@@ -629,6 +635,14 @@ void AEmberHarness::SetFireTime(double SimS, double ClockS)
 			Firebrands->Rebuild(Camera->GetActorLocation(), Camera->GetActorRotation());
 		}
 	}
+	if (Flames)
+	{
+		Flames->SetFireTime(ClockS);
+		if (Camera)
+		{
+			Flames->Rebuild(Camera->GetActorLocation());
+		}
+	}
 	if (Terrain) Terrain->SetFireTime(ClockS);
 	if (Vegetation) Vegetation->SetFireTime(ClockS);
 	if (Cover) Cover->SetFireTime(ClockS);
@@ -811,6 +825,7 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 		else
 		{
 			if (Terrain) Terrain->SetFireTime(PlayClock);  // flames keep flickering
+			if (Flames) Flames->SetFireTime(PlayClock);
 			if (Vegetation) Vegetation->SetFireTime(PlayClock);
 			if (Cover) Cover->SetFireTime(PlayClock);
 		}
@@ -822,6 +837,10 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 		if (Firebrands)
 		{
 			Firebrands->Rebuild(FlyPawn->GetActorLocation(), PC->GetControlRotation());
+		}
+		if (Flames)
+		{
+			Flames->Rebuild(FlyPawn->GetActorLocation());
 		}
 	}
 	if (GEngine)
@@ -991,6 +1010,15 @@ void AEmberHarness::Tick(float DeltaSeconds)
 				if (!Firebrands->Init(Terrain, Err))
 				{
 					Finish(2, TEXT("firebrands: ") + Err);
+					return;
+				}
+			}
+			if (bFlames)
+			{
+				Flames = GetWorld()->SpawnActor<AEmberFlameActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+				if (!Flames->Init(Terrain, Fire, Err))
+				{
+					Finish(2, TEXT("flames: ") + Err);
 					return;
 				}
 			}
