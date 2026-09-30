@@ -13,6 +13,7 @@ budget = "batch"
 fixed_lod = 14
 look = "clay"
 exposure_mode = "manual"  # side-by-side with gdaldem: fixed exposure
+skylight_leaking = 0.0    # engine-default ambient
 exposure_bias = -2.0
 exec_cmds = ["ShowFlag.Fog 0", "ShowFlag.Atmosphere 0"]
 

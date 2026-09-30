@@ -18,7 +18,6 @@ vegetation = true
 veg_radius_m = 1500
 veg_near_radius_m = 400
 exposure_bias = -2.0
-skylight_leaking = 0.25
 ground_cover = true
 
 [[bookmarks]]

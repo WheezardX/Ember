@@ -124,6 +124,27 @@ def build_material():
     link(vc, "A", sss_a, "B")
     if not mel.connect_material_property(sss_a, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR):
         raise RuntimeError("subsurface colour")
+    # Sky occlusion under canopy (ground v2): the ground-cover actor writes the canopy over each
+    # instance into custom data 0 (trees write nothing: 0 = open sky). Material AO scales only the
+    # sky / indirect light, so sunflecks stay bright while the blue sky no longer floods ferns and
+    # rocks under the trees (as M_Terrain's GroundCanopyOcclusion).
+    canopy = mel.create_material_expression(mat, unreal.MaterialExpressionPerInstanceCustomData, -300, 320)
+    canopy.set_editor_property("data_index", 0)
+    cocc = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -300, 400)
+    cocc.set_editor_property("parameter_name", "CanopyOcclusion")
+    cocc.set_editor_property("default_value", 0.8)
+    tree_h = mel.create_material_expression(mat, unreal.MaterialExpressionPerInstanceCustomData, -300, 480)
+    tree_h.set_editor_property("data_index", 1)       # trees: height (cm); cover: 0
+    # A tree's top is in the light: occlusion fades to 40 % of full at the crown top.
+    occ = custom("EmberCanopyOcc", -100, 350, ["C", "K", "H", "Local"], (
+        "float hf = H > 1.0 ? saturate(Local.z / H) : 0.0;\n"
+        "return 1.0 - K * saturate(C) * (1.0 - 0.6 * hf);\n"))
+    occ.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT1)
+    link(canopy, "", occ, "C")
+    link(cocc, "", occ, "K")
+    link(tree_h, "", occ, "H")                        # Local is linked once it exists (wind block)
+    if not mel.connect_material_property(occ, "", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION):
+        raise RuntimeError("ambient occlusion")
     rough = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -300, 200)
     rough.set_editor_property("parameter_name", "Roughness")
     rough.set_editor_property("default_value", 0.85)
@@ -143,6 +164,7 @@ def build_material():
                               unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_INSTANCE)
     local.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
     link(lpos, "", local, "")
+    link(local, "", occ, "Local")                     # canopy occlusion's height above the pivot
     wpos = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1100, 300)
     wpos.set_editor_property("world_position_shader_offset",
                              unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)

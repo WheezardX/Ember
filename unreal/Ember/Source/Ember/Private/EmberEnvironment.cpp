@@ -66,6 +66,14 @@ void AEmberEnvironment::Build()
 	S.MotionBlurAmount = 0.f;
 	S.bOverride_VignetteIntensity = true;
 	S.VignetteIntensity = 0.f;
+	// Shade white balance (ground v2): under canopy the frame is lit almost only by blue sky,
+	// and auto exposure lifts that into a cyan forest floor. A mild warm white balance in the
+	// shadows (and a touch in the midtones) keeps shade neutral-green / brown as the eye adapts
+	// it; sunlit tones (highlights) are untouched.
+	S.bOverride_ColorGainShadows = true;
+	S.ColorGainShadows = FVector4(1.10, 1.0, 0.86, 1.0);
+	S.bOverride_ColorGainMidtones = true;
+	S.ColorGainMidtones = FVector4(1.04, 1.0, 0.95, 1.0);
 	SetExposure(ExposureBias);
 	SetSun(TEXT("noon"));
 }
@@ -109,6 +117,10 @@ void AEmberEnvironment::SetSkylightLeaking(float Leak)
 	{
 		Post->Settings.bOverride_LumenSkylightLeaking = true;
 		Post->Settings.LumenSkylightLeaking = Leak;
+		// The leaked ambient stands in for light bounced off the forest itself: warm and dim,
+		// not the open sky's blue (a forest floor lit by leaked sky read cyan - ground v2).
+		Post->Settings.bOverride_LumenSkylightLeakingTint = true;
+		Post->Settings.LumenSkylightLeakingTint = FLinearColor(0.75f, 0.62f, 0.45f);
 	}
 }
 

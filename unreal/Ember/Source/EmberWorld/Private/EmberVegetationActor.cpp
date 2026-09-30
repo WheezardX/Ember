@@ -329,9 +329,12 @@ void AEmberVegetationActor::BuildCell(uint64 TileKey, int32 CellIndex, ETier Tie
 	}
 	const bool bNear = Tier == ETier::Near;
 	TArray<TArray<FTransform>> PerMesh;
+	TArray<TArray<float>> PerMeshData;   // M_Veg custom data: [canopy over the tree, tree height cm]
 	PerMesh.SetNum(SpeciesMesh.Num());
+	PerMeshData.SetNum(SpeciesMesh.Num());
 	TArray<int32> MeshSlot;
 	MeshSlot.Init(0, SpeciesMesh.Num());
+	const emberworld::Frame& Fr = Terrain->GetFrame();
 	for (int32 Ti : Cell.Trees)
 	{
 		const FVegTree& T = VT.Trees[Ti];
@@ -343,6 +346,14 @@ void AEmberVegetationActor::BuildCell(uint64 TileKey, int32 CellIndex, ETier Tie
 		const int32 First = (!bNear && SlotFirstLite[T.Slot] != INDEX_NONE) ? SlotFirstLite[T.Slot] : SlotFirstMesh[T.Slot];
 		PerMesh[First + T.Variant].Add(T.Xf);
 		MeshSlot[First + T.Variant] = T.Slot;
+		// Sky occlusion under the canopy (ground v2, as M_Terrain / ground cover): the trees are not
+		// in the distance-field scene, so an understory tree's needles got the whole blue sky.
+		float Mx[4] = {0, 0, 0, 0};
+		const FVector L = T.Xf.GetLocation();
+		const float Canopy = Terrain->GroundMixAt(Fr.anchor_x + L.X / 100.0, Fr.anchor_y - L.Y / 100.0, Mx, nullptr)
+			? FMath::Clamp(Mx[0], 0.f, 1.f) : 0.f;
+		PerMeshData[First + T.Variant].Add(Canopy);
+		PerMeshData[First + T.Variant].Add(static_cast<float>(T.HeightM * 100.0));
 	}
 	for (int32 Mi = 0; Mi < PerMesh.Num(); ++Mi)
 	{
@@ -377,9 +388,14 @@ void AEmberVegetationActor::BuildCell(uint64 TileKey, int32 CellIndex, ETier Tie
 		// Trees stay out of the distance-field scene: ~1.4 M DF objects cost ~0.9 GB VRAM (4.23 -> 3.32 GB
 		// at the S_tq_forest perf pose, D8 budget 4 GB). Lumen still sees them via screen traces.
 		C->bAffectDistanceFieldLighting = false;
+		C->NumCustomDataFloats = 2;
 		C->SetupAttachment(RootComponent);
 		C->RegisterComponent();
 		C->AddInstances(PerMesh[Mi], /*bShouldReturnIndices=*/false, /*bWorldSpace=*/true);
+		for (int32 I = 0; I < PerMesh[Mi].Num(); ++I)
+		{
+			C->SetCustomData(I, TArrayView<const float>(&PerMeshData[Mi][I * 2], 2), false);
+		}
 		Cell.Components.Add(C);
 		Cell.PerSpecies[S] += PerMesh[Mi].Num();
 	}

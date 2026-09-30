@@ -52,8 +52,10 @@ for s in SETS:
         tex = unreal.load_asset(full)
         if tex is None:
             raise RuntimeError(f"import failed: {full}")
+        # both kinds are data: C holds mean-0.5 colour MULTIPLIERS (an sRGB decode would make
+        # 2 x C average ~0.43 and darken the near ground), N slope / roughness / AO
+        tex.set_editor_property("srgb", False)
         if kind == "N":
-            tex.set_editor_property("srgb", False)
             tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_MASKS)
         tex.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_WORLD)
         # resident: captures happen seconds after load, before streamed mips would arrive

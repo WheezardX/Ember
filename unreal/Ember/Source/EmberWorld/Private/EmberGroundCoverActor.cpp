@@ -170,13 +170,20 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 	Cell.bPending = bMissing && ++Cell.Attempts < 120;
 	Cell.BuiltGeneration = Terrain->GetTileGeneration();
 	TArray<TArray<FTransform>> PerMesh;
+	TArray<TArray<float>> PerMeshCanopy;   // M_Veg custom data 0: canopy over the instance (sky occlusion)
 	PerMesh.SetNum(Meshes.Num());
+	PerMeshCanopy.SetNum(Meshes.Num());
 	for (const emberworld::CoverInstance& In : Out)
 	{
 		const int32 Mi = FirstMesh[In.item] + In.variant;
 		const FBoxSphereBounds B = Meshes[Mi]->GetBounds();
 		const double MeshH = FMath::Max(1.0, 2.0 * B.BoxExtent.Z);
 		const double S = In.height_m * 100.0 / MeshH;
+		// Canopy over the instance = the litter weight of the ground mix (canopy_to_litter), as
+		// M_Terrain uses it: the trees are not in the distance-field scene, so Lumen barely shades
+		// what stands under them from the sky - ferns and rocks glowed cyan under the canopy.
+		float Mx[4] = {0, 0, 0, 0};
+		const float Canopy = Terrain->GroundMixAt(In.x, In.y, Mx, nullptr) ? FMath::Clamp(Mx[0], 0.f, 1.f) : 0.f;
 		const emberworld::CoverPose Pose = Rules.items[In.item].pose;
 		if (Pose != emberworld::CoverPose::Upright)
 		{
@@ -184,6 +191,7 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 			if (PlaceLying(In, B, S, Pose, Xf))
 			{
 				PerMesh[Mi].Add(Xf);
+				PerMeshCanopy[Mi].Add(Canopy);
 			}
 			continue;
 		}
@@ -207,6 +215,7 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 		FVector Loc = Terrain->WorldToUE(In.x, In.y, Z);
 		Loc.Z -= (B.Origin.Z - B.BoxExtent.Z) * S + 0.06 * B.BoxExtent.Z * 2.0 * S;  // ~6 % sunk
 		PerMesh[Mi].Add(FTransform(FRotator(0.0, FMath::RadiansToDegrees(In.yaw_rad), 0.0), Loc, FVector(S)));
+		PerMeshCanopy[Mi].Add(Canopy);
 	}
 	for (int32 Mi = 0; Mi < PerMesh.Num(); ++Mi)
 	{
@@ -230,9 +239,14 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 		C->SetWorldPositionOffsetDisableDistance(static_cast<int32>(RadiusM * 100.0));
 		C->SetCullDistances(0, static_cast<int32>((RadiusM + CellM) * 100.0));
 		C->bAffectDistanceFieldLighting = false;
+		C->NumCustomDataFloats = 1;
 		C->SetupAttachment(RootComponent);
 		C->RegisterComponent();
 		C->AddInstances(PerMesh[Mi], /*bShouldReturnIndices=*/false, /*bWorldSpace=*/true);
+		for (int32 I = 0; I < PerMeshCanopy[Mi].Num(); ++I)
+		{
+			C->SetCustomDataValue(I, 0, PerMeshCanopy[Mi][I], false);
+		}
 		Cell.Components.Add(C);
 		Cell.Count += PerMesh[Mi].Num();
 	}

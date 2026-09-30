@@ -186,6 +186,12 @@ float fade = saturate((FadeFar - length(WP - Cam)) / max(FadeFar - FadeNear, 1.0
 float3 vn = normalize(VN);
 NormalWS = vn;
 Rough = R0;
+// Sky occlusion under canopy (material AO scales only sky / indirect light, not the sun): the
+// trees are not in the distance-field scene, so Lumen barely shades the forest floor from the
+// sky - it was lit flat blue-grey, which read as a court. Litter weight tracks canopy cover
+// (canopy_to_litter), at every distance.
+float canopy = saturate(Mix.x) * On;
+Occ = 1.0 - CanopyOcc * canopy;
 if (fade <= 0.0) { return Base; }
 // Projection (Brad, from GW2): top-down until the surface is steeper than 45 deg, then a hard
 // switch to the vertical plane the normal faces most (YZ or XZ). No blend: the jump lands on
@@ -217,13 +223,43 @@ float4 bw = max(hb - top, 0.0);
 float bs = max(hs - top, 0.0);
 float sum = dot(bw, float4(1, 1, 1, 1)) + bs + 1e-5;
 bw /= sum; bs /= sum;
-float3 mul = 2.0 * (bw.x * c0.rgb + bw.y * c1.rgb + bw.z * c2.rgb + bw.w * c3.rgb) + bs;
+// Ground v2 (8g, Brad: "a basketball court"). Each set's variation multiplies a colour that is
+// part the map's macro colour and part the set's OWN colour (AbsW: litter reads as brown needle
+// duff near the camera even where the map is canopy-tinted green).
+float3 own = bw.x * lerp(Base, AC0, AbsW.x) * 2.0 * c0.rgb + bw.y * lerp(Base, AC1, AbsW.y) * 2.0 * c1.rgb
+           + bw.z * lerp(Base, AC2, AbsW.z) * 2.0 * c2.rgb + bw.w * lerp(Base, AC3, AbsW.w) * 2.0 * c3.rgb
+           + bs * Base;
 float2 slope = bw.x * (n0.rg * 2 - 1) + bw.y * (n1.rg * 2 - 1) + bw.z * (n2.rg * 2 - 1) + bw.w * (n3.rg * 2 - 1);
 float rough = bw.x * n0.b + bw.y * n1.b + bw.z * n2.b + bw.w * n3.b + bs * R0;
 float ao = bw.x * n0.a + bw.y * n1.a + bw.z * n2.a + bw.w * n3.a + bs;
-NormalWS = normalize(vn + (tu * slope.x + tv * slope.y) * NS * fade);
+// Hummocks: the forest floor is never a plane - value-noise relief at ~1.2 m and ~0.35 m bends
+// the normal (finite differences, world XY) and darkens the hollows a little.
+float2 hp = WP.xy / 100.0;                       // metres
+float2 hs2[2] = { float2(1.2, 1.0), float2(0.35, 0.45) };   // (wavelength m, weight)
+float2 hg = 0;
+float hh = 0;
+[unroll] for (int k = 0; k < 2; ++k) {
+    float2 qq = hp / hs2[k].x + k * 17.3;
+    float2 qi = floor(qq), qf = frac(qq);
+    float2 qw = qf * qf * (3.0 - 2.0 * qf);
+    float2 dw = 6.0 * qf * (1.0 - qf);
+    float2 ci = qi - 1024.0 * floor(qi / 1024.0);
+    float2 cj = ci + 1.0; cj -= 1024.0 * floor(cj / 1024.0);
+    float4 hv = frac(sin(float4(dot(ci, float2(12.9898, 78.233)), dot(float2(cj.x, ci.y), float2(12.9898, 78.233)),
+                                dot(float2(ci.x, cj.y), float2(12.9898, 78.233)), dot(cj, float2(12.9898, 78.233)))) * 43758.5453);
+    float va = hv.x, vb = hv.y, vc = hv.z, vd = hv.w;
+    hh += hs2[k].y * (va + (vb - va) * qw.x + (vc - va) * qw.y + (va - vb - vc + vd) * qw.x * qw.y);
+    // analytic gradient of the bilinear-smoothstep value noise, per metre of world
+    hg += hs2[k].y / hs2[k].x * float2(dw.x * ((vb - va) + (va - vb - vc + vd) * qw.y),
+                                       dw.y * ((vc - va) + (va - vb - vc + vd) * qw.x));
+}
+float3 hn = float3(-hg * HumS, 0.0);
+ao *= lerp(1.0, 0.8 + 0.4 * saturate(hh / 1.45), HumS > 0 ? 1.0 : 0.0);
+NormalWS = normalize(vn + ((tu * slope.x + tv * slope.y) * NS + hn) * fade);
 Rough = lerp(R0, rough, fade);
-return Base * lerp(1.0, mul * ao, fade);
+// crevices: half the detail AO darkens the colour, all of it shades the sky light
+Occ *= lerp(1.0, ao, fade);
+return lerp(Base, own * lerp(1.0, ao, 0.5), fade);
 """
 
 mixtex = expr(unreal.MaterialExpressionTextureSampleParameter2D, -850, -420)
@@ -235,11 +271,12 @@ link(add, "", mixtex, "UVs")
 ground = custom("EmberGround", -250, -300,
                 ["Base", "Mix", "WP", "Cam", "VN", "Nlo", "On", "FadeNear", "FadeFar", "NS", "HC",
                  "R0", "LC", "LN", "GC", "GN", "RC", "RN", "SC", "SN", "RL", "RG", "RR", "RS",
-                 "CliffZ"],
+                 "CliffZ", "AC0", "AC1", "AC2", "AC3", "AbsW", "HumS", "CanopyOcc"],
                 GROUND_CODE)
 outs = []
 for oname, otype in (("NormalWS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
-                     ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)):
+                     ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1),
+                     ("Occ", unreal.CustomMaterialOutputType.CMOT_FLOAT1)):
     co = unreal.CustomOutput()
     co.set_editor_property("output_name", oname)
     co.set_editor_property("output_type", otype)
@@ -270,6 +307,30 @@ link(scalar("GroundNormal", 1.0, -650, -940), "", ground, "NS")
 link(scalar("GroundHeight", 0.6, -650, -1000), "", ground, "HC")
 link(scalar("Roughness", 0.92, -650, -1060), "", ground, "R0")
 link(scalar("GroundCliffNz", 0.707, -650, -1120), "", ground, "CliffZ")  # |N.z| below: vertical projection
+# Ground v2: each set's own colour (sRGB) and how much of it shows near the camera, and the
+# hummock relief strength.
+GROUND_OWN = {"Litter": ("#4A3322", 0.65), "Grass": ("#8C7F55", 0.35), "Rock": ("#9A9284", 0.4),
+              "Shrub": ("#4E4630", 0.4)}
+
+
+def _lin(hexcol):
+    c = [int(hexcol[i:i + 2], 16) / 255.0 for i in (1, 3, 5)]
+    return [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in c]
+
+
+for i, (set_name, (hexcol, _)) in enumerate(GROUND_OWN.items()):
+    v = expr(unreal.MaterialExpressionVectorParameter, -900, -1400 - 90 * i)
+    v.set_editor_property("parameter_name", f"GroundColor_{set_name}")
+    r, g, b = _lin(hexcol)
+    v.set_editor_property("default_value", unreal.LinearColor(r, g, b, 1.0))
+    link(v, "RGB", ground, f"AC{i}")
+absw = expr(unreal.MaterialExpressionVectorParameter, -900, -1800)
+absw.set_editor_property("parameter_name", "GroundOwnColor")
+absw.set_editor_property("default_value", unreal.LinearColor(*[w for _, w in GROUND_OWN.values()]))
+link(absw, "RGBA", ground, "AbsW")
+link(scalar("GroundHummocks", 0.12, -650, -1180), "", ground, "HumS")
+link(scalar("GroundCanopyOcclusion", 0.8, -650, -1240), "", ground, "CanopyOcc")
+to_property(ground, "Occ", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
 for i, (set_name, pin, rep) in enumerate((("Litter", "L", 250.0), ("Grass", "G", 300.0),
                                           ("Rock", "R", 400.0), ("Shrub", "S", 300.0))):
     for kind in ("C", "N"):
@@ -281,6 +342,10 @@ for i, (set_name, pin, rep) in enumerate((("Litter", "L", 250.0), ("Grass", "G",
         obj.set_editor_property("texture", t)
         if kind == "N":
             obj.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_MASKS)
+        else:
+            # data, not colour: mean-0.5 multipliers (sRGB decode made 2 x C average ~0.43, so
+            # the near ground rendered at under half its map brightness)
+            obj.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
         link(obj, "", ground, f"{pin}{kind}")
     link(scalar(f"Rep_{set_name}", rep, -1200, -1200 - 240 * i), "", ground, f"R{pin}")
 

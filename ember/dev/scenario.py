@@ -153,8 +153,10 @@ class ScenarioMeta(_Strict):
     auto_exposure_bias: float = -1.3
     # Lumen skylight leaking (post-process, 0..1): an ambient floor so a forest floor under closed
     # canopy is dim, not black (ground plane v1: close-ups under trees rendered pure black).
-    # 0 = engine default (every scenario before the ground plane).
-    skylight_leaking: float = 0.0
+    # Ground v2 (2026-09-30): default 0.15, tinted warm (AEmberEnvironment) - with sky occlusion
+    # under canopy (trees are not in the distance-field scene) it stands in for light bounced
+    # off the forest; without it eye-level shade under trees went black. 0 = engine default.
+    skylight_leaking: float = 0.15
     fixed_lod: int | None = None  # load one LOD everywhere (fixtures); None = stream (C3)
     lod_refine_factor: float = 1.5  # streaming: refine while distance < factor * tile span
     look: str = "viz/looks/terrain_default.toml"  # repo-relative look file, or "clay"

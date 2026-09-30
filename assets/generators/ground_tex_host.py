@@ -115,15 +115,16 @@ CHROMA = 0.45    # keep this much of each texel's colour deviation from its own 
 CONTRAST = 0.8   # and this much of the luminance contrast (the macro colour carries the hue)
 
 
-def finish(rgb: np.ndarray, height: np.ndarray, rough: np.ndarray, relief: float):
+def finish(rgb: np.ndarray, height: np.ndarray, rough: np.ndarray, relief: float,
+           chroma: float = CHROMA, contrast: float = CONTRAST):
     """-> (C RGBA uint8, N RGBA uint8). Colour: chroma and contrast softened, then mean-normalised
-    to 0.5 per channel (sRGB) so 2 x C is a multiplier with mean 1; normal offset from the
-    periodic height gradient; AO from local height."""
+    to 0.5 per channel so 2 x C is a multiplier with mean 1 (the texture is imported as linear
+    data); normal offset from the periodic height gradient; AO from local height."""
     rgb = np.clip(rgb, 0, 1)
     luma = rgb @ np.array([0.2126, 0.7152, 0.0722])
     lm = luma.mean()
-    luma2 = lm + (luma - lm) * CONTRAST
-    rgb = luma2[..., None] + (rgb - luma[..., None]) * CHROMA
+    luma2 = lm + (luma - lm) * contrast
+    rgb = luma2[..., None] + (rgb - luma[..., None]) * chroma
     rgb = np.clip(rgb * (0.5 / rgb.reshape(-1, 3).mean(0)), 0, 1)
     h = (height - height.min()) / (np.ptp(height) + 1e-9)
     gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * 0.5 * relief
@@ -136,31 +137,68 @@ def finish(rgb: np.ndarray, height: np.ndarray, rough: np.ndarray, relief: float
 
 
 # ---------------------------------------------------------------------------- the sets ----
+def blobs(n: int, rng, count: int, rx: tuple[float, float], ry: tuple[float, float],
+          dome: float = 0.5) -> tuple[np.ndarray, np.ndarray]:
+    """Ellipses on a torus (cones, bark flakes, leaves): (height 0..1 domed, id 0..1)."""
+    h = np.zeros((n, n), np.float32)
+    ident = np.zeros((n, n), np.float32)
+    for _ in range(count):
+        cx, cy = rng.uniform(0, n, 2)
+        ax, ay = rng.uniform(*rx), rng.uniform(*ry)
+        a = rng.uniform(0, np.pi)
+        r = int(max(ax, ay)) + 2
+        X, Y = np.meshgrid(np.arange(int(cx) - r, int(cx) + r + 1), np.arange(int(cy) - r, int(cy) + r + 1))
+        u = (X - cx) * np.cos(a) + (Y - cy) * np.sin(a)
+        v = -(X - cx) * np.sin(a) + (Y - cy) * np.cos(a)
+        d = (u / ax) ** 2 + (v / ay) ** 2
+        inside = d <= 1
+        val = (1 - d[inside]) ** dome * rng.uniform(0.7, 1.0)
+        Xi, Yi = X[inside] % n, Y[inside] % n
+        upd = val > h[Yi, Xi]
+        h[Yi[upd], Xi[upd]] = val[upd]
+        ident[Yi[upd], Xi[upd]] = rng.uniform(0, 1)
+    return h, ident
+
+
 def litter(n: int):
-    """Conifer forest floor: dark duff, a mat of needles (rust / tan / grey), twigs, cones, moss."""
+    """Conifer forest floor (v2, 8g: "less like a basketball court"): structure at every scale
+    of a 2.5 m tile - bare dark duff hollows between thick needle mats, needles in two ages
+    (fresh rust, old grey-brown), fallen sticks and small branches (15-60 cm), cones, bark
+    flakes (ponderosa plates), moss cushions; strong height so light rakes across it."""
     rng = np.random.default_rng(101)
+    s = n / 1024                                       # 1024 px ~ 2.5 m: 2.4 mm / px
     base = spectral(n, rng, 2.2, 1, 48)
+    mat = np.clip(spectral(n, rng, 2.4, 2, 16) * 0.55 + 0.6, 0, 1)   # needle-mat thickness
     duff = palette(np.clip(base * 0.18 + 0.5, 0, 1),
-                   [(0, "#2A1E14"), (0.5, "#3D2B1C"), (1, "#5A4430")])
-    s = n / 1024
-    nh, nid = stamp_lines(n, rng, int(26000 * s * s), (10 * s, 22 * s), 0.8)
-    needle_col = palette(nid, [(0, "#6B4A2C"), (0.35, "#8C6A42"), (0.6, "#A38356"),
-                               (0.8, "#7A5E3E"),
-                               (1, "#5E5446")])
-    th, _ = stamp_lines(n, rng, int(220 * s * s), (40 * s, 120 * s), 2.2 * s)
-    twig_col = np.broadcast_to(np.array([0.30, 0.22, 0.15]), (n, n, 3))
-    moss_m = np.clip(spectral(n, rng, 3.0, 2, 24) * 0.9 - 0.9, 0, 1)
+                   [(0, "#1E150E"), (0.5, "#2E2016"), (1, "#45331F")])
+    nh, nid = stamp_lines(n, rng, int(30000 * s * s), (10 * s, 22 * s), 0.8)
+    nh = nh * (mat > rng.uniform(0, 1, (n, n)) * 0.9)  # sparse needles over bare duff
+    age = np.clip(spectral(n, rng, 2.0, 3, 32) * 0.4 + 0.5, 0, 1)
+    fresh = palette(nid, [(0, "#7A4A26"), (0.5, "#9A5E30"), (1, "#B07844")])
+    old = palette(nid, [(0, "#5A4A3A"), (0.5, "#6E5E4A"), (1, "#80705C")])
+    needle_col = fresh * (1 - age[..., None]) + old * age[..., None]
+    th, _ = stamp_lines(n, rng, int(260 * s * s), (40 * s, 120 * s), 2.0 * s)        # twigs
+    sh, sid = stamp_lines(n, rng, int(26 * s * s), (80 * s, 240 * s), 5.0 * s)       # sticks
+    ch, cid = blobs(n, rng, int(28 * s * s), (9 * s, 14 * s), (6 * s, 9 * s), 0.6)   # cones
+    bh, bid = blobs(n, rng, int(60 * s * s), (6 * s, 16 * s), (3 * s, 8 * s), 0.25)   # bark flakes
+    moss_m = np.clip(spectral(n, rng, 3.0, 2, 24) * 0.9 - 1.0, 0, 1)
     moss_col = palette(np.clip(spectral(n, rng, 2.0, 4, 200) * 0.2 + 0.5, 0, 1),
-                       [(0, "#3F5226"), (1, "#6B7A36")])
+                       [(0, "#3A4526"), (1, "#56603A")])
     rgb = duff.copy()
     m = (nh > 0.05)[..., None]
-    rgb = np.where(m, needle_col * (0.75 + 0.35 * nh[..., None]), rgb)
+    rgb = np.where(m, needle_col * (0.7 + 0.4 * nh[..., None]), rgb)
     rgb = rgb * (1 - moss_m[..., None]) + moss_col * moss_m[..., None]
-    tm = (th > 0.1)[..., None]
-    rgb = np.where(tm, twig_col * (0.8 + 0.3 * th[..., None]), rgb)
-    height = base * 0.15 + nh * 0.5 + th * 1.2 + moss_m * 0.6
-    rough = 0.82 + 0.1 * (1 - nh) - 0.1 * moss_m
-    return finish(rgb, height, rough, relief=6.0)
+    rgb = np.where((bh > 0.05)[..., None], palette(bid, [(0, "#3E2A1E"), (0.6, "#5A3A26"), (1, "#704A30")]) *
+                   (0.8 + 0.3 * bh[..., None]), rgb)
+    rgb = np.where((th > 0.1)[..., None], np.array([0.33, 0.25, 0.17]) * (0.8 + 0.3 * th[..., None]), rgb)
+    stick_col = palette(sid, [(0, "#4A3B2E"), (0.5, "#6B5D50"), (1, "#8A8074")])     # weathered grey
+    rgb = np.where((sh > 0.1)[..., None], stick_col * (0.65 + 0.45 * sh[..., None]), rgb)
+    rgb = np.where((ch > 0.05)[..., None], palette(cid, [(0, "#4E2E18"), (1, "#7A4A28")]) *
+                   (0.7 + 0.4 * ch[..., None]), rgb)
+    height = (base * 0.12 + mat * 0.35 + nh * 0.35 + moss_m * 0.5 + bh * 0.3 + th * 0.8
+              + sh * 1.6 + ch * 1.4)
+    rough = 0.85 + 0.08 * (1 - nh) - 0.12 * moss_m - 0.1 * (sh > 0.1)
+    return finish(rgb, height, rough, relief=14.0, chroma=0.85, contrast=1.0)
 
 
 def grass(n: int):
@@ -269,7 +307,7 @@ def main(argv: list[str]) -> int:
     if "--preview" in argv:
         # as rendered: each tile x its class's macro colour (terrain_default.toml), tiled 2x2 so
         # seams would show
-        macro = {"Litter": "#55553B", "Grass": "#A89A6A", "Rock": "#7F7A72", "Shrub": "#6E7148"}
+        macro = {"Litter": "#4A3322", "Grass": "#8C7F55", "Rock": "#9A9284", "Shrub": "#4E4630"}
         tiles = []
         for (name, p) in zip(SETS, previews, strict=True):
             m = np.array([int(macro[name][i:i + 2], 16) for i in (1, 3, 5)], np.float32)
