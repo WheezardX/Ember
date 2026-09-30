@@ -395,6 +395,14 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   builds all run on the game thread. Move them async, index tile samplers spatially, throttle
   rebuilds (async compose was already due before HCP6).
 - **Play mode:** fire keys are silent in a scenario without a replay - say so on screen.
+- **Determinism of close-up views (agent, 2026-09-30):** three captures are no longer
+  pixel-identical run to run and have loosened thresholds - S_ground_fire_tq/front and
+  S_jolly_hcp4/head_eye_503h (eye-level fire), S_ground_tq/litter (under canopy, lowered
+  exposure floor). Suspects: Lumen / translucency temporal history, auto exposure amplifying it.
+  Find the source and restore the tight thresholds.
+- **Palette vs NAIP (8i R2 first read, 2026-09-30):** timber renders too dark and ~2x too
+  saturated green, grass too yellow-green, rock too dark and grey (NAIP: bright, warm), water
+  too dark and not blue. Targets for the ground / look work.
 - **Cloud bakes (Brad, 2026-09-30):** the end game is pre-baking worlds for every end user, so
   plan for bakes in AWS. Not for RAM (U6 keeps bakes ~2 GB/worker) but bandwidth and cores:
   3DEP LiDAR and Sentinel-2 COGs are believed to be hosted in us-west-2 (to confirm), so in-region

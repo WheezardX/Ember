@@ -71,6 +71,10 @@ sun = "afternoon"
 [[captures]]
 name = "litter"
 bookmark = "litter"
+# Under closed canopy with the lowered exposure floor this view is not pixel-deterministic
+# (ssim ~0.97-0.98 run to run, 2026-09-30); loosened until the determinism item (8g) lands.
+ssim_min = 0.965
+region_ssim_min = 0.92
 
 [[captures]]
 name = "grass"
