@@ -400,6 +400,14 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   S_jolly_hcp4/head_eye_503h (eye-level fire), S_ground_tq/litter (under canopy, lowered
   exposure floor). Suspects: Lumen / translucency temporal history, auto exposure amplifying it.
   Find the source and restore the tight thresholds.
+- **Brush pops out on approach (Brad, 2026-09-30, S_jolly_play fly-around):** living-looking
+  brush visible a few tiles away disappears as the camera flies toward it. Not investigated yet.
+  Suspect (agent): the burned-plant collapse (M_Veg `Consume`) is a world-position offset, and
+  the mid vegetation tier runs with WPO off (perf, EmberVegetationActor) - so burned shrubs
+  stand full-size (fire-coloured at best) in the mid tier and collapse to stubble when their
+  cell turns near-tier. Other candidates: mid-tier understory cull (MidMinHeightM) or the
+  ground-cover radius edge. Fix direction if confirmed: collapse consumed plants on the CPU
+  (scale / skip in the cell build) instead of in WPO.
 - **Palette vs NAIP (8i R2 first read, 2026-09-30):** timber renders too dark and ~2x too
   saturated green, grass too yellow-green, rock too dark and grey (NAIP: bright, warm), water
   too dark and not blue. Targets for the ground / look work.
