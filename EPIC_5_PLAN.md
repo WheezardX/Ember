@@ -400,6 +400,14 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   S_jolly_hcp4/head_eye_503h (eye-level fire), S_ground_tq/litter (under canopy, lowered
   exposure floor). Suspects: Lumen / translucency temporal history, auto exposure amplifying it.
   Find the source and restore the tight thresholds.
+- **Charred area too uniform (Brad, 2026-09-30, S_jolly_play fly-around):** every burned tree
+  keeps orange needles. In a big fire most stand-replacing areas are burned clean of needles
+  (black bare stems and branches) or the trees are consumed / fallen; orange (scorched, dead but
+  unburned) needles belong to a patchy fringe, not the whole scar. Today M_Veg colours a burned
+  crown by class only (class 2 scorch brown-orange, class 3 black) and keeps all foliage.
+  Direction: per-tree severity outcome (hash + class + canopy): needles gone (foliage hidden,
+  bare charred skeleton), scorched orange, green survivor, fallen (-> down logs), consumed (snag
+  / gone) - a mosaic, as real burn scars read. Ties into "Fire lines and removal" above.
 - **Brush pops out on approach (Brad, 2026-09-30, S_jolly_play fly-around):** living-looking
   brush visible a few tiles away disappears as the camera flies toward it. Not investigated yet.
   Suspect (agent): the burned-plant collapse (M_Veg `Consume`) is a world-position offset, and
