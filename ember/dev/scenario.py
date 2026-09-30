@@ -157,6 +157,13 @@ class ScenarioMeta(_Strict):
     # under canopy (trees are not in the distance-field scene) it stands in for light bounced
     # off the forest; without it eye-level shade under trees went black. 0 = engine default.
     skylight_leaking: float = 0.15
+    # Haze (8g item 5): exponential height fog densest at the region's lowest ground. density 0 =
+    # off. Swept 2026-09-30 (haze_sweep, 4 rounds): falloff 0.006 = a ~1.7 km scale height (UE
+    # falloff is per ~10 m; the old 0.05 thinned out 200 m above the valley floor, i.e. no haze);
+    # density 0.0015 keeps a 20 km overview readable. Colour comes from the sky atmosphere.
+    haze_density: float = 0.0015
+    haze_falloff: float = 0.006
+    haze_start_m: float = 200.0
     fixed_lod: int | None = None  # load one LOD everywhere (fixtures); None = stream (C3)
     lod_refine_factor: float = 1.5  # streaming: refine while distance < factor * tile span
     look: str = "viz/looks/terrain_default.toml"  # repo-relative look file, or "clay"

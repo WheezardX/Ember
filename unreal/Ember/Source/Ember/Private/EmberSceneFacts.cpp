@@ -193,6 +193,7 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		}
 		Tiles->SetNumberField(TEXT("total"), T->TilesTotal);
 		Tiles->SetNumberField(TEXT("loaded"), T->TilesLoaded);
+		Tiles->SetNumberField(TEXT("morphed"), T->TilesMorphed);   // geomorphed tile swaps so far
 		Tiles->SetNumberField(TEXT("triangles"), static_cast<double>(T->Triangles));
 		Tiles->SetNumberField(TEXT("skirt_triangles"), static_cast<double>(T->SkirtTriangles));
 		Tiles->SetNumberField(TEXT("nodata_corners"), static_cast<double>(T->NodataCorners));

@@ -224,6 +224,9 @@ UProceduralMeshComponent* AEmberTerrainActor::NewTileComponent(bool bWater)
 	// and mountains stopped shadowing the valleys (S_veg_lineup lineup_backlit 0.82, alpine_nw).
 	C->SetMobility(EComponentMobility::Static);
 	C->bCastFarShadow = !bWater;
+	// M_Terrain has a geomorph WPO that is non-zero only for ~0.6 s after a tile swap; without
+	// this every tile's virtual shadow pages would be invalidated every frame for having WPO.
+	C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 	C->bUseAsyncCooking = true;
 	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	C->SetCastShadow(!bWater);
@@ -260,6 +263,7 @@ void AEmberTerrainActor::BindLook(int32 Section, UProceduralMeshComponent* Comp,
 		TM.H = A.height;
 		TM.Rgba = TArray<uint8>(A.mix.data(), static_cast<int32>(A.mix.size()));
 	}
+	MID->SetScalarParameterValue(TEXT("CanopyFarStart"), static_cast<float>(CanopyFarStartM * 100.0));
 	MID->SetScalarParameterValue(TEXT("AlbedoScale"), Region->tile_px / Full);
 	MID->SetScalarParameterValue(TEXT("AlbedoOffset"), Region->overlap_px / Full);
 	ApplyFire(MID);
@@ -379,6 +383,30 @@ bool AEmberTerrainActor::ApplyTile(FPreparedTile& P, FString& OutError)
 {
 	const emberworld::TileEntry& Tile = *P.Tile;
 	emberworld::MeshResult& M = P.Mesh;
+	// Geomorph (8g item 4: "chunks come in solid"): each vertex's height offset from what the
+	// screen shows there NOW (the coarser / finer tile it replaces) - read before this tile's own
+	// surface joins TileSurfaces. M_Terrain eases the offset to zero over MorphSeconds.
+	TArray<FVector2D> Morph;
+	bool bMorph = false;
+	if (MorphSeconds > 0.0 && M.ok() && TileSurfaces.Num() > 0)
+	{
+		const emberworld::TileMesh& TM0 = M.mesh;
+		Morph.SetNumZeroed(static_cast<int32>(TM0.positions.size()));
+		for (size_t i = 0; i < TM0.positions.size(); ++i)
+		{
+			const auto& V = TM0.positions[i];
+			double Z = 0.0;
+			if (SurfaceAt(Frame.anchor_x + V.x / 100.0, Frame.anchor_y - V.y / 100.0, Z))
+			{
+				const double Dz = WorldToUE(0.0, 0.0, Z).Z - V.z;
+				if (FMath::Abs(Dz) > 1.0)
+				{
+					Morph[i].X = static_cast<float>(Dz);
+					bMorph = true;
+				}
+			}
+		}
+	}
 	if (P.bSurface)
 	{
 		FTileSurface S;
@@ -414,7 +442,7 @@ bool AEmberTerrainActor::ApplyTile(FPreparedTile& P, FString& OutError)
 	}
 	const int32 Section = FreeSections.Num() ? FreeSections.Pop() : NextSection++;
 	UProceduralMeshComponent* Comp = NewTileComponent(false);
-	Comp->CreateMeshSection(0, Verts, Tris, Normals, UV0, UV1, Empty, Empty,
+	Comp->CreateMeshSection(0, Verts, Tris, Normals, UV0, UV1, bMorph ? Morph : Empty, Empty,
 		TArray<FColor>(), TArray<FProcMeshTangent>(), /*bCreateCollision=*/false);
 	if (Look.IsValid())
 	{
@@ -423,6 +451,15 @@ bool AEmberTerrainActor::ApplyTile(FPreparedTile& P, FString& OutError)
 	else if (Material)
 	{
 		Comp->SetMaterial(0, Material);
+	}
+	if (bMorph)
+	{
+		if (UMaterialInstanceDynamic* MID = Cast<UMaterialInstanceDynamic>(Comp->GetMaterial(0)))
+		{
+			MID->SetScalarParameterValue(TEXT("MorphStart"), GetWorld()->GetTimeSeconds());
+			MID->SetScalarParameterValue(TEXT("MorphSeconds"), static_cast<float>(MorphSeconds));
+		}
+		++TilesMorphed;
 	}
 	UProceduralMeshComponent* WaterComp = nullptr;
 	int64 WaterTris = 0;

@@ -111,6 +111,33 @@ bool AEmberEnvironment::SetSun(const FString& Preset)
 	return true;
 }
 
+void AEmberEnvironment::SetHaze(float Density, float Falloff, float StartM, double BaseUEZ)
+{
+	if (!Fog)
+	{
+		return;
+	}
+	Fog->SetActorLocation(FVector(0.0, 0.0, BaseUEZ));
+	if (UExponentialHeightFogComponent* F = Fog->GetComponent())
+	{
+		F->SetVisibility(Density > 0.f);
+		F->SetFogDensity(Density);
+		F->SetFogHeightFalloff(Falloff);
+		F->SetStartDistance(StartM * 100.f);
+		// Haze colour follows the time of day: the sky atmosphere's own ambient light, not a fixed
+		// colour (a fixed pale blue turned the warm dusk sky grey), plus a glow toward the sun
+		// (directional inscattering, lit by the atmosphere-transmitted sun, so orange at dusk).
+		F->SetFogInscatteringColor(FLinearColor(0.01f, 0.01f, 0.012f));
+		// x1.8: the horizon sky is brighter than the sky's mean ambient, and the fog covers
+		// the far horizon (it also hides the dark planet ground past the region's edge)
+		F->SkyAtmosphereAmbientContributionColorScale = FLinearColor(1.8f, 1.8f, 1.8f);
+		F->SetDirectionalInscatteringExponent(6.f);
+		F->SetDirectionalInscatteringStartDistance(2000.f * 100.f);
+		F->SetDirectionalInscatteringColor(FLinearColor(0.3f, 0.28f, 0.25f));
+		F->MarkRenderStateDirty();
+	}
+}
+
 void AEmberEnvironment::SetSkylightLeaking(float Leak)
 {
 	if (Post && Leak > 0.f)

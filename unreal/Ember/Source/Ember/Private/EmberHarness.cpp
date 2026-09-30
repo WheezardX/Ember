@@ -174,6 +174,9 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	{
 		SkylightLeaking = static_cast<float>(Leak);
 	}
+	if (J->TryGetNumberField(TEXT("haze_density"), ExpV)) HazeDensity = static_cast<float>(ExpV);
+	if (J->TryGetNumberField(TEXT("haze_falloff"), ExpV)) HazeFalloff = static_cast<float>(ExpV);
+	if (J->TryGetNumberField(TEXT("haze_start_m"), ExpV)) HazeStartM = static_cast<float>(ExpV);
 	for (const TSharedPtr<FJsonValue>& V : J->GetArrayField(TEXT("bookmarks")))
 	{
 		const TSharedPtr<FJsonObject>& O = V->AsObject();
@@ -566,6 +569,7 @@ void AEmberHarness::NextPhase()
 		if (Terrain)
 		{
 			Terrain->bSyncStreaming = false;  // perf measures the real (async) streaming
+			Terrain->MorphSeconds = 0.6;      // ... with the play-mode geomorph cost included
 		}
 		if (Vegetation)
 		{
@@ -1038,12 +1042,21 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			Finish(2, TEXT("look: ") + Err);
 			return;
 		}
+		// far-field canopy impression takes over where the drawn trees end (none drawn: everywhere)
+		Terrain->CanopyFarStartM = bVegetation ? 0.85 * VegRadiusM : 0.0;
 		if (!Terrain->LoadRegion(WorldDir, FixedLod, Err))
 		{
 			Finish(2, TEXT("world load failed: ") + Err);
 			return;
 		}
 		Terrain->SetBaseColor(FLinearColor(0.35f, 0.35f, 0.35f));
+		Terrain->MorphSeconds = bPlay ? 0.6 : 0.0;   // geomorph tile swaps in play; captures pop (deterministic)
+		if (Environment && Terrain->GetRegion())
+		{
+			// haze pools in the valleys: the fog's reference height is the region's lowest ground
+			Environment->SetHaze(HazeDensity, HazeFalloff, HazeStartM,
+				Terrain->WorldToUE(0.0, 0.0, Terrain->GetRegion()->heightmap.z_min).Z);
+		}
 		if (bVegetation)
 		{
 			Vegetation = GetWorld()->SpawnActor<AEmberVegetationActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);

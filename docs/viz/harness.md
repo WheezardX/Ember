@@ -45,7 +45,21 @@ capturing. Speed follows the height above ground (~4 m/s at eye level, ~0.8 x he
 that) and the camera never goes below 1 m. Controls: mouse look, WASD, E/Space up, Q/C down,
 Shift x4, Ctrl x0.25, mouse wheel speed, G walk (eye 1.7 m, follows the ground) / fly, 1-5 sun
 dawn..dusk; with a fire replay P plays the fire, `,` `.` step -/+1 h, `[` `]` halve/double the
-rate; H hides the help line; Esc quits. Logs go to `runs/play/<scenario>/<stamp>/log/`.
+rate; L toggles a camera lamp (inspect dense foliage); H hides the help block; Esc quits. The
+fire line shows the date and US Pacific local time of the shown moment and the day / hours
+since the stream's t0 (the incident start). Play mode geomorphs terrain tile swaps (0.6 s,
+M_Terrain WPO from UV2; captures pop, so goldens stay deterministic; perf windows morph too:
+fact `tiles.morphed`). Logs go to `runs/play/<scenario>/<stamp>/log/`.
+
+### Atmosphere and far field (8g items 5-6)
+
+Haze = exponential height fog densest at the region's lowest ground, coloured by the sky
+atmosphere (tracks time of day; x1.8 so the horizon matches) plus a sun glow. Scenario fields
+`haze_density` (0.0015; 0 = off), `haze_falloff` (0.006 = ~1.7 km scale height - UE's falloff is
+per ~10 m, so 0.05 meant no haze 200 m above the valleys), `haze_start_m` (200). Past the tree
+radius (0.85 x `veg_radius_m`; everywhere when `vegetation = false`) M_Terrain draws a canopy
+impression on forested ground: 30 / 9 / 3.5 m value-noise stands, crowns and gaps with crown
+bumps, each octave fading to its mean below ~2 px (it aliased into a herringbone).
 
 ## What happens in a run
 

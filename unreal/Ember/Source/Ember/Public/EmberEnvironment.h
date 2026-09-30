@@ -46,6 +46,9 @@ public:
 
 	/** Lumen skylight leaking (0 = engine default): ambient floor under closed canopy. */
 	void SetSkylightLeaking(float Leak);
+	/** Haze (exponential height fog): density, height falloff, start distance (m), and the UE
+	 *  height the fog is densest at (the valley floor). Density 0 turns the fog off. */
+	void SetHaze(float Density, float Falloff, float StartM, double BaseUEZ);
 
 	UPROPERTY(Transient) TObjectPtr<ADirectionalLight> Sun;
 	UPROPERTY(Transient) TObjectPtr<ASkyLight> Sky;

@@ -192,6 +192,43 @@ Rough = R0;
 // (canopy_to_litter), at every distance.
 float canopy = saturate(Mix.x) * On;
 Occ = 1.0 - CanopyOcc * canopy;
+// Far-field canopy impression (8g item 6: past the tree radius the forest was flat paint).
+// Beyond FarStart (the scenario's tree radius; 0 = no trees drawn at all) forested ground gets
+// crown-scale texture: value noise at ~9 m and ~3.5 m -> lit crowns and dark gaps, and bumps so
+// crowns catch the sun. Canopy weight = the ground mix's litter weight (canopy_to_litter).
+float dist = length(WP - Cam);
+float farW = canopy * saturate((dist - FarStart) / 60000.0) * step(0.5, CanopyOn);
+if (farW > 0.001) {
+    float2 cp = WP.xy / 100.0;
+    float2 cg = 0; float ch = 0;
+    // stand clumps (30 m), crowns (9 m), crown detail (3.5 m)
+    float2 cs[3] = { float2(30.0, 0.4), float2(9.0, 0.45), float2(3.5, 0.15) };
+    // anti-aliasing: an octave fades to its mean from ~6 pixels per wavelength down to 2 (it
+    // aliased into a herringbone on far slopes). Pixel footprint ~ distance x 0.00055 (1440p).
+    float pxm = dist / 100.0 * 0.00055;
+    [unroll] for (int k = 0; k < 3; ++k) {
+        float w0 = cs[k].y;
+        float vis = saturate(1.5 - 3.0 * pxm / cs[k].x);
+        cs[k].y *= vis;
+        ch += (1.0 - vis) * w0 * 0.5;
+        float2 qq = cp / cs[k].x + 31.7 * k;
+        float2 qi = floor(qq), qf = frac(qq);
+        float2 qw = qf * qf * (3.0 - 2.0 * qf);
+        float2 dw = 6.0 * qf * (1.0 - qf);
+        float2 ci = qi - 1024.0 * floor(qi / 1024.0);
+        float2 cj = ci + 1.0; cj -= 1024.0 * floor(cj / 1024.0);
+        float4 hv = frac(sin(float4(dot(ci, float2(12.9898, 78.233)), dot(float2(cj.x, ci.y), float2(12.9898, 78.233)),
+                                    dot(float2(ci.x, cj.y), float2(12.9898, 78.233)), dot(cj, float2(12.9898, 78.233)))) * 43758.5453);
+        ch += cs[k].y * (hv.x + (hv.y - hv.x) * qw.x + (hv.z - hv.x) * qw.y + (hv.x - hv.y - hv.z + hv.w) * qw.x * qw.y);
+        cg += cs[k].y / cs[k].x * float2(dw.x * ((hv.y - hv.x) + (hv.x - hv.y - hv.z + hv.w) * qw.y),
+                                         dw.y * ((hv.z - hv.x) + (hv.x - hv.y - hv.z + hv.w) * qw.x));
+    }
+    float crowns = saturate((ch - 0.3) * 2.2);            // 0 gap .. 1 crown top
+    float3 canopyCol = Base * lerp(0.35, 1.2, crowns);    // shadowed gaps between lit crowns
+    Base = lerp(Base, canopyCol, farW);
+    vn = normalize(vn + float3(-cg * 2.5, 0.0) * farW);  // crowns are ~10 m domes: steep bumps
+    NormalWS = vn;
+}
 if (fade <= 0.0) { return Base; }
 // Projection (Brad, from GW2): top-down until the surface is steeper than 45 deg, then a hard
 // switch to the vertical plane the normal faces most (YZ or XZ). No blend: the jump lands on
@@ -271,7 +308,7 @@ link(add, "", mixtex, "UVs")
 ground = custom("EmberGround", -250, -300,
                 ["Base", "Mix", "WP", "Cam", "VN", "Nlo", "On", "FadeNear", "FadeFar", "NS", "HC",
                  "R0", "LC", "LN", "GC", "GN", "RC", "RN", "SC", "SN", "RL", "RG", "RR", "RS",
-                 "CliffZ", "AC0", "AC1", "AC2", "AC3", "AbsW", "HumS", "CanopyOcc"],
+                 "CliffZ", "AC0", "AC1", "AC2", "AC3", "AbsW", "HumS", "CanopyOcc", "FarStart", "CanopyOn"],
                 GROUND_CODE)
 outs = []
 for oname, otype in (("NormalWS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
@@ -331,6 +368,9 @@ link(absw, "RGBA", ground, "AbsW")
 link(scalar("GroundHummocks", 0.12, -650, -1180), "", ground, "HumS")
 link(scalar("GroundCanopyOcclusion", 0.8, -650, -1240), "", ground, "CanopyOcc")
 to_property(ground, "Occ", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
+# far-field canopy impression: starts at the tree radius (cm, set per scenario by the harness)
+link(scalar("CanopyFarStart", 0.0, -650, -1300), "", ground, "FarStart")
+link(scalar("CanopyImpression", 1.0, -650, -1360), "", ground, "CanopyOn")
 for i, (set_name, pin, rep) in enumerate((("Litter", "L", 250.0), ("Grass", "G", 300.0),
                                           ("Rock", "R", 400.0), ("Shrub", "S", 300.0))):
     for kind in ("C", "N"):
@@ -471,6 +511,21 @@ to_property(femi, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 to_property(ground, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
 to_property(ground, "NormalWS", unreal.MaterialProperty.MP_NORMAL)
 mat.set_editor_property("tangent_space_normal", False)
+
+# Geomorph (8g item 4, tiles popped in "solid"): AEmberTerrainActor puts each vertex's height
+# offset to the surface it replaces in UV2.x (cm) and sets MorphStart / MorphSeconds on the
+# tile's instance; the offset eases out (smoothstep) over MorphSeconds. MorphSeconds 0 = none.
+uv2 = expr(unreal.MaterialExpressionTextureCoordinate, -1400, 1200)
+uv2.set_editor_property("coordinate_index", 2)
+morph = custom("EmberGeomorph", -450, 1200, ["D", "T", "S", "L"], (
+    "float u = L > 0.0 ? saturate((T - S) / L) : 1.0;\n"
+    "u = u * u * (3.0 - 2.0 * u);\n"
+    "return float3(0.0, 0.0, D.x * (1.0 - u));\n"))
+link(uv2, "", morph, "D")
+link(expr(unreal.MaterialExpressionTime, -1400, 1300), "", morph, "T")
+link(scalar("MorphStart", 0.0, -1400, 1380), "", morph, "S")
+link(scalar("MorphSeconds", 0.0, -1400, 1460), "", morph, "L")
+to_property(morph, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
 
 mel.recompile_material(mat)
 eal.save_asset(FULL, only_if_is_dirty=False)

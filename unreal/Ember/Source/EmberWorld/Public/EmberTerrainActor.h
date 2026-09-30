@@ -54,6 +54,13 @@ public:
 	 * mode and perf windows stream asynchronously.
 	 */
 	bool bSyncStreaming = false;
+	/** Geomorph length (s) when a tile replaces another (8g item 4); 0 = pop (captures stay
+	 *  deterministic). The harness turns it on for play mode. */
+	double MorphSeconds = 0.0;
+	/** Far-field canopy impression starts here (m from the camera): the scenario's tree radius,
+	 *  0 when no trees are drawn (8g item 6). Set before LoadRegion. */
+	double CanopyFarStartM = 0.0;
+	int32 TilesMorphed = 0;   // facts
 
 	/** Load `RegionDir` (contains manifest.json). FixedLod >= 0: that level only; -1: stream. */
 	bool LoadRegion(const FString& RegionDir, int32 FixedLod, FString& OutError);

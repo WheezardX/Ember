@@ -114,6 +114,7 @@ private:
 	int32 ResX = 1920, ResY = 1080, PerfFrames = 0;
 	float ExposureBias = -2.f;
 	float SkylightLeaking = 0.f;
+	float HazeDensity = 0.0015f, HazeFalloff = 0.006f, HazeStartM = 200.f;   // item 5: haze / aerial perspective
 	bool bAutoExposure = false;
 	float ExposureEvMin = -4.f, ExposureEvMax = 4.f, AutoExposureBias = 0.f;
 	int32 FixedLod = -1;          // >= 0: load that LOD only (fixtures); -1: stream around the camera

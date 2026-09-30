@@ -12,6 +12,7 @@ fixed_lod = 14       # the fixture: finest LOD everywhere, so tile/triangle asse
 look = "clay"        # clay fixture: goldens independent of the terrain look
 exposure_mode = "manual"  # fixed-exposure calibration fixture
 skylight_leaking = 0.0    # engine-default ambient
+haze_density = 0.0        # no haze: clay calibration
 exposure_bias = -2.0   # chosen by the HCP0 sweep (checkpoints/HCP0)
 
 [[bookmarks]]
