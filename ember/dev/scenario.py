@@ -75,6 +75,7 @@ class Orbit(_Strict):
     frames: int = Field(default=240, gt=1, le=3600)
     fps: int = 30
     warmup_frames: int = 30
+    capture: bool = True        # False: a path only (perf_orbit), no video
 
 
 class FactAssert(_Strict):
@@ -104,6 +105,9 @@ class ScenarioMeta(_Strict):
     resolution: tuple[int, int] = (1920, 1080)
     budget: str = "interactive" # key into viz/budgets.toml
     perf_frames: int = 0        # >0: frames measured after the last capture -> facts/perf.json
+    # Perf along a path: the perf window flies this orbit / flyover in real time (one pose per
+    # frame, no captures) so streaming and hitches are measured, not a parked camera.
+    perf_orbit: str | None = None
     exposure_bias: float = -2.0  # manual exposure EV100 bias (captures must not auto-expose)
     # Lumen skylight leaking (post-process, 0..1): an ambient floor so a forest floor under closed
     # canopy is dim, not black (ground plane v1: close-ups under trees rendered pure black).

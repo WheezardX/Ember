@@ -108,6 +108,7 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 			return true;
 		}, Out);
 	Cell.bPending = bMissing && ++Cell.Attempts < 120;
+	Cell.BuiltGeneration = Terrain->GetTileGeneration();
 	TArray<TArray<FTransform>> PerMesh;
 	PerMesh.SetNum(Meshes.Num());
 	for (const emberworld::CoverInstance& In : Out)
@@ -191,6 +192,7 @@ void AEmberGroundCoverActor::UpdateCells(const FVector& CamUE)
 	{
 		ClearCell(Cells[K]);
 		Cells.Remove(K);
+		Queue.Remove(K);
 	}
 	for (int32 Dy = -R; Dy <= R; ++Dy)
 	{
@@ -204,12 +206,12 @@ void AEmberGroundCoverActor::UpdateCells(const FVector& CamUE)
 			FCoverCell* C = Cells.Find(K);
 			if (!C)
 			{
-				C = &Cells.Add(K);
-				BuildCell(K, *C);
+				Cells.Add(K);
+				Queue.AddUnique(K);
 			}
-			else if (C->bPending)
+			else if (C->bPending && C->BuiltGeneration != Terrain->GetTileGeneration())
 			{
-				BuildCell(K, *C);
+				Queue.AddUnique(K);  // new tiles since it was built: try again
 			}
 		}
 	}
@@ -224,15 +226,49 @@ void AEmberGroundCoverActor::Tick(float DeltaSeconds)
 		return;
 	}
 	const FVector Cam = PC->PlayerCameraManager->GetCameraLocation();
-	bool bPending = false;
-	for (const TPair<FIntPoint, FCoverCell>& P : Cells)
+	const bool bNewTiles = Terrain->GetTileGeneration() != LastGeneration;
+	const bool bPending = bNewTiles;
+	if (bNewTiles || FVector::Dist(Cam, LastCamera) > 400.0)  // re-select every 4 m moved
 	{
-		bPending |= P.Value.bPending;
-	}
-	if (bPending || FVector::Dist(Cam, LastCamera) > 400.0)  // re-select every 4 m moved
-	{
+		LastGeneration = Terrain->GetTileGeneration();
 		LastCamera = Cam;
+		const double T0 = FPlatformTime::Seconds();
 		UpdateCells(Cam);
+		const double Ms = (FPlatformTime::Seconds() - T0) * 1000.0;
+		if (Ms > 5.0)
+		{
+			UE_LOG(LogEmberCover, Display, TEXT("stream-cost cover %.1f ms (%d cell(s), pending %d)"), Ms, Cells.Num(), bPending ? 1 : 0);
+		}
+	}
+	BuildQueued(Cam);
+}
+
+void AEmberGroundCoverActor::BuildQueued(const FVector& CamUE)
+{
+	const double T0 = FPlatformTime::Seconds();
+	const emberworld::Frame& F = Terrain->GetFrame();
+	const double Cx = F.anchor_x + CamUE.X / 100.0, Cy = F.anchor_y - CamUE.Y / 100.0;
+	int32 Built = 0;
+	while (Queue.Num() && (bSyncStreaming || Built == 0 || (FPlatformTime::Seconds() - T0) * 1000.0 < BuildBudgetMs))
+	{
+		int32 Best = 0;
+		double BestD = TNumericLimits<double>::Max();
+		for (int32 i = 0; i < Queue.Num(); ++i)
+		{
+			const double D = FMath::Square((Queue[i].X + 0.5) * CellM - Cx) + FMath::Square((Queue[i].Y + 0.5) * CellM - Cy);
+			if (D < BestD)
+			{
+				BestD = D;
+				Best = i;
+			}
+		}
+		const FIntPoint K = Queue[Best];
+		Queue.RemoveAtSwap(Best);
+		if (FCoverCell* C = Cells.Find(K))
+		{
+			BuildCell(K, *C);
+			++Built;
+		}
 	}
 }
 

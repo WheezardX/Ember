@@ -1,6 +1,7 @@
 #include "EmberVegetationActor.h"
 
 #include "Camera/PlayerCameraManager.h"
+#include "Async/Async.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -155,25 +156,42 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 			IndexToSlot.Add(Slot);
 		}
 	}
+	MeshBounds.Reset();
+	for (UStaticMesh* M : SpeciesMesh)
+	{
+		MeshBounds.Add(M ? M->GetBounds() : FBoxSphereBounds(FVector::ZeroVector, FVector(100.0), 100.0));
+	}
 	bInitialised = true;
 	return true;
 }
 
-bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString& OutError)
+struct AEmberVegetationActor::FPreparedVeg
 {
+	uint64 Key = 0;
+	FVegTile Tile;
+	int64 Ungrounded = 0, NoSurface = 0;
+	double Ms = 0.0;
+	FString Error;
+};
+
+AEmberVegetationActor::FPreparedVegPtr AEmberVegetationActor::PrepareTile(const emberworld::TileEntry& Tile) const
+{
+	// Worker thread: worldcore scatter + surface, per-tree transforms from cached mesh bounds.
 	const double T0 = FPlatformTime::Seconds();
+	FPreparedVegPtr P = MakeShared<FPreparedVeg, ESPMode::ThreadSafe>();
+	P->Key = VegKey(Tile);
 	const emberworld::Region& R = *Terrain->GetRegion();
 	emberworld::TileScatterResult TS = emberworld::scatter_tile(R, Tile, Palette, Input);
 	if (!TS.ok())
 	{
-		OutError = UTF8_TO_TCHAR(TS.error.c_str());
-		return false;
+		P->Error = UTF8_TO_TCHAR(TS.error.c_str());
+		return P;
 	}
 	emberworld::SurfaceSampler Surface;
 	emberworld::TiffResult H = emberworld::read_tiff(R.path(Tile.height_tif));
 	const bool bSurface = H && Surface.build(R, Tile, *H.raster);
 
-	FVegTile& VT = Tiles.Add(VegKey(Tile));
+	FVegTile& VT = P->Tile;
 	const double CW = Tile.content.width() / CellsPerSide;
 	const double CH = Tile.content.height() / CellsPerSide;
 	for (int32 Cy = 0; Cy < CellsPerSide; ++Cy)
@@ -198,13 +216,13 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 		double Z = In.z;
 		if (!bSurface)
 		{
-			++UngroundedInstances;  // the tile's surface failed to build: Terrain's z (an error)
+			++P->Ungrounded;  // the tile's surface failed to build: Terrain's z (an error)
 		}
 		else if (!Surface.height_at(In.x, In.y, Z))
 		{
 			// Render policy: nothing to stand on (Terrain scatters over fuels outside the DEM's AOI
 			// mask with z = 0 - upstream U8). Dropped, counted, never drawn underground.
-			++NoSurfaceInstances;
+			++P->NoSurface;
 			continue;
 		}
 		// Variant: a hash of the instance's position (render policy; Terrain's instance is untouched).
@@ -219,8 +237,28 @@ bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString&
 		const int32 Cy = FMath::Clamp(static_cast<int32>((Tile.content.max_y - In.y) / CH), 0, CellsPerSide - 1);
 		VT.Cells[Cy * CellsPerSide + Cx].Trees.Add(VT.Trees.Add(MoveTemp(T)));
 	}
-	ScatterMs += (FPlatformTime::Seconds() - T0) * 1000.0;
+	P->Ms = (FPlatformTime::Seconds() - T0) * 1000.0;
+	return P;
+}
+
+bool AEmberVegetationActor::InstallTile(FPreparedVeg& P, FString& OutError)
+{
+	if (!P.Error.IsEmpty())
+	{
+		OutError = P.Error;
+		return false;
+	}
+	Tiles.Add(P.Key, MoveTemp(P.Tile));
+	UngroundedInstances += P.Ungrounded;
+	NoSurfaceInstances += P.NoSurface;
+	ScatterMs += P.Ms;
 	return true;
+}
+
+bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString& OutError)
+{
+	FPreparedVegPtr P = PrepareTile(Tile);
+	return InstallTile(*P, OutError);
 }
 
 void AEmberVegetationActor::ClearCell(FVegCell& Cell)
@@ -312,7 +350,7 @@ FTransform AEmberVegetationActor::FitInstance(int32 Mesh, double HeightM, double
 {
 	// Terrain's scatter v2 sizes every crown (0.5 x crown_ratio x height x 0.85..1.15): the mesh's
 	// bounds are fitted to that height and crown diameter, no render-side crown policy.
-	const FBoxSphereBounds B = SpeciesMesh[Mesh]->GetBounds();
+	const FBoxSphereBounds B = MeshBounds.IsValidIndex(Mesh) ? MeshBounds[Mesh] : SpeciesMesh[Mesh]->GetBounds();
 	const double MeshH = FMath::Max(1.0, 2.0 * B.BoxExtent.Z);
 	const double MeshW = FMath::Max(1.0, 2.0 * B.BoxExtent.X);
 	const double HeightCm = HeightM * 100.0;
@@ -459,6 +497,180 @@ void AEmberVegetationActor::RecomputeStats()
 	}
 }
 
+void AEmberVegetationActor::SelectTiles(const FVector& CameraUE)
+{
+	const emberworld::Region& R = *Terrain->GetRegion();
+	const emberworld::Frame& F = Terrain->GetFrame();
+	CamWx = F.anchor_x + CameraUE.X / 100.0;
+	CamWy = F.anchor_y - CameraUE.Y / 100.0;
+	// Height above the ground under the camera: trees right below an aerial camera are not near.
+	double Gz = 0.0;
+	const double CamZ = Terrain->UEToWorldZ(CameraUE.Z);
+	CamHag = (Terrain->SurfaceAt(CamWx, CamWy, Gz) || Terrain->GroundHeightAt(CamWx, CamWy, Gz)) ? FMath::Max(0.0, CamZ - Gz) : 0.0;
+	WantTiles.Reset();
+	WantKeys.Reset();
+	for (const emberworld::TileEntry* T : R.tiles_at(R.finest_lod()))
+	{
+		const double Dx = FMath::Max3(T->content.min_x - CamWx, 0.0, CamWx - T->content.max_x);
+		const double Dy = FMath::Max3(T->content.min_y - CamWy, 0.0, CamWy - T->content.max_y);
+		if (FMath::Sqrt(Dx * Dx + Dy * Dy + CamHag * CamHag) <= RadiusM)
+		{
+			WantKeys.Add(VegKey(*T));
+			WantTiles.Add(T);
+		}
+	}
+}
+
+void AEmberVegetationActor::QueueTiers()
+{
+	for (auto& KV : Tiles)
+	{
+		for (int32 Ci = 0; Ci < CellsPerSide * CellsPerSide; ++Ci)
+		{
+			const FVegCell& C = KV.Value.Cells[Ci];
+			const double Dx = FMath::Max3(C.MinX - CamWx, 0.0, CamWx - C.MaxX);
+			const double Dy = FMath::Max3(C.MinY - CamWy, 0.0, CamWy - C.MaxY);
+			const double D = FMath::Sqrt(Dx * Dx + Dy * Dy + CamHag * CamHag);
+			const ETier Tier = D <= NearRadiusM ? ETier::Near : (D <= RadiusM ? ETier::Mid : ETier::None);
+			if (Tier != C.Tier || (Tier != ETier::None && C.PerSpecies.Num() == 0))
+			{
+				BuildQueue.AddUnique(TPair<uint64, int32>(KV.Key, Ci));
+			}
+		}
+	}
+}
+
+void AEmberVegetationActor::PumpStreaming()
+{
+	const double T0 = FPlatformTime::Seconds();
+	bool bChanged = false;
+	FString Err;
+	TArray<uint64> Done;
+	for (auto& KV : InFlight)
+	{
+		if (KV.Value.IsReady())
+		{
+			Done.Add(KV.Key);
+		}
+	}
+	for (uint64 K : Done)
+	{
+		FPreparedVegPtr P = InFlight[K].Get();
+		InFlight.Remove(K);
+		if (P.IsValid() && WantKeys.Contains(K) && !Tiles.Contains(K))
+		{
+			if (!InstallTile(*P, Err))
+			{
+				UE_LOG(LogEmberVeg, Error, TEXT("veg tile: %s"), *Err);
+				continue;
+			}
+			bChanged = true;
+		}
+	}
+	for (const emberworld::TileEntry* T : WantTiles)
+	{
+		if (InFlight.Num() >= MaxInFlight)
+		{
+			break;
+		}
+		const uint64 K = VegKey(*T);
+		if (!Tiles.Contains(K) && !InFlight.Contains(K))
+		{
+			InFlight.Add(K, Async(EAsyncExecution::ThreadPool, [this, T]() { return PrepareTile(*T); }));
+		}
+	}
+	TArray<uint64> Drop;
+	for (const auto& KV : Tiles)
+	{
+		if (!WantKeys.Contains(KV.Key))
+		{
+			Drop.Add(KV.Key);
+		}
+	}
+	for (uint64 K : Drop)
+	{
+		BuildQueue.RemoveAll([K](const TPair<uint64, int32>& Q) { return Q.Key == K; });
+		UnloadTile(K);
+		bChanged = true;
+	}
+	if (bChanged)
+	{
+		QueueTiers();
+	}
+	// build cells within the budget, nearest first (at least one per frame)
+	int32 Built = 0;
+	while (BuildQueue.Num() && (Built == 0 || (FPlatformTime::Seconds() - T0) * 1000.0 < BuildBudgetMs))
+	{
+		int32 Best = 0;
+		double BestD = TNumericLimits<double>::Max();
+		for (int32 i = 0; i < BuildQueue.Num(); ++i)
+		{
+			const FVegTile* VT = Tiles.Find(BuildQueue[i].Key);
+			if (!VT)
+			{
+				continue;
+			}
+			const FVegCell& C = VT->Cells[BuildQueue[i].Value];
+			const double D = FMath::Square(0.5 * (C.MinX + C.MaxX) - CamWx) + FMath::Square(0.5 * (C.MinY + C.MaxY) - CamWy);
+			if (D < BestD)
+			{
+				BestD = D;
+				Best = i;
+			}
+		}
+		const TPair<uint64, int32> Q = BuildQueue[Best];
+		BuildQueue.RemoveAtSwap(Best);
+		FVegTile* VT = Tiles.Find(Q.Key);
+		if (!VT)
+		{
+			continue;
+		}
+		const FVegCell& C = VT->Cells[Q.Value];
+		const double Dx = FMath::Max3(C.MinX - CamWx, 0.0, CamWx - C.MaxX);
+		const double Dy = FMath::Max3(C.MinY - CamWy, 0.0, CamWy - C.MaxY);
+		const double D = FMath::Sqrt(Dx * Dx + Dy * Dy + CamHag * CamHag);
+		const ETier Tier = D <= NearRadiusM ? ETier::Near : (D <= RadiusM ? ETier::Mid : ETier::None);
+		BuildCell(Q.Key, Q.Value, Tier);
+		++Built;
+		bChanged = true;
+	}
+	if (bChanged)
+	{
+		RecomputeStats();
+	}
+	const double Ms = (FPlatformTime::Seconds() - T0) * 1000.0;
+	if (Ms > 8.0)
+	{
+		UE_LOG(LogEmberVeg, Display, TEXT("stream-cost vegetation-pump %.1f ms (built %d, queue %d, dropped %d)"), Ms, Built, BuildQueue.Num(), Drop.Num());
+	}
+}
+
+bool AEmberVegetationActor::IsStreamingBusy() const
+{
+	if (InFlight.Num() || BuildQueue.Num())
+	{
+		return true;
+	}
+	for (uint64 K : WantKeys)
+	{
+		if (!Tiles.Contains(K))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void AEmberVegetationActor::EndPlay(const EEndPlayReason::Type Reason)
+{
+	for (auto& KV : InFlight)
+	{
+		KV.Value.Wait();
+	}
+	InFlight.Reset();
+	Super::EndPlay(Reason);
+}
+
 int32 AEmberVegetationActor::UpdateStreaming(const FVector& CameraUE)
 {
 	if (!bInitialised)
@@ -481,13 +693,13 @@ int32 AEmberVegetationActor::UpdateStreaming(const FVector& CameraUE)
 	};
 
 	TSet<uint64> Want;
-	TArray<const emberworld::TileEntry*> WantTiles;
+	TArray<const emberworld::TileEntry*> SyncWantTiles;
 	for (const emberworld::TileEntry* T : R.tiles_at(R.finest_lod()))
 	{
 		if (Dist(T->content.min_x, T->content.min_y, T->content.max_x, T->content.max_y) <= RadiusM)
 		{
 			Want.Add(VegKey(*T));
-			WantTiles.Add(T);
+			SyncWantTiles.Add(T);
 		}
 	}
 	TArray<uint64> Drop;
@@ -504,7 +716,7 @@ int32 AEmberVegetationActor::UpdateStreaming(const FVector& CameraUE)
 	}
 	int32 Changes = Drop.Num();
 	FString Err;
-	for (const emberworld::TileEntry* T : WantTiles)
+	for (const emberworld::TileEntry* T : SyncWantTiles)
 	{
 		const uint64 Key = VegKey(*T);
 		if (!Tiles.Contains(Key))
@@ -547,10 +759,27 @@ void AEmberVegetationActor::Tick(float DeltaSeconds)
 		return;
 	}
 	const FVector Cam = PC->PlayerCameraManager->GetCameraLocation();
+	if (!bSyncStreaming && !bFirstUpdate)
+	{
+		if (FVector::Dist(Cam, LastCamera) > 5000.0)  // re-select every 50 m moved
+		{
+			LastCamera = Cam;
+			SelectTiles(Cam);
+			QueueTiers();
+		}
+		PumpStreaming();
+		return;
+	}
 	if (bFirstUpdate || FVector::Dist(Cam, LastCamera) > 5000.0)  // re-select every 50 m moved
 	{
 		bFirstUpdate = false;
 		LastCamera = Cam;
-		UpdateStreaming(Cam);
+		const double T0 = FPlatformTime::Seconds();
+		const int32 N = UpdateStreaming(Cam);
+		const double Ms = (FPlatformTime::Seconds() - T0) * 1000.0;
+		if (Ms > 5.0)
+		{
+			UE_LOG(LogEmberVeg, Display, TEXT("stream-cost vegetation %.1f ms (%d change(s))"), Ms, N);
+		}
 	}
 }

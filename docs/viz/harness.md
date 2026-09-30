@@ -20,6 +20,18 @@ Measured on the runner (HCP0, 2026-09-27): **inner loop 20–35 s** (incremental
 harness run ~13 s, evaluate ~2 s). First run after a clean checkout adds shader compilation
 (~1 min).
 
+## Streaming perf (`perf_orbit`)
+
+`perf_orbit = "<orbit>"` makes the perf window fly that orbit or flyover in real time (one pose
+per frame, nothing captured), so frame times include streaming. Orbits with `capture = false`
+are paths only (no video). `facts/perf.json` reports `hitches_33ms` / `_50ms` / `_100ms` (frames
+over 2x / 3x / 6x a 60 fps frame). `S_stream_tq` is the reference run (a low pass over a Three
+Queens stand with trees + ground cover): 0 hitches, max 12 ms after the 2026-09-30 streaming pass
+(was 28 hitches, max 503 ms). Capture runs stream synchronously (goldens stay reproducible:
+tiles arriving over many frames leave Lumen in a slightly different state); play mode and perf
+windows stream asynchronously. For a breakdown of a hitch add
+`perf_exec_cmds = ["t.HitchFrameTimeThreshold 30", "stat dumphitches"]`.
+
 ## Flying around a scenario (`ember-dev play`)
 
 ```

@@ -34,6 +34,26 @@ class EMBERWORLD_API AEmberTerrainActor : public AActor
 public:
 	AEmberTerrainActor();
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
+
+	/**
+	 * Streaming is asynchronous after the first selection (8g: flying hitched on synchronous tile
+	 * builds): tiles are prepared on worker threads (mesh, surface, look textures - all worldcore)
+	 * and applied on the game thread within ApplyBudgetMs per frame; a tile that is no longer
+	 * wanted stays until every wanted tile over its footprint is in (no holes).
+	 */
+	bool IsStreamingBusy() const;
+	/** Bumps whenever a tile is applied or unloaded (ground cover rebuilds pending cells on it). */
+	int32 GetTileGeneration() const { return TileGeneration; }
+	double ApplyBudgetMs = 4.0;
+	int32 MaxInFlight = 6;
+	/**
+	 * Load every selected tile in the frame it is selected (the pre-async behaviour). Capture runs
+	 * use it: tiles arriving over many frames leave Lumen's surface cache in a different state
+	 * (S_tq_terrain alpine_nw 0.965 SSIM, darker indirect), so goldens stay reproducible. Play
+	 * mode and perf windows stream asynchronously.
+	 */
+	bool bSyncStreaming = false;
 
 	/** Load `RegionDir` (contains manifest.json). FixedLod >= 0: that level only; -1: stream. */
 	bool LoadRegion(const FString& RegionDir, int32 FixedLod, FString& OutError);
@@ -151,13 +171,41 @@ private:
 		int32 Lod = 0;
 		int64 Triangles = 0, SkirtTriangles = 0, NodataCorners = 0;
 		int64 WaterTriangles = 0;
+		emberworld::Bounds Content;
+		// One component per tile: a ProceduralMeshComponent rebuilds its WHOLE scene proxy when
+		// any section changes (81 ms for ~90 tile sections in S_stream_tq), so tiles no longer
+		// share one. Owned by this actor (attached to the root).
+		UProceduralMeshComponent* Comp = nullptr;
+		UProceduralMeshComponent* WaterComp = nullptr;
 	};
+	struct FPreparedTile;  // everything a tile needs, built off the game thread (cpp)
+	using FPreparedPtr = TSharedPtr<FPreparedTile, ESPMode::ThreadSafe>;
 
-	bool LoadTile(const emberworld::TileEntry& Tile, FString& OutError);
+	FPreparedPtr PrepareTile(const emberworld::TileEntry& Tile) const;  // thread-safe
+	bool ApplyTile(FPreparedTile& P, FString& OutError);                 // game thread
+	bool LoadTile(const emberworld::TileEntry& Tile, FString& OutError); // both, synchronously
 	void UnloadTile(uint64 Key);
 	void RecomputeStats();
+	void PumpStreaming();
 
-	void BindLook(int32 Section, const emberworld::TileEntry& Tile);
+	void BindLook(int32 Section, UProceduralMeshComponent* Comp, const emberworld::TileEntry& Tile, FPreparedTile& P);
+	UProceduralMeshComponent* NewTileComponent(bool bWater);
+
+	TMap<uint64, TFuture<FPreparedPtr>> InFlight;
+	TArray<FPreparedPtr> Ready;
+	TSet<uint64> WantKeys;
+	TArray<const emberworld::TileEntry*> WantTiles;
+	int32 TileGeneration = 0;
+
+	// Tile key straight from a world point, per LOD (surface / mix lookups without a scan).
+	struct FLodGrid
+	{
+		double MinX = 0, MinY = 0, Span = 1;   // tile (0, 0)'s SW corner; y index grows north
+		bool bValid = false;
+	};
+	TMap<int32, FLodGrid> LodGrids;
+	int32 FinestLod = 0, CoarsestLod = 0;
+	bool KeyAt(int32 Lod, double X, double Y, uint64& OutKey) const;
 
 	TUniquePtr<emberworld::Region> Region;
 	TUniquePtr<emberworld::TerrainLook> Look;

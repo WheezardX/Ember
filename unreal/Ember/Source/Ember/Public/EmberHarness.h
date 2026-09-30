@@ -57,6 +57,7 @@ private:
 		double TFromS = -1.0;      // >= 0 with TToS: sim time sweeps TFromS -> TToS (timelapse)
 		double TToS = -1.0;
 		int32 WarmupFrames = 30;
+		bool bCapture = true;      // false: a path for perf_orbit only, no video
 	};
 	struct FCapture
 	{
@@ -75,6 +76,8 @@ private:
 	// Play mode (`ember-dev play`): the scenario loads as for a capture run, then the view goes to
 	// a free-fly pawn (AEmberFlyPawn) and the harness only animates wind / fire and draws help.
 	void StartPlay();
+	FString PerfOrbit;             // non-empty: the perf window flies this orbit (streaming / hitches)
+	const struct FOrbit* FindPerfOrbit() const;
 	void TickPlay(float DeltaSeconds);
 	bool bPlay = false;
 	FString PlayBookmark;

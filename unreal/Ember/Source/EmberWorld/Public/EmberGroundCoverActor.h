@@ -33,6 +33,12 @@ public:
 	void SetFireTime(double Seconds);
 
 	double RadiusM = 60.0;
+	/** Cells are built from a queue, nearest first, within BuildBudgetMs per frame (8g hitching);
+	 *  bSyncStreaming (captures) builds everything at once. Pending cells (their finest tile not
+	 *  in yet) rebuild only when the terrain's tiles change. */
+	double BuildBudgetMs = 2.0;
+	bool bSyncStreaming = false;
+	bool IsStreamingBusy() const { return Queue.Num() > 0; }
 	int64 GetInstanceCount() const { return Instances; }
 	int32 GetCellCount() const { return Cells.Num(); }
 
@@ -42,10 +48,14 @@ private:
 		TArray<TObjectPtr<UInstancedStaticMeshComponent>> Components;
 		bool bPending = false;  // some ground was not loaded yet: rebuild on a later update
 		int32 Attempts = 0;     // pending rebuilds tried (capped: a cell may never get the finest LOD)
+		int32 BuiltGeneration = -1;  // terrain tile generation this cell was built against
 		int64 Count = 0;
 	};
 
 	void UpdateCells(const FVector& CamUE);
+	void BuildQueued(const FVector& CamUE);
+	TArray<FIntPoint> Queue;
+	int32 LastGeneration = -1;
 	void BuildCell(const FIntPoint& Key, FCoverCell& Cell);
 	void ClearCell(FCoverCell& Cell);
 

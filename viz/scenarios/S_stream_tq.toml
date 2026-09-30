@@ -1,0 +1,49 @@
+# Streaming and hitches (EPIC_5_PLAN 8g): a low run ~12 m over a Three Queens stand toward the
+# fire, trees and ground cover on, measured in real time along the path (perf_orbit: one pose per
+# frame, nothing captured). Brad's first fly-through hitched badly; this is the number to beat.
+render_scenario_version = 1
+
+[scenario]
+name = "S_stream_tq"
+description = "Streaming perf: low fast run over forest with trees + ground cover; frame times and hitch counts"
+world = "terrain:three_queens_2026"
+resolution = [1920, 1080]
+budget = "interactive"
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 4000
+veg_near_radius_m = 500
+ground_cover = true
+exposure_bias = -2.0
+perf_frames = 900
+perf_orbit = "low_run"
+perf_exec_cmds = ["t.HitchFrameTimeThreshold 30", "stat dumphitches"]
+
+[[bookmarks]]
+name = "low_a"
+target_frac = [0.433, 0.625]
+distance_m = 60
+yaw_deg = 31
+pitch_deg = -12
+fov_deg = 70
+sun = "afternoon"
+
+[[bookmarks]]
+name = "low_b"               # ~600 m on along the heading
+target_frac = [0.450, 0.595]
+distance_m = 60
+yaw_deg = 31
+pitch_deg = -12
+fov_deg = 70
+sun = "afternoon"
+
+[[orbits]]
+name = "low_run"
+bookmark = "low_a"
+to_bookmark = "low_b"
+frames = 900
+capture = false
+
+[[captures]]
+name = "start"
+bookmark = "low_a"

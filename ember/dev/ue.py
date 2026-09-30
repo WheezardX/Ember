@@ -214,6 +214,7 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "perf_exec_cmds": list(s.scenario.perf_exec_cmds),
         "water_dir": _water_dir(sc),
         "perf_bookmark": s.scenario.perf_bookmark,
+        "perf_orbit": s.scenario.perf_orbit,
         "bookmarks": [b.model_dump() for b in s.bookmarks],
         "captures": [c.model_dump() for c in s.captures],
         "orbits": [o.model_dump() for o in s.orbits],
@@ -325,6 +326,8 @@ def encode_orbits(sc: LoadedScenario, run_dir: Path, keep_frames: bool = False) 
     out = []
     ff = shutil.which("ffmpeg")
     for o in sc.spec.orbits:
+        if not o.capture:
+            continue  # a perf_orbit path: nothing recorded
         frames = run_dir / "frames" / o.name
         mp4 = run_dir / "orbits" / f"{o.name}.mp4"
         entry = {"name": o.name, "frames": len(list(frames.glob("f*.png"))), "mp4": None,

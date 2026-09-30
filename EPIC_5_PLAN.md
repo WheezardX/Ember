@@ -387,11 +387,16 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
 - **Water:** river edges are blocky (10 m grid) - interpolate + spline overlays (hydrography
   centrelines). The water surface breaks into strips with gaps, on lakes too (Lake Kachess), cause
   undiagnosed (per-neighbourhood levels? per-row patches? tile edges?).
-- **Hitching while flying** is bad: tile compose, ground-cover cell builds (5 surface queries per
+- **Hitching while flying** - FIXED 2026-09-30 (S_stream_tq: 28 -> 0 frames over 33 ms, max 503 -> 12 ms). Was: tile compose, ground-cover cell builds (5 surface queries per
   instance, each scanning all loaded tiles; pending cells rebuilding every frame) and tree cell
   builds all run on the game thread. Move them async, index tile samplers spatially, throttle
   rebuilds (async compose was already due before HCP6).
 - **Play mode:** fire keys are silent in a scenario without a replay - say so on screen.
+- **Cloud bakes (Brad, 2026-09-30):** the end game is pre-baking worlds for every end user, so
+  plan for bakes in AWS. Not for RAM (U6 keeps bakes ~2 GB/worker) but bandwidth and cores:
+  3DEP LiDAR and Sentinel-2 COGs are believed to be hosted in us-west-2 (to confirm), so in-region
+  pulls are free and fast; only outputs travel. Three Queens: ~1.9 GB downloaded vs ~0.55 GB
+  output (~0.3 GB the renderer needs). Needs: containerised terrain env, output sync (S3).
 
 ## 9. Notes for later epics
 

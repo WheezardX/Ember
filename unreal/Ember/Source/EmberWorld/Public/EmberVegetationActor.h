@@ -70,6 +70,17 @@ public:
 	 */
 	void SpawnLineup(double WorldX, double WorldY, double RowDeg);
 
+	/**
+	 * Async after init (8g hitching): tile scatter + grounding run on worker threads; cells are
+	 * (re)built from a queue within BuildBudgetMs per frame. bSyncStreaming keeps the old
+	 * everything-now behaviour for capture runs (reproducible goldens).
+	 */
+	bool IsStreamingBusy() const;
+	bool bSyncStreaming = false;
+	double BuildBudgetMs = 3.0;
+	int32 MaxInFlight = 4;
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
+
 	// Facts
 	int64 InstancesTotal = 0;
 	int32 TilesLoaded = 0;
@@ -116,6 +127,19 @@ private:
 	};
 
 	bool LoadTile(const emberworld::TileEntry& Tile, FString& OutError);
+	struct FPreparedVeg;  // a tile's trees, scattered and grounded off the game thread (cpp)
+	using FPreparedVegPtr = TSharedPtr<FPreparedVeg, ESPMode::ThreadSafe>;
+	FPreparedVegPtr PrepareTile(const emberworld::TileEntry& Tile) const;  // thread-safe
+	bool InstallTile(FPreparedVeg& P, FString& OutError);                  // game thread
+	void SelectTiles(const FVector& CameraUE);
+	void QueueTiers();
+	void PumpStreaming();
+	TArray<const emberworld::TileEntry*> WantTiles;
+	TSet<uint64> WantKeys;
+	TMap<uint64, TFuture<FPreparedVegPtr>> InFlight;
+	TArray<TPair<uint64, int32>> BuildQueue;   // (tile, cell) whose tier changed
+	TArray<FBoxSphereBounds> MeshBounds;       // SpeciesMesh bounds, cached for worker threads
+	double CamWx = 0, CamWy = 0, CamHag = 0;   // last selection's camera (world metres)
 	void BuildCell(uint64 TileKey, int32 CellIndex, ETier Tier);
 	void ClearCell(FVegCell& Cell);
 	/** Instance transform for a tree drawn with SpeciesMesh[Mesh] at this height / crown radius / yaw. */

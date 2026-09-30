@@ -10,6 +10,7 @@
 #include "Engine/Texture2D.h"
 #include "TextureResource.h"
 #include "Misc/Paths.h"
+#include "Async/Async.h"
 
 THIRD_PARTY_INCLUDES_START
 #include "emberworld/lod.h"
@@ -19,9 +20,17 @@ DEFINE_LOG_CATEGORY_STATIC(LogEmberWorld, Log, All);
 
 namespace
 {
+uint64 TileKeyOf(int32 Lod, int32 X, int32 Y)
+{
+	return (uint64(uint32(Lod)) << 48) | (uint64(uint32(X) & 0xFFFFFF) << 24) | uint64(uint32(Y) & 0xFFFFFF);
+}
 uint64 TileKey(const emberworld::TileEntry& T)
 {
-	return (uint64(uint32(T.lod)) << 48) | (uint64(uint32(T.x) & 0xFFFFFF) << 24) | uint64(uint32(T.y) & 0xFFFFFF);
+	return TileKeyOf(T.lod, T.x, T.y);
+}
+bool Overlaps(const emberworld::Bounds& A, const emberworld::Bounds& B)
+{
+	return A.min_x < B.max_x && B.min_x < A.max_x && A.min_y < B.max_y && B.min_y < A.max_y;
 }
 }  // namespace
 
@@ -30,6 +39,7 @@ AEmberTerrainActor::AEmberTerrainActor()
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 	Mesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Terrain"));
+	Mesh->SetMobility(EComponentMobility::Static);  // tile components attach here (static too)
 	Mesh->bUseAsyncCooking = true;
 	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Mesh->SetCastShadow(true);
@@ -64,9 +74,12 @@ void AEmberTerrainActor::SetBaseColor(const FLinearColor& Color)
 			return;
 		}
 		Material = UMaterialInstanceDynamic::Create(Base, this);
-		for (int32 i = 0; i < Mesh->GetNumSections(); ++i)
+		for (const auto& KV : Loaded)
 		{
-			Mesh->SetMaterial(i, Material);
+			if (KV.Value.Comp)
+			{
+				KV.Value.Comp->SetMaterial(0, Material);
+			}
 		}
 	}
 	Material->SetVectorParameterValue(TEXT("Color"), Color);
@@ -134,19 +147,101 @@ static UTexture2D* MakeMippedTexture(const std::vector<emberworld::Albedo>& Mips
 	return Tex;
 }
 
-void AEmberTerrainActor::BindLook(int32 Section, const emberworld::TileEntry& Tile)
+struct AEmberTerrainActor::FPreparedTile
 {
-	const double T0 = FPlatformTime::Seconds();
-	emberworld::LookInputs In;
-	std::string Err;
-	if (!emberworld::load_look_inputs(*Region, Tile, In, Err))
+	const emberworld::TileEntry* Tile = nullptr;
+	uint64 Key = 0;
+	emberworld::MeshResult Mesh;
+	bool bWater = false;
+	emberworld::MeshResult WaterMesh;
+	bool bSurface = false;
+	emberworld::SurfaceSampler Surface;
+	bool bLook = false;
+	std::string LookError;
+	emberworld::Albedo Albedo;                  // level 0 (+ mix); mips below
+	std::vector<emberworld::Albedo> Mips, MixMips;
+	double ComposeMs = 0.0;
+};
+
+AEmberTerrainActor::FPreparedPtr AEmberTerrainActor::PrepareTile(const emberworld::TileEntry& Tile) const
+{
+	// Worker thread: only worldcore (pure) and file reads. Region, Look, Frame and WaterDir are
+	// fixed once the region is loaded.
+	FPreparedPtr P = MakeShared<FPreparedTile, ESPMode::ThreadSafe>();
+	P->Tile = &Tile;
+	P->Key = TileKey(Tile);
+	emberworld::MeshOptions Opt;
+	TOptional<emberworld::Raster> Water;
+	if (!WaterDir.IsEmpty())
 	{
-		UE_LOG(LogEmberWorld, Warning, TEXT("look inputs z%d/x%d/y%d: %s"), Tile.lod, Tile.x, Tile.y, UTF8_TO_TCHAR(Err.c_str()));
+		const FString WPath = WaterDir / FString::Printf(TEXT("z%d/x%d/y%d/water_level.tif"), Tile.lod, Tile.x, Tile.y);
+		if (FPaths::FileExists(WPath))
+		{
+			emberworld::TiffResult WR = emberworld::read_tiff(TCHAR_TO_UTF8(*WPath));
+			if (WR)
+			{
+				Water = MoveTemp(*WR.raster);
+				Opt.water = &Water.GetValue();
+			}
+		}
+	}
+	P->Mesh = emberworld::load_tile_mesh(*Region, Tile, Frame, Opt);
+	{
+		// CPU copy of the rendered surface (ground cover placement; same corners, same water rule)
+		emberworld::TiffResult HR = emberworld::read_tiff(Region->path(Tile.height_tif));
+		P->bSurface = HR && P->Surface.build(*Region, Tile, *HR.raster, Opt.water, Opt.bed_depth_m);
+	}
+	if (Water.IsSet())
+	{
+		P->WaterMesh = emberworld::build_water_mesh(*Region, Tile, Water.GetValue(), Frame);
+		P->bWater = P->WaterMesh.ok() && P->WaterMesh.mesh.surface_triangles > 0;
+	}
+	if (Look.IsValid())
+	{
+		const double T0 = FPlatformTime::Seconds();
+		emberworld::LookInputs In;
+		if (emberworld::load_look_inputs(*Region, Tile, In, P->LookError))
+		{
+			P->Albedo = emberworld::compose_albedo(*Look, In);
+			P->Mips = emberworld::build_mips(P->Albedo);
+			if (!P->Albedo.mix.empty())
+			{
+				P->MixMips = emberworld::build_mix_mips(P->Albedo);
+			}
+			P->bLook = true;
+		}
+		P->ComposeMs = (FPlatformTime::Seconds() - T0) * 1000.0;
+	}
+	return P;
+}
+
+UProceduralMeshComponent* AEmberTerrainActor::NewTileComponent(bool bWater)
+{
+	UProceduralMeshComponent* C = NewObject<UProceduralMeshComponent>(this);
+	// Terrain never moves. Far shadows: VSM's far-shadow culling (r.Shadow.Virtual.
+	// UseFarShadowCulling) drops casters without bCastFarShadow from the distant clipmap levels.
+	// The single all-tiles component always touched the near levels; per-tile components did not,
+	// and mountains stopped shadowing the valleys (S_veg_lineup lineup_backlit 0.82, alpine_nw).
+	C->SetMobility(EComponentMobility::Static);
+	C->bCastFarShadow = !bWater;
+	C->bUseAsyncCooking = true;
+	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	C->SetCastShadow(!bWater);
+	C->SetupAttachment(Mesh);
+	C->RegisterComponent();
+	return C;
+}
+
+void AEmberTerrainActor::BindLook(int32 Section, UProceduralMeshComponent* Comp, const emberworld::TileEntry& Tile, FPreparedTile& P)
+{
+	if (!P.bLook)
+	{
+		UE_LOG(LogEmberWorld, Warning, TEXT("look inputs z%d/x%d/y%d: %s"), Tile.lod, Tile.x, Tile.y, UTF8_TO_TCHAR(P.LookError.c_str()));
 		return;
 	}
-	const emberworld::Albedo A = emberworld::compose_albedo(*Look, In);
-	UTexture2D* Tex = MakeMippedTexture(emberworld::build_mips(A), PF_B8G8R8A8, true);
-	UTexture2D* MixTex = A.mix.empty() ? nullptr : MakeMippedTexture(emberworld::build_mix_mips(A), PF_R8G8B8A8, false);
+	const emberworld::Albedo& A = P.Albedo;
+	UTexture2D* Tex = MakeMippedTexture(P.Mips, PF_B8G8R8A8, true);
+	UTexture2D* MixTex = P.MixMips.empty() ? nullptr : MakeMippedTexture(P.MixMips, PF_R8G8B8A8, false);
 
 	UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(TerrainMaster, this);
 	const double Full = Region->tile_px + 2.0 * Region->overlap_px;
@@ -168,7 +263,7 @@ void AEmberTerrainActor::BindLook(int32 Section, const emberworld::TileEntry& Ti
 	MID->SetScalarParameterValue(TEXT("AlbedoScale"), Region->tile_px / Full);
 	MID->SetScalarParameterValue(TEXT("AlbedoOffset"), Region->overlap_px / Full);
 	ApplyFire(MID);
-	Mesh->SetMaterial(Section, MID);
+	Comp->SetMaterial(0, MID);
 	{
 		double Sum[3] = {0, 0, 0};
 		size_t N = 0;
@@ -202,7 +297,7 @@ void AEmberTerrainActor::BindLook(int32 Section, const emberworld::TileEntry& Ti
 	SectionTextures[Section] = Tex;
 	SectionMixTextures[Section] = MixTex;
 	SectionMaterials[Section] = MID;
-	ComposeMs += (FPlatformTime::Seconds() - T0) * 1000.0;
+	ComposeMs += P.ComposeMs;
 }
 
 bool AEmberTerrainActor::LoadRegion(const FString& RegionDir, int32 FixedLod, FString& OutError)
@@ -224,7 +319,37 @@ bool AEmberTerrainActor::LoadRegion(const FString& RegionDir, int32 FixedLod, FS
 		UE_LOG(LogEmberWorld, Warning, TEXT("data extent: %s"), UTF8_TO_TCHAR(Err.c_str()));
 	}
 
-	Mesh->ClearAllMeshSections();
+	LodGrids.Reset();
+	FinestLod = Region->finest_lod();
+	CoarsestLod = FinestLod;
+	for (const emberworld::TileEntry& T : Region->tiles)
+	{
+		CoarsestLod = FMath::Min(CoarsestLod, T.lod);
+		FLodGrid& G = LodGrids.FindOrAdd(T.lod);
+		if (!G.bValid)
+		{
+			G.Span = T.content.width();
+			G.MinX = T.content.min_x - T.x * G.Span;
+			G.MinY = T.content.min_y - T.y * G.Span;
+			G.bValid = true;
+		}
+	}
+	for (const emberworld::TileEntry& T : Region->tiles)  // the key grid must reproduce every tile
+	{
+		uint64 K = 0;
+		const double Cx = 0.5 * (T.content.min_x + T.content.max_x), Cy = 0.5 * (T.content.min_y + T.content.max_y);
+		if (!KeyAt(T.lod, Cx, Cy, K) || K != TileKey(T))
+		{
+			UE_LOG(LogEmberWorld, Error, TEXT("tile key grid does not match tile z%d/x%d/y%d"), T.lod, T.x, T.y);
+			LodGrids.FindOrAdd(T.lod).bValid = false;
+		}
+	}
+
+	for (const auto& KV : Loaded)
+	{
+		if (KV.Value.Comp) KV.Value.Comp->DestroyComponent();
+		if (KV.Value.WaterComp) KV.Value.WaterComp->DestroyComponent();
+	}
 	Loaded.Reset();
 	FreeSections.Reset();
 	NextSection = 0;
@@ -250,41 +375,16 @@ bool AEmberTerrainActor::LoadRegion(const FString& RegionDir, int32 FixedLod, FS
 	return true;
 }
 
-bool AEmberTerrainActor::LoadTile(const emberworld::TileEntry& Tile, FString& OutError)
+bool AEmberTerrainActor::ApplyTile(FPreparedTile& P, FString& OutError)
 {
-	// Water layer for this tile (optional): lakebed rule for the terrain + a flat surface.
-	emberworld::MeshOptions Opt;
-	TOptional<emberworld::Raster> Water;
-	if (!WaterDir.IsEmpty())
+	const emberworld::TileEntry& Tile = *P.Tile;
+	emberworld::MeshResult& M = P.Mesh;
+	if (P.bSurface)
 	{
-		const FString WPath = WaterDir / FString::Printf(TEXT("z%d/x%d/y%d/water_level.tif"), Tile.lod, Tile.x, Tile.y);
-		if (FPaths::FileExists(WPath))
-		{
-			emberworld::TiffResult WR = emberworld::read_tiff(TCHAR_TO_UTF8(*WPath));
-			if (WR)
-			{
-				Water = MoveTemp(*WR.raster);
-				Opt.water = &Water.GetValue();
-			}
-			else
-			{
-				UE_LOG(LogEmberWorld, Warning, TEXT("water %s: %s"), *WPath, UTF8_TO_TCHAR(WR.error.message.c_str()));
-			}
-		}
-	}
-	emberworld::MeshResult M = emberworld::load_tile_mesh(*Region, Tile, Frame, Opt);
-	{
-		// CPU copy of the rendered surface (ground cover placement; same corners, same water rule)
-		emberworld::TiffResult HR = emberworld::read_tiff(Region->path(Tile.height_tif));
-		if (HR)
-		{
-			FTileSurface S;
-			S.Lod = Tile.lod;
-			if (S.Sampler.build(*Region, Tile, *HR.raster, Opt.water, Opt.bed_depth_m))
-			{
-				TileSurfaces.Add(TileKey(Tile), MoveTemp(S));
-			}
-		}
+		FTileSurface S;
+		S.Lod = Tile.lod;
+		S.Sampler = MoveTemp(P.Surface);
+		TileSurfaces.Add(P.Key, MoveTemp(S));
 	}
 	if (!M.ok())
 	{
@@ -313,61 +413,75 @@ bool AEmberTerrainActor::LoadTile(const emberworld::TileEntry& Tile, FString& Ou
 		Tris.Add(static_cast<int32>(Idx));
 	}
 	const int32 Section = FreeSections.Num() ? FreeSections.Pop() : NextSection++;
-	Mesh->CreateMeshSection(Section, Verts, Tris, Normals, UV0, UV1, Empty, Empty,
+	UProceduralMeshComponent* Comp = NewTileComponent(false);
+	Comp->CreateMeshSection(0, Verts, Tris, Normals, UV0, UV1, Empty, Empty,
 		TArray<FColor>(), TArray<FProcMeshTangent>(), /*bCreateCollision=*/false);
 	if (Look.IsValid())
 	{
-		BindLook(Section, Tile);
+		BindLook(Section, Comp, Tile, P);
 	}
 	else if (Material)
 	{
-		Mesh->SetMaterial(Section, Material);
+		Comp->SetMaterial(0, Material);
 	}
+	UProceduralMeshComponent* WaterComp = nullptr;
 	int64 WaterTris = 0;
-	if (Water.IsSet())
+	if (P.bWater)
 	{
-		emberworld::MeshResult WM = emberworld::build_water_mesh(*Region, Tile, Water.GetValue(), Frame);
-		if (WM.ok() && WM.mesh.surface_triangles > 0)
+		const emberworld::TileMesh& W = P.WaterMesh.mesh;
+		TArray<FVector> WV, WN;
+		TArray<FVector2D> WUV, WEmpty;
+		TArray<int32> WT;
+		for (size_t i = 0; i < W.positions.size(); ++i)
 		{
-			TArray<FVector> WV, WN;
-			TArray<FVector2D> WUV, WEmpty;
-			TArray<int32> WT;
-			for (size_t i = 0; i < WM.mesh.positions.size(); ++i)
-			{
-				WV.Emplace(WM.mesh.positions[i].x, WM.mesh.positions[i].y, WM.mesh.positions[i].z);
-				WN.Emplace(0.0, 0.0, 1.0);
-				WUV.Emplace(WM.mesh.uv0[i].u, WM.mesh.uv0[i].v);
-			}
-			for (uint32 Idx : WM.mesh.indices)
-			{
-				WT.Add(static_cast<int32>(Idx));
-			}
-			WaterMesh->CreateMeshSection(Section, WV, WT, WN, WUV, WEmpty, WEmpty, WEmpty,
-				TArray<FColor>(), TArray<FProcMeshTangent>(), false);
-			WaterMesh->SetMaterial(Section, WaterMaterial);
-			WaterTris = WM.mesh.surface_triangles;
+			WV.Emplace(W.positions[i].x, W.positions[i].y, W.positions[i].z);
+			WN.Emplace(0.0, 0.0, 1.0);
+			WUV.Emplace(W.uv0[i].u, W.uv0[i].v);
 		}
+		for (uint32 Idx : W.indices)
+		{
+			WT.Add(static_cast<int32>(Idx));
+		}
+		WaterComp = NewTileComponent(true);
+		WaterComp->CreateMeshSection(0, WV, WT, WN, WUV, WEmpty, WEmpty, WEmpty,
+			TArray<FColor>(), TArray<FProcMeshTangent>(), false);
+		WaterComp->SetMaterial(0, WaterMaterial);
+		WaterTris = W.surface_triangles;
 	}
-	FLoadedTile& L = Loaded.Add(TileKey(Tile));
+	FLoadedTile& L = Loaded.Add(P.Key);
 	L.WaterTriangles = WaterTris;
 	L.Section = Section;
 	L.Lod = Tile.lod;
 	L.Triangles = TM.surface_triangles;
 	L.SkirtTriangles = TM.skirt_triangles;
 	L.NodataCorners = TM.nodata_corners;
+	L.Content = Tile.content;
+	L.Comp = Comp;
+	L.WaterComp = WaterComp;
+	++TileGeneration;
 	return true;
+}
+
+bool AEmberTerrainActor::LoadTile(const emberworld::TileEntry& Tile, FString& OutError)
+{
+	FPreparedPtr P = PrepareTile(Tile);
+	return ApplyTile(*P, OutError);
 }
 
 void AEmberTerrainActor::UnloadTile(uint64 Key)
 {
 	TileMixes.Remove(Key);
 	TileSurfaces.Remove(Key);
+	++TileGeneration;
 	if (const FLoadedTile* L = Loaded.Find(Key))
 	{
-		Mesh->ClearMeshSection(L->Section);
-		if (L->Section < WaterMesh->GetNumSections())
+		if (L->Comp)
 		{
-			WaterMesh->ClearMeshSection(L->Section);
+			L->Comp->DestroyComponent();
+		}
+		if (L->WaterComp)
+		{
+			L->WaterComp->DestroyComponent();
 		}
 		if (SectionTextures.IsValidIndex(L->Section))
 		{
@@ -412,15 +526,123 @@ int32 AEmberTerrainActor::UpdateStreaming(const FVector& CameraUE)
 	Opt.refine_factor = RefineFactor;
 	const std::vector<const emberworld::TileEntry*> Want = emberworld::select_tiles(*Region, Wx, Wy, Wz, Opt);
 
-	TSet<uint64> WantKeys;
+	WantKeys.Reset();
+	WantTiles.Reset();
 	for (const emberworld::TileEntry* T : Want)
 	{
 		WantKeys.Add(TileKey(*T));
+		WantTiles.Add(T);
 	}
+	int32 Changes = 0;
+	if (StreamUpdates == 0 || bSyncStreaming)
+	{
+		// First selection (the first frame has ground) and capture runs: synchronous.
+		FString Err;
+		TArray<uint64> Drop;
+		for (const auto& KV : Loaded)
+		{
+			if (!WantKeys.Contains(KV.Key))
+			{
+				Drop.Add(KV.Key);
+			}
+		}
+		for (uint64 K : Drop)
+		{
+			UnloadTile(K);
+		}
+		Changes = Drop.Num();
+		for (const emberworld::TileEntry* T : Want)
+		{
+			if (!Loaded.Contains(TileKey(*T)))
+			{
+				if (!LoadTile(*T, Err))
+				{
+					UE_LOG(LogEmberWorld, Error, TEXT("%s"), *Err);
+					continue;
+				}
+				++Changes;
+			}
+		}
+		RecomputeStats();
+		LastStreamMs = (FPlatformTime::Seconds() - T0) * 1000.0;
+		++StreamUpdates;
+	}
+	return Changes;
+}
+
+void AEmberTerrainActor::PumpStreaming()
+{
+	const double T0 = FPlatformTime::Seconds();
+	bool bChanged = false;
+	// 1. collect finished preparations (results no longer wanted are dropped)
+	TArray<uint64> Done;
+	for (auto& KV : InFlight)
+	{
+		if (KV.Value.IsReady())
+		{
+			Done.Add(KV.Key);
+		}
+	}
+	for (uint64 K : Done)
+	{
+		FPreparedPtr P = InFlight[K].Get();
+		InFlight.Remove(K);
+		if (P.IsValid() && WantKeys.Contains(K) && !Loaded.Contains(K))
+		{
+			Ready.Add(P);
+		}
+	}
+	// 2. start preparing wanted tiles (selection order: coarse-to-fine as select_tiles returns)
+	for (const emberworld::TileEntry* T : WantTiles)
+	{
+		if (InFlight.Num() >= MaxInFlight)
+		{
+			break;
+		}
+		const uint64 K = TileKey(*T);
+		if (Loaded.Contains(K) || InFlight.Contains(K)
+			|| Ready.ContainsByPredicate([&](const FPreparedPtr& P) { return P->Key == K; }))
+		{
+			continue;
+		}
+		InFlight.Add(K, Async(EAsyncExecution::ThreadPool, [this, T]() { return PrepareTile(*T); }));
+	}
+	// 3. apply within the frame budget (at least one per frame so it always progresses)
+	FString Err;
+	int32 Applied = 0;
+	while (Ready.Num() && (Applied == 0 || (FPlatformTime::Seconds() - T0) * 1000.0 < ApplyBudgetMs))
+	{
+		FPreparedPtr P = Ready[0];
+		Ready.RemoveAt(0);
+		if (!WantKeys.Contains(P->Key) || Loaded.Contains(P->Key))
+		{
+			continue;
+		}
+		if (!ApplyTile(*P, Err))
+		{
+			UE_LOG(LogEmberWorld, Error, TEXT("%s"), *Err);
+		}
+		++Applied;
+		bChanged = true;
+	}
+	// 4. retire tiles no longer wanted once every wanted tile over their footprint is in
 	TArray<uint64> Drop;
 	for (const auto& KV : Loaded)
 	{
-		if (!WantKeys.Contains(KV.Key))
+		if (WantKeys.Contains(KV.Key))
+		{
+			continue;
+		}
+		bool bCovered = true;
+		for (const emberworld::TileEntry* T : WantTiles)
+		{
+			if (Overlaps(KV.Value.Content, T->content) && !Loaded.Contains(TileKey(*T)))
+			{
+				bCovered = false;
+				break;
+			}
+		}
+		if (bCovered)
 		{
 			Drop.Add(KV.Key);
 		}
@@ -428,28 +650,69 @@ int32 AEmberTerrainActor::UpdateStreaming(const FVector& CameraUE)
 	for (uint64 K : Drop)
 	{
 		UnloadTile(K);
+		bChanged = true;
 	}
-	int32 Changes = Drop.Num();
-	FString Err;
-	for (const emberworld::TileEntry* T : Want)
-	{
-		if (!Loaded.Contains(TileKey(*T)))
-		{
-			if (!LoadTile(*T, Err))
-			{
-				UE_LOG(LogEmberWorld, Error, TEXT("%s"), *Err);
-				continue;
-			}
-			++Changes;
-		}
-	}
-	if (Changes)
+	if (bChanged)
 	{
 		RecomputeStats();
 		LastStreamMs = (FPlatformTime::Seconds() - T0) * 1000.0;
-		++StreamUpdates;
+		if (LastStreamMs > 8.0)
+		{
+			UE_LOG(LogEmberWorld, Display, TEXT("stream-cost terrain-pump %.1f ms (applied %d, dropped %d, in flight %d, ready %d)"),
+				LastStreamMs, Applied, Drop.Num(), InFlight.Num(), Ready.Num());
+		}
 	}
-	return Changes;
+}
+
+bool AEmberTerrainActor::IsStreamingBusy() const
+{
+	if (!bStreaming)
+	{
+		return false;
+	}
+	if (InFlight.Num() || Ready.Num())
+	{
+		return true;
+	}
+	for (uint64 K : WantKeys)
+	{
+		if (!Loaded.Contains(K))
+		{
+			return true;
+		}
+	}
+	for (const auto& KV : Loaded)
+	{
+		if (!WantKeys.Contains(KV.Key))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void AEmberTerrainActor::EndPlay(const EEndPlayReason::Type Reason)
+{
+	for (auto& KV : InFlight)
+	{
+		KV.Value.Wait();  // workers read this actor's region / look
+	}
+	InFlight.Reset();
+	Ready.Reset();
+	Super::EndPlay(Reason);
+}
+
+bool AEmberTerrainActor::KeyAt(int32 Lod, double X, double Y, uint64& OutKey) const
+{
+	const FLodGrid* G = LodGrids.Find(Lod);
+	if (!G || !G->bValid)
+	{
+		return false;
+	}
+	const int32 Ix = FMath::FloorToInt((X - G->MinX) / G->Span);
+	const int32 Iy = FMath::FloorToInt((Y - G->MinY) / G->Span);  // Terrain's tile y grows north
+	OutKey = TileKeyOf(Lod, Ix, Iy);
+	return true;
 }
 
 void AEmberTerrainActor::Tick(float DeltaSeconds)
@@ -465,10 +728,17 @@ void AEmberTerrainActor::Tick(float DeltaSeconds)
 		return;
 	}
 	const FVector Cam = PC->PlayerCameraManager->GetCameraLocation();
+	PumpStreaming();
 	if (StreamUpdates == 0 || FVector::Dist(Cam, LastStreamCamera) > 100.0)  // re-select every metre moved
 	{
 		LastStreamCamera = Cam;
-		UpdateStreaming(Cam);
+		const double T0 = FPlatformTime::Seconds();
+		const int32 N = UpdateStreaming(Cam);
+		const double Ms = (FPlatformTime::Seconds() - T0) * 1000.0;
+		if (Ms > 5.0)
+		{
+			UE_LOG(LogEmberWorld, Display, TEXT("stream-cost terrain %.1f ms (%d change(s))"), Ms, N);
+		}
 		if (StreamUpdates == 0)
 		{
 			++StreamUpdates;  // count the first selection even if it changed nothing
@@ -479,16 +749,12 @@ void AEmberTerrainActor::Tick(float DeltaSeconds)
 bool AEmberTerrainActor::GroundMixAt(double WorldX, double WorldY, float OutW[4], int32* OutLod) const
 {
 	const FTileMix* Best = nullptr;
-	for (const TPair<uint64, FTileMix>& P : TileMixes)
+	for (int32 Lod = FinestLod; Lod >= CoarsestLod && !Best; --Lod)
 	{
-		const FTileMix& M = P.Value;
-		if (WorldX < M.MinX || WorldX >= M.MinX + M.Width || WorldY > M.MaxY || WorldY <= M.MaxY - M.Height)
+		uint64 K = 0;
+		if (KeyAt(Lod, WorldX, WorldY, K))
 		{
-			continue;
-		}
-		if (!Best || M.Lod > Best->Lod)
-		{
-			Best = &M;
+			Best = TileMixes.Find(K);
 		}
 	}
 	if (!Best)
@@ -511,19 +777,21 @@ bool AEmberTerrainActor::GroundMixAt(double WorldX, double WorldY, float OutW[4]
 
 bool AEmberTerrainActor::SurfaceAt(double WorldX, double WorldY, double& OutZ) const
 {
-	int32 BestLod = -1;
-	bool bHit = false;
-	for (const TPair<uint64, FTileSurface>& P : TileSurfaces)
+	for (int32 Lod = FinestLod; Lod >= CoarsestLod; --Lod)
 	{
-		double Z = 0.0;
-		if (P.Value.Lod > BestLod && P.Value.Sampler.surface_at(WorldX, WorldY, Z))
+		uint64 K = 0;
+		if (KeyAt(Lod, WorldX, WorldY, K))
 		{
-			BestLod = P.Value.Lod;
-			OutZ = Z;
-			bHit = true;
+			if (const FTileSurface* S = TileSurfaces.Find(K))
+			{
+				if (S->Sampler.surface_at(WorldX, WorldY, OutZ))
+				{
+					return true;
+				}
+			}
 		}
 	}
-	return bHit;
+	return false;
 }
 
 bool AEmberTerrainActor::GroundHeightAt(double WorldX, double WorldY, double& OutZ) const

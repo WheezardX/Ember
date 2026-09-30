@@ -89,6 +89,7 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetNumberField(TEXT("smoke_wind_ms"), SmokeWindMs);
 	J->TryGetBoolField(TEXT("veg_lineup"), bVegLineup);
 	J->TryGetStringField(TEXT("perf_bookmark"), PerfBookmark);
+	J->TryGetStringField(TEXT("perf_orbit"), PerfOrbit);
 	J->TryGetStringField(TEXT("water_dir"), WaterDir);
 	J->TryGetStringField(TEXT("ffmpeg"), FfmpegPath);
 	J->TryGetStringField(TEXT("orbit_codec"), OrbitCodec);
@@ -180,6 +181,7 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 			Or.Degrees = O->GetNumberField(TEXT("degrees"));
 			Or.Frames = O->GetIntegerField(TEXT("frames"));
 			Or.WarmupFrames = O->GetIntegerField(TEXT("warmup_frames"));
+			O->TryGetBoolField(TEXT("capture"), Or.bCapture);
 			Orbits.Add(Or);
 		}
 	}
@@ -414,6 +416,10 @@ void AEmberHarness::Finish(int32 ExitCode, const FString& Error)
 void AEmberHarness::NextPhase()
 {
 	UEmberSceneFactsSubsystem* Facts = GetWorld()->GetSubsystem<UEmberSceneFactsSubsystem>();
+	while (OrbitIndex < Orbits.Num() && !Orbits[OrbitIndex].bCapture)
+	{
+		++OrbitIndex;  // path-only orbits (perf_orbit) record nothing
+	}
 	if (CaptureIndex < Captures.Num())
 	{
 		State = EState::Position;
@@ -425,7 +431,22 @@ void AEmberHarness::NextPhase()
 	else if (PerfFrames > 0 && State != EState::Perf && State != EState::PerfWarmup)
 	{
 		// Optional perf pose; settle (streaming, TSR) before the measured window.
-		if (!PerfBookmark.IsEmpty())
+		if (const FOrbit* O = FindPerfOrbit())
+		{
+			FString Err;
+			PrepareFlyoverHeights(*O);
+			if (!PlaceOrbitFrame(*O, 0, Err))
+			{
+				Finish(2, TEXT("perf orbit: ") + Err);
+				return;
+			}
+		}
+		else if (!PerfOrbit.IsEmpty())
+		{
+			Finish(2, TEXT("perf orbit not found: ") + PerfOrbit);
+			return;
+		}
+		else if (!PerfBookmark.IsEmpty())
 		{
 			const FBookmark* B = Bookmarks.FindByPredicate([&](const FBookmark& X) { return X.Name == PerfBookmark; });
 			FString Err;
@@ -436,6 +457,18 @@ void AEmberHarness::NextPhase()
 			}
 		}
 		FramesLeft = 60;
+		if (Terrain)
+		{
+			Terrain->bSyncStreaming = false;  // perf measures the real (async) streaming
+		}
+		if (Vegetation)
+		{
+			Vegetation->bSyncStreaming = false;
+		}
+		if (Cover)
+		{
+			Cover->bSyncStreaming = false;
+		}
 		State = EState::PerfWarmup;
 	}
 	else
@@ -615,6 +648,11 @@ bool AEmberHarness::OrbitPose(const FOrbit& O, int32 Frame, FBookmark& At, FStri
 	return true;
 }
 
+const AEmberHarness::FOrbit* AEmberHarness::FindPerfOrbit() const
+{
+	return PerfOrbit.IsEmpty() ? nullptr : Orbits.FindByPredicate([&](const FOrbit& X) { return X.Name == PerfOrbit; });
+}
+
 void AEmberHarness::StartPlay()
 {
 	// Start pose: the named bookmark, else the first capture's, else the first bookmark.
@@ -754,7 +792,11 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 bool AEmberHarness::CompilesPending()
 {
 	const int32 Shaders = GShaderCompilingManager ? GShaderCompilingManager->GetNumRemainingJobs() : 0;
-	const int32 Assets = FAssetCompilingManager::Get().GetNumRemainingAssets();
+	// Terrain streams asynchronously: a capture waits until every wanted tile is in.
+	const int32 Assets = FAssetCompilingManager::Get().GetNumRemainingAssets()
+		+ ((Terrain && Terrain->IsStreamingBusy()) ? 1 : 0)
+		+ ((Vegetation && !Vegetation->bSyncStreaming && Vegetation->IsStreamingBusy()) ? 1 : 0)
+		+ ((Cover && Cover->IsStreamingBusy()) ? 1 : 0);
 	const double Now = FPlatformTime::Seconds();
 	if (Shaders + Assets == 0)
 	{
@@ -768,7 +810,7 @@ bool AEmberHarness::CompilesPending()
 	if (CompileWaitStart < 0.0)
 	{
 		CompileWaitStart = Now;
-		UE_LOG(LogEmberHarness, Display, TEXT("waiting for %d shader job(s) and %d asset(s) to compile before capturing"), Shaders, Assets);
+		UE_LOG(LogEmberHarness, Display, TEXT("waiting for %d shader job(s) and %d asset(s) / terrain streaming before capturing"), Shaders, Assets);
 	}
 	if (Now - CompileWaitStart > 900.0)
 	{
@@ -800,6 +842,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		Terrain = GetWorld()->SpawnActor<AEmberTerrainActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
 		Terrain->RefineFactor = RefineFactor;
+		Terrain->bSyncStreaming = !bPlay;  // captures: reproducible; play + perf: async
 		if (!WaterDir.IsEmpty() && !Terrain->SetWaterDir(WaterDir, Err))
 		{
 			Finish(2, TEXT("water: ") + Err);
@@ -820,6 +863,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		{
 			Vegetation = GetWorld()->SpawnActor<AEmberVegetationActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
 			Vegetation->RadiusM = VegRadiusM;
+			Vegetation->bSyncStreaming = !bPlay;
 			Vegetation->NearRadiusM = VegNearRadiusM;
 			Vegetation->MidMinHeightM = VegMidMinHeightM;
 			if (!Vegetation->Init(Terrain, Err))
@@ -851,6 +895,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			}
 			Cover = GetWorld()->SpawnActor<AEmberGroundCoverActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
 			Cover->RadiusM = GroundCoverRadiusM;
+			Cover->bSyncStreaming = !bPlay;
 			if (!Cover->Init(Terrain, LookPath, Err))
 			{
 				Finish(2, TEXT("ground cover: ") + Err);
@@ -1040,6 +1085,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		return;
 
 	case EState::OrbitShoot:
+		if (Terrain && Terrain->IsStreamingBusy())
+		{
+			return;  // each orbit frame waits for its tiles (videos never show half-loaded ground)
+		}
 		bShotReady = false;
 		ProfShotReq = FPlatformTime::Seconds();
 		FScreenshotRequest::RequestScreenshot(false);
@@ -1145,6 +1194,17 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		return;
 
 	case EState::Perf:
+		if (const FOrbit* O = FindPerfOrbit())
+		{
+			// one pose per frame along the path: the frames measured include its streaming
+			const int32 I = PerfFrames - FramesLeft;
+			const int32 F = FMath::Clamp(static_cast<int32>(static_cast<int64>(I) * (O->Frames - 1) / FMath::Max(1, PerfFrames - 1)), 0, O->Frames - 1);
+			if (!PlaceOrbitFrame(*O, F, Err))
+			{
+				Finish(2, TEXT("perf orbit: ") + Err);
+				return;
+			}
+		}
 		if (Vegetation)
 		{
 			PerfWindTime += DeltaSeconds;  // perf measures the real sway cost

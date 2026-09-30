@@ -323,6 +323,18 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 	Perf->SetNumberField(TEXT("frame_ms_p50"), Percentile(Fm, 0.50));
 	Perf->SetNumberField(TEXT("frame_ms_p95"), Percentile(Fm, 0.95));
 	Perf->SetNumberField(TEXT("frame_ms_max"), Percentile(Fm, 1.0));
+	{
+		int32 H33 = 0, H50 = 0, H100 = 0;  // hitches: frames over 2x / 3x / 6x a 60 fps frame
+		for (float Ms : Fm)
+		{
+			H33 += Ms > 33.3f;
+			H50 += Ms > 50.f;
+			H100 += Ms > 100.f;
+		}
+		Perf->SetNumberField(TEXT("hitches_33ms"), H33);
+		Perf->SetNumberField(TEXT("hitches_50ms"), H50);
+		Perf->SetNumberField(TEXT("hitches_100ms"), H100);
+	}
 	Perf->SetNumberField(TEXT("game_ms_avg"), Avg(Gm));
 	Perf->SetNumberField(TEXT("render_ms_avg"), Avg(Rm));
 	Perf->SetNumberField(TEXT("gpu_ms_avg"), Avg(Gp));
