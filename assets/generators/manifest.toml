@@ -203,4 +203,12 @@ outputs = [
   "/Game/Ember/Generated/Cover/SM_Cover_stump_v0",
   "/Game/Ember/Generated/Cover/SM_Cover_stump_v1",
   "/Game/Ember/Generated/Cover/SM_Cover_stump_v2",
+  "/Game/Ember/Generated/Cover/MI_Cover_snag",
+  "/Game/Ember/Generated/Cover/SM_Cover_snag_v0",
+  "/Game/Ember/Generated/Cover/SM_Cover_snag_v1",
+  "/Game/Ember/Generated/Cover/SM_Cover_snag_v2",
+  "/Game/Ember/Generated/Cover/MI_Cover_pole",
+  "/Game/Ember/Generated/Cover/SM_Cover_pole_v0",
+  "/Game/Ember/Generated/Cover/SM_Cover_pole_v1",
+  "/Game/Ember/Generated/Cover/SM_Cover_pole_v2",
 ]

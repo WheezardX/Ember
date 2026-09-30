@@ -193,7 +193,7 @@
       }
     },
     "ground_cover.py": {
-      "script_sha256": "e7fe414a210c2cb7fc0b5b4669bda1bae83447b1af1047e84df4b56d915d7a4d",
+      "script_sha256": "6000eecaa885feb0edf9359e041256baf2f23e3bed6079183d8869dd6733ab63",
       "outputs": {
         "/Game/Ember/Generated/Cover/MI_Cover_fern": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_fern.uasset",
         "/Game/Ember/Generated/Cover/SM_Cover_fern_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fern_v0.uasset",
@@ -218,7 +218,15 @@
         "/Game/Ember/Generated/Cover/MI_Cover_stump": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_stump.uasset",
         "/Game/Ember/Generated/Cover/SM_Cover_stump_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_stump_v0.uasset",
         "/Game/Ember/Generated/Cover/SM_Cover_stump_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_stump_v1.uasset",
-        "/Game/Ember/Generated/Cover/SM_Cover_stump_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_stump_v2.uasset"
+        "/Game/Ember/Generated/Cover/SM_Cover_stump_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_stump_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_snag": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_snag.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_snag_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_snag_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_snag_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_snag_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_snag_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_snag_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_pole": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_pole.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_pole_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_pole_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_pole_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_pole_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_pole_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_pole_v2.uasset"
       }
     }
   }

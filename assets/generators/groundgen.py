@@ -160,8 +160,51 @@ def stump(seed: int) -> Mesh:
     return m
 
 
+def snag(seed: int) -> Mesh:
+    """A standing dead tree (8g): a tapering bare trunk, a jagged broken top, a few dead branch
+    stubs angled down. Stands on 0,0,0; the renderer scales it to the rule's height."""
+    rng = random.Random(seed)
+    m = Mesh()
+    h = rng.uniform(600, 800)
+    r = rng.uniform(20, 30)
+    lean = (rng.uniform(-8, 8), rng.uniform(-8, 8))
+    path = [(lean[0] * t * t, lean[1] * t * t, h * t) for t in (0, 0.25, 0.5, 0.75, 1.0)]
+    tube(m, path, [r * 1.15, r * 0.95, r * 0.8, r * 0.65, r * 0.5], 9, 0.5)
+    for _ in range(rng.randint(3, 5)):          # broken top: splinters
+        a = rng.uniform(0, 2 * math.pi)
+        p = (path[-1][0] + math.cos(a) * r * 0.25, path[-1][1] + math.sin(a) * r * 0.25, h * 0.98)
+        tube(m, [p, add(p, (math.cos(a) * r * 0.2, math.sin(a) * r * 0.2, rng.uniform(r, 3 * r)))],
+             [r * 0.14, r * 0.02], 4, 0.45)
+    for _ in range(rng.randint(3, 6)):          # dead branch stubs, drooping
+        t = rng.uniform(0.35, 0.9)
+        a = rng.uniform(0, 2 * math.pi)
+        p = (lean[0] * t * t, lean[1] * t * t, h * t)
+        d = norm((math.cos(a), math.sin(a), rng.uniform(-0.5, 0.1)))
+        tube(m, [p, add(p, mul(d, rng.uniform(40, 120)))], [r * 0.16, r * 0.05], 4, 0.45)
+    return m
+
+
+def pole(seed: int) -> Mesh:
+    """A long fallen stem (8g hung-up tree): lies along +X from its foot, tapering to a thin
+    top, a few branch stubs; the renderer pitches it up into the neighbours' crowns."""
+    rng = random.Random(seed)
+    m = Mesh()
+    length = rng.uniform(1100, 1500)
+    r = rng.uniform(11, 15)
+    path = [(length * t, 0.0, r + rng.uniform(-3, 3) * math.sin(math.pi * t))
+            for t in (0, 0.25, 0.5, 0.75, 1.0)]
+    tube(m, path, [r, r * 0.85, r * 0.65, r * 0.45, r * 0.25], 7, 0.5)
+    for _ in range(rng.randint(3, 6)):
+        t = rng.uniform(0.3, 0.95)
+        p = (length * t, 0.0, r)
+        d = norm((rng.uniform(-0.2, 0.4), rng.choice((-1, 1)) * 1.0, rng.uniform(-0.3, 0.6)))
+        tube(m, [p, add(p, mul(d, rng.uniform(30, 90)))], [r * 0.2, r * 0.06], 4, 0.45)
+    return m
+
+
+# New items go at the END: each item's mesh seed comes from its index here.
 ITEMS = {"fern": fern, "huckleberry": huckleberry, "shrub": shrub, "rock": rock, "log": log,
-         "stump": stump}
+         "stump": stump, "snag": snag, "pole": pole}
 
 # Material colours (sRGB hex, no '#'): foliage (Color), wood / stone (TrunkColor).
 COLORS = {
@@ -171,6 +214,8 @@ COLORS = {
     "rock": ("7A766E", "736E66"),
     "log": ("5A5A40", "5A4834"),           # weathered bark; foliage colour unused
     "stump": ("5A5A40", "5E4A36"),
+    "snag": ("5A5A40", "7A746A"),          # weathered silver-grey dead wood
+    "pole": ("5A5A40", "5E4E3C"),
 }
 
 

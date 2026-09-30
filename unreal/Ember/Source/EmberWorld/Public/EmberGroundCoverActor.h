@@ -58,6 +58,9 @@ private:
 	int32 LastGeneration = -1;
 	void BuildCell(const FIntPoint& Key, FCoverCell& Cell);
 	void ClearCell(FCoverCell& Cell);
+	/** Conform (logs) / leaner (hung-up stems) placement on the rendered surface; false = skip. */
+	bool PlaceLying(const emberworld::CoverInstance& In, const FBoxSphereBounds& B, double S,
+		emberworld::CoverPose Pose, FTransform& Out) const;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AEmberTerrainActor> Terrain;

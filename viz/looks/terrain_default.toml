@@ -106,7 +106,8 @@ shrub = 0.2
 litter = 0.15
 height_min_m = 0.5
 height_max_m = 1.1
-[cover.items.log]          # down wood on the forest floor
+[cover.items.log]          # down wood on the forest floor: lies along the slope, partly buried,
+pose = "conform"           # ~15 % propped (8g)
 smoulder = 1.0
 litter = 1.2
 shrub = 0.2
@@ -117,3 +118,18 @@ smoulder = 1.0
 litter = 0.5
 height_min_m = 0.4
 height_max_m = 1.0
+[cover.items.snag]         # standing dead trees, broken tops (~25 / ha under timber) (8g)
+smoulder = 1.0
+litter = 0.25
+shrub = 0.05
+height_min_m = 3.0
+height_max_m = 9.0
+variants = 3
+[cover.items.leaner]       # a fallen stem hung up in its neighbours, pitched 20-40 deg (8g)
+mesh = "pole"              # height = the stem's diameter (a lying mesh, like a log)
+pose = "leaner"
+smoulder = 1.0
+litter = 0.08
+height_min_m = 0.18
+height_max_m = 0.32
+variants = 2

@@ -50,6 +50,14 @@ CoverRulesResult load_cover_rules(const std::string& look_path) {
             c.variants = static_cast<int>(std::max(1.0, num(it->get("variants"), c.variants)));
             c.consume = static_cast<float>(num(it->get("consume"), 0.0));
             c.smoulder = static_cast<float>(num(it->get("smoulder"), 0.0));
+            const std::string pose = it->get("pose") ? it->get("pose")->value_or(std::string("upright")) : "upright";
+            if (pose == "upright") c.pose = CoverPose::Upright;
+            else if (pose == "conform") c.pose = CoverPose::Conform;
+            else if (pose == "leaner") c.pose = CoverPose::Leaner;
+            else {
+                res.error = look_path + ": [cover.items." + c.key + "] pose must be upright | conform | leaner, not '" + pose + "'";
+                return res;
+            }
             R.items.push_back(std::move(c));
         }
         // Keys in file order are not guaranteed by the TOML table; sort for determinism.

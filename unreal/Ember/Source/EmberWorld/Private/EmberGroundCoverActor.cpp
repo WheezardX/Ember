@@ -9,6 +9,10 @@
 
 #include "EmberTerrainActor.h"
 
+THIRD_PARTY_INCLUDES_START
+#include "emberworld/scatter.h"
+THIRD_PARTY_INCLUDES_END
+
 DEFINE_LOG_CATEGORY_STATIC(LogEmberCover, Log, All);
 
 AEmberGroundCoverActor::AEmberGroundCoverActor()
@@ -67,6 +71,62 @@ bool AEmberGroundCoverActor::Init(AEmberTerrainActor* InTerrain, const FString& 
 	return true;
 }
 
+bool AEmberGroundCoverActor::PlaceLying(const emberworld::CoverInstance& In, const FBoxSphereBounds& B, double S,
+	emberworld::CoverPose Pose, FTransform& Out) const
+{
+	// Lying meshes (logs, poles) run along +X from their foot at x = 0 and sit on z = 0.
+	const double LenM = FMath::Max(0.1, (B.Origin.X + B.BoxExtent.X) * S / 100.0);
+	const double DiaM = FMath::Max(0.05, 2.0 * B.BoxExtent.Z * S / 100.0);
+	// UE yaw (X east, Y south) -> world direction (x east, y north)
+	const double Dx = FMath::Cos(In.yaw_rad), Dy = -FMath::Sin(In.yaw_rad);
+	double Z0 = 0.0, Z1 = 0.0, Zm = 0.0;
+	if (!Terrain->SurfaceAt(In.x, In.y, Z0))
+	{
+		return false;
+	}
+	const uint64 H = emberworld::scatter::hash64({static_cast<uint64>(FMath::RoundToInt64(In.x * 100.0)),
+		static_cast<uint64>(FMath::RoundToInt64(In.y * 100.0)), 0x1065ull});
+	const double U1 = emberworld::scatter::u01(H);
+	const double U2 = emberworld::scatter::u01(H * 0x9E3779B97F4A7C15ull + 1);
+	FVector Fwd, Up;
+	double Zfoot;
+	if (Pose == emberworld::CoverPose::Leaner)
+	{
+		// Foot dug in a little, stem pitched up 20-40 deg into the neighbours' crowns.
+		const double A = FMath::DegreesToRadians(20.0 + 20.0 * U1);
+		Zfoot = Z0 - 0.3 * DiaM;
+		Fwd = FVector(Dx * FMath::Cos(A), -Dy * FMath::Cos(A), FMath::Sin(A));
+		Up = FVector::UpVector;
+	}
+	else
+	{
+		const double Mx = In.x + Dx * LenM * 0.5, My = In.y + Dy * LenM * 0.5;
+		if (!Terrain->SurfaceAt(In.x + Dx * LenM, In.y + Dy * LenM, Z1) || !Terrain->SurfaceAt(Mx, My, Zm))
+		{
+			return false;
+		}
+		// Rest on a hump under the middle rather than cut through it; bury 20-35 % of the
+		// diameter (20 %: ~half buried); ~15 % propped, the far end on something 0.3-0.9 m up.
+		const double Lift = FMath::Max(0.0, Zm - 0.5 * (Z0 + Z1));
+		const double Bury = (U1 < 0.2 ? 0.45 + 0.1 * U2 : 0.2 + 0.15 * U2) * DiaM;
+		const double Prop = U1 > 0.85 ? 0.3 + 0.6 * U2 : 0.0;
+		Zfoot = Z0 + Lift - Bury;
+		const double Zend = Z1 + Lift - Bury + Prop;
+		Fwd = FVector(Dx * LenM, -Dy * LenM, Zend - Zfoot).GetSafeNormal();
+		// Up follows the ground across the log (its normal at the middle), so a log on a side
+		// slope rolls with it instead of hanging one flank in the air.
+		double Ze = Zm, Zw = Zm, Zn = Zm, Zs = Zm;
+		Terrain->SurfaceAt(Mx + 1.0, My, Ze);
+		Terrain->SurfaceAt(Mx - 1.0, My, Zw);
+		Terrain->SurfaceAt(Mx, My + 1.0, Zn);
+		Terrain->SurfaceAt(Mx, My - 1.0, Zs);
+		Up = FVector(-0.5 * (Ze - Zw), 0.5 * (Zn - Zs), 1.0).GetSafeNormal();   // world (-gx, -gy, 1) in UE axes
+	}
+	const FQuat Q = FRotationMatrix::MakeFromXZ(Fwd, Up).ToQuat();
+	Out = FTransform(Q, Terrain->WorldToUE(In.x, In.y, Zfoot), FVector(S));
+	return true;
+}
+
 void AEmberGroundCoverActor::ClearCell(FCoverCell& Cell)
 {
 	for (UInstancedStaticMeshComponent* C : Cell.Components)
@@ -117,6 +177,16 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 		const FBoxSphereBounds B = Meshes[Mi]->GetBounds();
 		const double MeshH = FMath::Max(1.0, 2.0 * B.BoxExtent.Z);
 		const double S = In.height_m * 100.0 / MeshH;
+		const emberworld::CoverPose Pose = Rules.items[In.item].pose;
+		if (Pose != emberworld::CoverPose::Upright)
+		{
+			FTransform Xf;
+			if (PlaceLying(In, B, S, Pose, Xf))
+			{
+				PerMesh[Mi].Add(Xf);
+			}
+			continue;
+		}
 		// Sit on the RENDERED ground at the lowest point under the footprint: on a slope the
 		// downhill edge touches and the uphill side is buried (a rock was seen floating when z
 		// came from the nearest DEM corner).

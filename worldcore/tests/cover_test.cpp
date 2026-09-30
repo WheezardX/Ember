@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdio>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -68,4 +69,28 @@ TEST_CASE("cover: the default look's [cover] loads") {
     REQUIRE(r.present);
     CHECK(r.rules.items.size() >= 5);
     for (const CoverItem& c : r.rules.items) CHECK(c.height_max_m >= c.height_min_m);
+}
+
+TEST_CASE("cover: pose per item (logs conform, leaners, bad values rejected)") {
+    CoverRulesResult r = load_cover_rules(look_path());
+    REQUIRE_MESSAGE(r.ok(), r.error);
+    auto find = [&](const std::string& k) {
+        return std::find_if(r.rules.items.begin(), r.rules.items.end(), [&](const CoverItem& c) { return c.key == k; });
+    };
+    REQUIRE(find("log") != r.rules.items.end());
+    CHECK(find("log")->pose == CoverPose::Conform);
+    REQUIRE(find("leaner") != r.rules.items.end());
+    CHECK(find("leaner")->pose == CoverPose::Leaner);
+    CHECK(find("rock")->pose == CoverPose::Upright);
+    const std::string bad = std::string(EMBERWORLD_REPO_DIR) + "/worldcore/build/cover_bad_pose.toml";
+    {
+        std::FILE* f = std::fopen(bad.c_str(), "w");
+        REQUIRE(f);
+        std::fputs("[cover]\n[cover.items.log]\nlitter = 1.0\npose = \"sideways\"\n", f);
+        std::fclose(f);
+    }
+    CoverRulesResult b = load_cover_rules(bad);
+    CHECK_FALSE(b.ok());
+    CHECK(b.error.find("sideways") != std::string::npos);
+    std::remove(bad.c_str());
 }

@@ -17,6 +17,13 @@
 
 namespace emberworld {
 
+// How an item meets the ground (8g, Brad: logs ignored the slope and stuck out of hills).
+//   Upright  stands on the lowest point under its footprint (rocks, stumps, plants, snags)
+//   Conform  lies along the surface: pitched / rolled to the ground under both ends, resting on
+//            humps, partly buried or propped by a per-instance hash (logs)
+//   Leaner   a fallen stem hung up in the canopy: foot on the ground, pitched up 20-40 deg
+enum class CoverPose { Upright, Conform, Leaner };
+
 struct CoverItem {
     std::string key;                    // rule name
     std::string mesh;                   // mesh family (Cover/SM_Cover_<mesh>_v*, or "grass"); = key by default
@@ -26,6 +33,7 @@ struct CoverItem {
     int variants = 3;
     float consume = 0.0f;    // fire: burned plants collapse to stubble (M_Veg Consume)
     float smoulder = 0.0f;   // fire: wood glows for hours after the front (M_Veg Smoulder)
+    CoverPose pose = CoverPose::Upright;   // look key `pose` = "upright" | "conform" | "leaner"
 };
 
 struct CoverRules {
