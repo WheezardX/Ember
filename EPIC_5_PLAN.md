@@ -431,6 +431,14 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   (as logs). Mesh: a fallen tree, not a pole - dead limbs along the stem, broken crown remnant
   at the top, root wad / snapped butt at the foot. Needs the cover build to read tree
   positions (worldcore scatter is available to it).
+  **Not only aesthetic (Brad):** hung-up trees still carrying foliage are ladder fuels - they
+  carry surface fire up into the crowns. So (a) variants: fresh with green or red needles,
+  older bare - not bare poles only; (b) density driven by the fuel data, not a flat rate: the
+  LANDFIRE canopy base height layer (cbh, already in the world pack) is low where ladder fuels
+  are present, so hung-up / low-hanging fuel should concentrate where CBH is low and be rare
+  where it is high - the render then agrees with what the fire model uses for crown-fire
+  initiation. Worth a note to the sim side too: if a future fuels edit (thinning, a fire line)
+  changes CBH, the ladder fuels drawn should change with it.
 - **Springy limbs (8g item 3 follow-up):** "limbs don't look nearly so springy" after the
   flutter change - wind is subtle in S_jolly_play (the stream's 2-5 m/s), so re-check in a
   windy scene before closing.
