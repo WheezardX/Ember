@@ -31,7 +31,8 @@ struct FEmberSmokeSource
  *      (HCP4: the class drives flame size, crown scorch vs crown fire, trunk char height; a
  *      stream without intensity - a playback - is drawn as class 3, the HCP3 look)
  *   B  sqrt(hours since arrival / 200): minute-scale near the front, ~8 days at 1
- *   A  1 inside the grid
+ *   A  spread (HCP4 H4-3, the head): local rate of spread from the arrival field, log scale,
+ *      0 at <= 15 m/h .. 1 at >= 300 m/h (0 = never burned). Static per cell.
  * Terrain (M_Terrain) and trees (M_Veg) sample it by world position through FireTex / FireRect /
  * FireOn / FireTime; this actor owns the clock (scrub = SetTime).
  */
@@ -70,6 +71,8 @@ public:
 	/** Compass bearing the wind blows FROM (what SetWind takes). */
 	double WindFromDeg() const { return FMath::Fmod(FMath::RadiansToDegrees(FMath::Atan2(-WindU, -WindV)) + 360.0, 360.0); }
 	int64 CellsByClass[4] = {0, 0, 0, 0};  // burning cells per intensity class (facts)
+	int64 CellsHead = 0;         // burning cells spreading >= HeadRateMh (the head, facts)
+	static constexpr double HeadRateMh = 67.0;   // spread A >= 0.5
 	double CellM = 30.0;
 	int32 Nx = 0;
 	int32 Ny = 0;
@@ -96,6 +99,7 @@ private:
 	emberworld::fire::GridGeo Grid;
 	emberworld::fire::State State;
 	TArray<uint8> Pixels;
+	TArray<uint8> Spread;          // FireTex A per cell (see above)
 	FLinearColor Rect = FLinearColor(0, 0, 1, 1);
 
 	UPROPERTY(Transient)

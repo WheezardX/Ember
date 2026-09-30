@@ -50,6 +50,11 @@ sun = "afternoon"
 name = "front"
 bookmark = "front"
 t_s = 86400
+# Not pixel-deterministic: identical code scores ssim 0.967-0.975 / region 0.943-0.963 run to
+# run (seen 2026-09-30, manual and auto exposure alike; the eye-level flames / embers). Loosened
+# until H4-5 (eye-level fire rework) finds the source.
+ssim_min = 0.955
+region_ssim_min = 0.93
 
 [[captures]]
 name = "smoulder"

@@ -81,3 +81,8 @@ t_s = 1810800
 fact = "fire.intensity_reported"
 op = "=="
 value = true
+
+[[assert]]
+fact = "fire.burning_head"     # H4-3: some burning cells spread >= 67 m/h (the head)
+op = ">"
+value = 100

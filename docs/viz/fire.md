@@ -10,10 +10,10 @@ the replay's world grid:
 
 | channel | meaning |
 |---|---|
-| R | burning (flame strength; intensity class 0..3 → 150 + 35 × class) |
-| G | burned (1 for burning and burned cells: the scar so far) |
+| R | burning: 85 × intensity class (1 surface .. 3 crown fire), 0 = not burning; a stream without classes is drawn as 3 |
+| G | burned incl. burning (the scar so far): 64 + 63 × the class it burned at, 0 = not |
 | B | sqrt(hours since arrival / 200): minute-scale at the front, ~8 days at 1 |
-| A | 1 inside the grid |
+| A | local rate of spread, log scale: 0 at <= 15 m/h .. 1 at >= 300 m/h (HCP4 heading: the head draws brighter and whiter). Static per cell, from the arrival field (worldcore `spread_rate_mh`) |
 
 A cell burns from its exact arrival time (arrival is written once in the stream), not from the
 next tick record, so timelapses move continuously instead of stepping hour by hour. The

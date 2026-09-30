@@ -95,4 +95,12 @@ struct ReplayInfo {
 // Reads `<name>.replay.json` (formats.md §5): the stream it points to and its world grid.
 EMBERWORLD_CORE_API ReplayInfo read_replay(const std::string& path);
 
+// Local rate of spread (m/h) per cell from the arrival field (HCP4 H4-3, "where it's heading":
+// the head is where the fire moves fastest). A least-squares plane through the cell and its
+// arrived 3 x 3 neighbours gives the arrival gradient (s per cell); rate = cell / |gradient|,
+// capped at max_mh (neighbours arriving on the same tick, e.g. a spot fire). 0 = never arrived
+// or no arrived neighbour.
+EMBERWORLD_CORE_API std::vector<float> spread_rate_mh(const std::vector<int32_t>& arrival, uint32_t nx,
+                                                      uint32_t ny, double cell_m, float max_mh = 2000.f);
+
 }  // namespace emberworld::fire

@@ -423,6 +423,17 @@ playback stays the HCP3 truth-to-observation scene.
   never contradict the wind; a wind vane in the review captures.
 - **H4-3 heading:** the head reads hotter and brighter than flanks and backing fire (class +
   flame lean downwind).
+- **Flame persistence (done 2026-09-30):** with classes, flames stay lit for the stream's whole
+  burning residence (Jolly CA: median 2 h, p90 7-9 h after arrival) at a floor by class (0.25 /
+  0.45 / 0.6), the fresh front still on top - was a ~1 h window, so 3 k crown-fire cells drew
+  as a thin band.
+- **H4-3 done (first pass, 2026-09-30):** the classes do not mark the head (class means 2.5-2.9
+  at head, flank and back alike), so heading = local rate of spread from the arrival field
+  (worldcore `spread_rate_mh`, head cells 1.5-2x faster than flanks), in FireTex A (log 15..300
+  m/h). The head draws brighter and whiter, flanks and backing dimmer and redder; fact
+  `fire.burning_head`. Flame lean downwind goes with H4-5 (flames with shape).
+  Found on the way: S_ground_fire_tq/front is not pixel-deterministic (ssim ~0.97 run to run,
+  pre-existing; threshold loosened until H4-5 finds the source).
 - **H4-4 spots and embers:** spot fires light up where the stream says; ember streaks from the
   head toward them.
 - **H4-5 eye-level fire (carried from HCP3 / GP5):** flames with shape instead of paint, no

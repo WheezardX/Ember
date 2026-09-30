@@ -13,8 +13,8 @@ Parameters (the runtime surface; docs/viz/assets.md):
     Roughness       scalar                                          default 0.92
     FireTex         texture2D  fire state over the replay grid (EmberFireActor, linear):
                                R burning (85 x intensity class 1-3), G burned incl. burning
-                               (64 + 63 x class), B sqrt(hours since arrival / 200), A 1 inside
-                               the grid                                 default black
+                               (64 + 63 x class), B sqrt(hours since arrival / 200), A rate of
+                               spread (log 15..300 m/h -> 0..1, the head)  default black
     FireRect        vector     fire grid in UE cm: (x0, y0, width, height)
     FireOn          scalar     0 = no fire bound                        default 0
     FireTime        scalar     the player's clock (s) for flame flicker default 0
@@ -308,7 +308,7 @@ link(fuv, "", ftex, "UVs")
 # Ground: charcoal black -> dark ash (noise), settling over the days after the burn. Warm, not
 # grey: a neutral grey reads slate-blue under the skylight at altitude (HCP3 Jolly).
 fcol = custom("EmberFireGround", -450, 450, ["Base", "F", "N", "On", "Macro"], (
-    "float burned = smoothstep(0.35, 0.65, saturate(F.g * 2.0) + N * 0.18) * F.a * On;\n"
+    "float burned = smoothstep(0.35, 0.65, saturate(F.g * 2.0) + N * 0.18) * On;\n"
     "float age_h = F.b * F.b * 200.0;\n"
     "float ash = saturate(N * 0.9 + 0.35);\n"
     "float3 fresh = lerp(float3(0.010, 0.009, 0.008), float3(0.035, 0.032, 0.03), ash * ash);\n"
@@ -328,7 +328,7 @@ to_property(fcol, "", unreal.MaterialProperty.MP_BASE_COLOR)
 # Emissive: flickering flames on burning cells; a fading ember glow for ~12 h after the front.
 femi = custom("EmberFireGlow", -450, 700,
               ["F", "N", "On", "T", "G", "WP", "Cam", "Ground", "Macro", "RepClass"], (
-    "float inside = F.a * On;\n"
+    "float inside = On;\n"
     "float age_h = F.b * F.b * 200.0;\n"
     "float cls = F.r * 3.0;\n"                                   # intensity class 1..3 (0 = out)
     "float burning = smoothstep(0.3, 0.7, min(cls, 1.0) * 0.725 + N * 0.2) * inside;\n"
@@ -339,6 +339,12 @@ femi = custom("EmberFireGlow", -450, 700,
     # pixels wide, like the IR maps (design doc 5.2: legibility first); unchanged within 3 km.
     "float dkm = length(WP - Cam) / 100000.0;\n"
     "float front = exp(-age_h / (0.7 * max(1.0, dkm / 3.0)));\n"
+    # HCP4 flame persistence: a stream with intensity classes says how long a cell burns (Jolly
+    # CA: median 2 h, p90 7-9 h after arrival), so flames stay lit for the whole residence at a
+    # floor by class; the fresh front still peaks above it (the head reads hotter, and redder
+    # behind it). Without classes (playback, synth) it is the HCP3 front window.
+    "float persist = RepClass * lerp(0.25, 0.6, saturate((cls - 1.0) * 0.5));\n"
+    "float alive = lerp(persist, 1.0, front);\n"
     "float breakup = saturate(N * 1.0 + 0.75);\n"
     "float flick = 0.7 + 0.3 * sin(T * 7.0 + N * 23.0) * sin(T * 3.1 + N * 11.0);\n"
     "float3 flame = lerp(float3(3.0, 0.45, 0.04), float3(5.0, 1.8, 0.25), front) * flick;\n"
@@ -348,6 +354,11 @@ femi = custom("EmberFireGlow", -450, 700,
     "float3 c1 = float3(2.0, 0.18, 0.02) * flick;\n"
     "float3 c3 = lerp(flame, float3(7.0, 4.2, 1.4) * flick, 0.35);\n"
     "flame = cls < 2.0 ? lerp(c1, flame, saturate(cls - 1.0)) : lerp(flame, c3, saturate(cls - 2.0) * RepClass);\n"
+    # HCP4 H4-3 heading: F.a = local rate of spread (log, 0 <= 15 m/h .. 1 >= 300 m/h). The head
+    # (fast) burns brighter and whiter, flanks and backing fire dimmer and redder, within a class.
+    "float head = saturate(F.a) * RepClass;\n"
+    "alive *= lerp(1.0, lerp(0.65, 1.5, head), RepClass);\n"
+    "flame *= lerp(float3(1, 1, 1), lerp(float3(0.9, 0.75, 0.6), float3(1.15, 1.6, 2.2), head), RepClass);\n"
     "float patch = saturate(N * 2.0 - 0.2);\n"
     # ground plane v1: near the camera the glow breaks up into embers on the bright bits of the
     # ground detail (needles, twigs) instead of a 2.5 m wash; unchanged past ~300 m
@@ -362,7 +373,7 @@ femi = custom("EmberFireGlow", -450, 700,
     "float smoulder = burning * (1.0 - front) * 0.07 * patch;\n"
     "float embers = saturate(F.g * 2.0) * (1.0 - saturate(F.r * 4.0)) * inside\n"
     "             * saturate(1.0 - age_h / 12.0) * patch * 0.08;\n"
-    "return G * (burning * clsk * front * breakup * flame\n"
+    "return G * (burning * clsk * alive * breakup * flame\n"
     "            + (smoulder + embers) * float3(1.2, 0.18, 0.02));\n"))
 link(ftex, "RGBA", femi, "F")
 link(noise, "", femi, "N")

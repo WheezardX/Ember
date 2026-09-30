@@ -246,6 +246,7 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		FireJ->SetNumberField(TEXT("burning_class1"), static_cast<double>(It->CellsByClass[1]));
 		FireJ->SetNumberField(TEXT("burning_class2"), static_cast<double>(It->CellsByClass[2]));
 		FireJ->SetNumberField(TEXT("burning_class3"), static_cast<double>(It->CellsByClass[3]));
+		FireJ->SetNumberField(TEXT("burning_head"), static_cast<double>(It->CellsHead));
 		FireJ->SetNumberField(TEXT("wind_ms"), It->WindSpeedMs());
 		FireJ->SetNumberField(TEXT("wind_from_deg"), It->WindFromDeg());
 		TSharedRef<FJsonObject> ProbesJ = MakeShared<FJsonObject>();

@@ -1,6 +1,7 @@
 #include "emberworld/firestate.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <exception>
 #include <filesystem>
@@ -238,6 +239,53 @@ ReplayInfo read_replay(const std::string& path) {
         r.error = path + ": " + e.what();
     }
     return r;
+}
+
+std::vector<float> spread_rate_mh(const std::vector<int32_t>& arrival, uint32_t nx, uint32_t ny,
+                                  double cell_m, float max_mh) {
+    std::vector<float> out(arrival.size(), 0.f);
+    if (arrival.size() != static_cast<size_t>(nx) * ny) return out;
+    for (uint32_t y = 0; y < ny; ++y) {
+        for (uint32_t x = 0; x < nx; ++x) {
+            const int32_t a0 = arrival[static_cast<size_t>(y) * nx + x];
+            if (a0 < 0) continue;
+            // Normal equations of a - a0 = gx dx + gy dy over the arrived neighbours (joint fit:
+            // separate 1-D fits are biased where the neighbourhood is one-sided).
+            double sxa = 0, sya = 0, sxx = 0, syy = 0, sxy = 0;
+            for (int dy = -1; dy <= 1; ++dy) {
+                for (int dx = -1; dx <= 1; ++dx) {
+                    const int64_t xx = static_cast<int64_t>(x) + dx, yy = static_cast<int64_t>(y) + dy;
+                    if ((dx == 0 && dy == 0) || xx < 0 || yy < 0 || xx >= nx || yy >= ny) continue;
+                    const int32_t a = arrival[static_cast<size_t>(yy) * nx + static_cast<size_t>(xx)];
+                    if (a < 0) continue;
+                    sxa += dx * static_cast<double>(a - a0);
+                    sya += dy * static_cast<double>(a - a0);
+                    sxx += dx * dx;
+                    syy += dy * dy;
+                    sxy += dx * dy;
+                }
+            }
+            if (sxx == 0 && syy == 0) continue;
+            double gx = 0, gy = 0;   // s per cell
+            const double det = sxx * syy - sxy * sxy;
+            if (det > 1e-9) {
+                gx = (syy * sxa - sxy * sya) / det;
+                gy = (sxx * sya - sxy * sxa) / det;
+            } else {  // neighbours on one line through the cell: only the slope along it is known
+                double ux = sxx > 0 ? sxx : 0.0, uy = sxx > 0 ? sxy : 1.0;   // the line's direction
+                const double un = std::sqrt(ux * ux + uy * uy);
+                ux /= un;
+                uy /= un;
+                const double along = (ux * sxa + uy * sya) / (sxx + syy);   // s per cell along it
+                gx = along * ux;
+                gy = along * uy;
+            }
+            const double g = std::sqrt(gx * gx + gy * gy);
+            const double r = g > 0 ? cell_m * 3600.0 / g : max_mh;
+            out[static_cast<size_t>(y) * nx + x] = static_cast<float>(std::min<double>(r, max_mh));
+        }
+    }
+    return out;
 }
 
 }  // namespace emberworld::fire

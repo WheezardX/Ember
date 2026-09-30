@@ -54,6 +54,17 @@ bool AEmberFireActor::Load(const FString& ReplayPath, AEmberTerrainActor* Terrai
 	Texture->UpdateResource();
 	Pixels.SetNumZeroed(Nx * Ny * 4);
 	{
+		// Where it's heading: the head is where the fire moves fastest (log 15 .. 300 m/h -> 0 .. 1).
+		const std::vector<float> Rate = emberworld::fire::spread_rate_mh(Stream.final_arrival(),
+			static_cast<uint32_t>(Nx), static_cast<uint32_t>(Ny), CellM);
+		Spread.SetNumZeroed(Nx * Ny);
+		for (int32 I = 0; I < Nx * Ny; ++I)
+		{
+			const double K = Rate[I] > 0.f ? FMath::Loge(Rate[I] / 15.0) / FMath::Loge(20.0) : 0.0;
+			Spread[I] = static_cast<uint8>(FMath::Clamp(K, 0.0, 1.0) * 255.0 + 0.5);
+		}
+	}
+	{
 		// Does the stream report intensity? (the playback model writes 1 everywhere)
 		const emberworld::fire::State End = Stream.at(EndS);
 		for (size_t I = 0; I < End.intensity.size() && !bIntensityReported; ++I)
@@ -85,6 +96,7 @@ void AEmberFireActor::SetTime(double TSeconds)
 	}
 	const std::vector<int32_t>& Arrival = Stream.final_arrival();
 	CellsBurning = 0;
+	CellsHead = 0;
 	CellsBurned = 0;
 	const int32 N = Nx * Ny;
 	const int32 Bx = (Nx + SmokeBinCells - 1) / SmokeBinCells;
@@ -126,12 +138,13 @@ void AEmberFireActor::SetTime(double TSeconds)
 		if (bBurning)
 		{
 			++CellsByClass[Cls];
+			CellsHead += Spread[I] >= 128;
 		}
 		uint8* P = &Pixels[I * 4];  // B G R A
 		P[0] = Age;
 		P[1] = bBurned ? static_cast<uint8>(64 + 63 * Cls) : 0;
 		P[2] = bBurning ? static_cast<uint8>(85 * Cls) : 0;
-		P[3] = 255;
+		P[3] = Spread[I];
 	}
 	SmokeSources.Reset();
 	for (int32 K = 0; K < Bins.Num(); ++K)

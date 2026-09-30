@@ -1,5 +1,6 @@
 // Fire state player core vs Epic 4's own reader (ember/sim/stream.py iter_frames) as the oracle.
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -82,4 +83,30 @@ TEST_CASE("fire: replay points at its stream and world grid") {
     CHECK(r.grid.crs == "EPSG:32610");
     CHECK(r.model_id == "arrival-playback");
     CHECK(std::filesystem::exists(r.stream_path));
+}
+
+TEST_CASE("fire: spread rate from the arrival field") {
+    // A plane front moving east at 30 m per 120 s = 900 m/h; an unburned column stays 0.
+    const uint32_t nx = 6, ny = 4;
+    std::vector<int32_t> a(nx * ny);
+    for (uint32_t y = 0; y < ny; ++y)
+        for (uint32_t x = 0; x < nx; ++x) a[y * nx + x] = x == 5 ? -1 : static_cast<int32_t>(x * 120);
+    const std::vector<float> r = spread_rate_mh(a, nx, ny, 30.0);
+    for (uint32_t y = 0; y < ny; ++y)
+        for (uint32_t x = 0; x < 5; ++x) CHECK(r[y * nx + x] == doctest::Approx(900.0).epsilon(1e-6));
+    CHECK(r[5] == 0.f);
+    // Diagonal front: arrival = 60 s x (x + y) -> |grad| = 60 sqrt 2 s per cell.
+    for (uint32_t y = 0; y < ny; ++y)
+        for (uint32_t x = 0; x < nx; ++x) a[y * nx + x] = static_cast<int32_t>(60 * (x + y));
+    CHECK(spread_rate_mh(a, nx, ny, 30.0)[nx + 2] == doctest::Approx(30.0 * 3600.0 / (60.0 * std::sqrt(2.0))));
+    // Same-tick ignition (a spot patch) caps; a lone cell has no neighbours -> 0.
+    std::fill(a.begin(), a.end(), 500);
+    CHECK(spread_rate_mh(a, nx, ny, 30.0, 2000.f)[nx + 1] == 2000.f);
+    // A burned line (one row): only the along-line slope is known -> 30 m per 60 s = 1800 m/h.
+    std::fill(a.begin(), a.end(), -1);
+    for (uint32_t x = 0; x < nx; ++x) a[nx + x] = static_cast<int32_t>(60 * x);
+    CHECK(spread_rate_mh(a, nx, ny, 30.0)[nx + 2] == doctest::Approx(1800.0).epsilon(1e-6));
+    std::fill(a.begin(), a.end(), -1);
+    a[nx + 1] = 10;
+    CHECK(spread_rate_mh(a, nx, ny, 30.0)[nx + 1] == 0.f);
 }
