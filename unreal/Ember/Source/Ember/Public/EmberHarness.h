@@ -108,6 +108,7 @@ private:
 	FString LookPath = TEXT("clay");
 	bool bVegetation = false;
 	bool bGroundCover = false;
+	bool bWindFromReplay = false;
 	double GroundCoverRadiusM = 60.0;
 	double VegRadiusM = 1500.0;
 	double VegNearRadiusM = 500.0;

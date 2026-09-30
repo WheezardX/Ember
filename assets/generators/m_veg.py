@@ -183,29 +183,46 @@ def build_material():
     ftex.set_editor_property("texture", black)
     ftex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     link(fuv, "", ftex, "UVs")
-    burnt = custom("EmberFireChar", -100, 150, ["Base", "F", "A", "On", "Rnd"], (
-        "float burned = F.g * F.a * On;\n"
+    burnt = custom("EmberFireChar", -100, 150, ["Base", "F", "A", "On", "Rnd", "Local"], (
+        "float burned = saturate(F.g * 2.0) * F.a * On;\n"
+        # HCP4: the class the stand burned at (G = 64 + 63 x class): a surface fire leaves green
+        # crowns and a char band on the trunk, class 2 scorches crowns brown, class 3 (crown
+        # fire) blackens them. A stream without classes is drawn as 3 (the HCP3 look).
+        "float cls = 1.0 + 2.0 * saturate((F.g - 0.5) * 2.0);\n"
+        "float scorch = smoothstep(1.5, 2.2, cls);\n"
+        "float3 scorched = float3(0.09, 0.045, 0.02) * (0.8 + 0.4 * frac(Rnd * 3.1));\n"
         "float3 charFol = lerp(float3(0.016, 0.012, 0.009), float3(0.09, 0.045, 0.02),\n"
         "                      frac(Rnd * 5.7) * 0.6);\n"   # some crowns scorched brown
-        "float3 charc = lerp(float3(0.012, 0.011, 0.010), charFol, A);\n"
-        "return lerp(Base, charc, saturate(burned * 1.2));\n"))
+        "float3 crown = lerp(lerp(Base, scorched, scorch), charFol, smoothstep(2.4, 2.9, cls));\n"
+        "float charH = lerp(150.0, 3000.0, saturate((cls - 1.0) * 0.5)) * (0.8 + 0.4 * frac(Rnd * 7.3));\n"
+        "charH = cls > 2.85 ? 1e7 : charH;\n"                     # crown fire: the whole tree
+        "float barkChar = 1.0 - smoothstep(charH * 0.85, charH, Local.z);\n"
+        "float3 bark = lerp(Base, float3(0.012, 0.011, 0.010), saturate(barkChar * 1.2));\n"
+        "return lerp(Base, lerp(bark, crown, A), saturate(burned * 1.2));\n"))
     link(mul, "", burnt, "Base")
     link(ftex, "RGBA", burnt, "F")
     link(vc, "A", burnt, "A")
     link(fire_params["FireOn"], "", burnt, "On")
     link(rnd, "", burnt, "Rnd")
+    link(local, "", burnt, "Local")
     if not mel.connect_material_property(burnt, "", unreal.MaterialProperty.MP_BASE_COLOR):
         raise RuntimeError("base colour")
     glow = custom("EmberFireCrown", -100, 300,
                   ["F", "A", "On", "T", "G", "Rnd", "Local", "Sm", "WP"], (
         "float age_h = F.b * F.b * 200.0;\n"
-        "float burning = F.r * F.a * On * exp(-age_h / 1.2);\n"   # trees torch as the front arrives
+        "float cls = F.r * 3.0;\n"                                 # burning class 1..3
+        # trees torch as the front arrives, and only in crown fire (class 3); class 2 flames
+        # stay low on the trunk; the old strength (R 0.725) is kept for class 3
+        "float burning = 0.725 * saturate(cls) * F.a * On * exp(-age_h / 1.2);\n"
+        "float torch = smoothstep(2.5, 2.9, cls) + (1.0 - smoothstep(2.5, 2.9, cls)) * smoothstep(1.5, 1.9, cls)\n"
+        "            * (1.0 - smoothstep(200.0, 400.0, Local.z));\n"
+        "burning *= torch;\n"
         "float h = saturate(Local.z / 3000.0);\n"
         "float flick = 0.6 + 0.4 * sin(T * 8.0 + Rnd * 40.0 + Local.z * 0.01);\n"
         "float3 flame = lerp(float3(7.0, 1.2, 0.1), float3(10.0, 4.5, 0.8), h) * flick;\n"
         "float3 e = burning * (0.25 + 0.75 * A) * flame;\n"
         # smouldering wood: starts ~20 min after the front, fades over ~a day, in patches
-        "float sm = Sm * F.g * F.a * On * (1.0 - A) * saturate(age_h / 0.3) * exp(-age_h / 20.0);\n"
+        "float sm = Sm * saturate(F.g * 2.0) * F.a * On * (1.0 - A) * saturate(age_h / 0.3) * exp(-age_h / 20.0);\n"
         "float3 q = WP * 0.02 + Rnd * 17.0;\n"
         "float patch = saturate(sin(q.x) * sin(q.y * 1.3) * sin(q.z * 1.7) * 4.0 - 0.8);\n"
         "float pulse = 0.75 + 0.25 * sin(T * 1.1 + Rnd * 30.0);\n"
@@ -231,7 +248,7 @@ def build_material():
     ftex_v.set_editor_property("const_mip_value", 0)
     link(fuv, "", ftex_v, "UVs")
     consume = custom("EmberConsume", -300, 600, ["O", "L", "F", "On", "C"], (
-        "float k = saturate(F.g * F.a * On * C) * 0.85;\n"   # burned: down to ~15 % stubble
+        "float k = saturate(saturate(F.g * 2.0) * F.a * On * C) * 0.85;\n"   # burned: ~15 % stubble
         "return O * (1.0 - k) - L * k;\n"))
     link(wind, "", consume, "O")
     link(local, "", consume, "L")

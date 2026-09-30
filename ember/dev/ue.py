@@ -206,6 +206,7 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "veg_near_radius_m": s.scenario.veg_near_radius_m,
         "veg_mid_min_height_m": s.scenario.veg_mid_min_height_m,
         "wind_strength": s.scenario.wind_strength,
+        "wind_from_replay": s.scenario.wind_from_replay,
         "wind_from_deg": s.scenario.wind_from_deg,
         "smoke": s.scenario.smoke,
         "smoke_wind_ms": s.scenario.smoke_wind_ms,

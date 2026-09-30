@@ -126,6 +126,9 @@ class ScenarioMeta(_Strict):
     # Wind sway (M_Veg world-position offset). Strength = crown-top sway in cm for a 10 m tree
     # (grows with height^2); from = compass direction the wind blows FROM. Stills use a frozen
     # wind clock (t = 0) so goldens stay pixel-deterministic; orbits/flyovers run it at frame/fps.
+    # HCP4: take the wind from the replay's per-tick stream metrics (smoke plume, tree sway)
+    # instead of the constants below; the plume can then never contradict the fire's wind.
+    wind_from_replay: bool = False
     wind_strength: float = 6.0
     wind_from_deg: float = 270.0
     smoke: bool = True           # replay scenarios: smoke v0 plumes (bend with wind_from_deg)

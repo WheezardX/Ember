@@ -79,6 +79,7 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	}
 	J->TryGetStringField(TEXT("play_bookmark"), PlayBookmark);
 	J->TryGetBoolField(TEXT("ground_cover"), bGroundCover);
+	J->TryGetBoolField(TEXT("wind_from_replay"), bWindFromReplay);
 	J->TryGetNumberField(TEXT("ground_cover_radius_m"), GroundCoverRadiusM);
 	J->TryGetNumberField(TEXT("veg_radius_m"), VegRadiusM);
 	J->TryGetNumberField(TEXT("veg_near_radius_m"), VegNearRadiusM);
@@ -571,6 +572,15 @@ void AEmberHarness::SetFireTime(double SimS, double ClockS)
 		return;
 	}
 	Fire->SetTime(SimS);
+	if (bWindFromReplay)
+	{
+		// The tick's wind (stream metrics): the plume and the trees follow the fire's own wind.
+		// Sway strength scales from the scenario's value, taken as the look at 5 m/s.
+		const double Speed = Fire->WindSpeedMs(), From = Fire->WindFromDeg();
+		if (Vegetation) Vegetation->SetWind(WindStrength * Speed / 5.0, From);
+		if (Cover) Cover->SetWind(WindStrength * Speed / 5.0, From);
+		if (Smoke) Smoke->SetWind(From, Speed);
+	}
 	if (Smoke)
 	{
 		Smoke->SetSources(Fire->SmokeSources);
@@ -913,6 +923,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 				return;
 			}
 			Fire->Probes = FireProbes;
+			Terrain->SetFireClasses(Fire->bIntensityReported);
 			Terrain->SetFire(Fire->GetTexture(), Fire->GetRect());
 			if (Vegetation)
 			{

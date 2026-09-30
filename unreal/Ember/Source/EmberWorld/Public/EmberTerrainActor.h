@@ -159,6 +159,8 @@ public:
 	TObjectPtr<class UTexture> FireTexture;
 	FLinearColor FireRect = FLinearColor(0, 0, 1, 1);
 	double FireTimeS = 0.0;
+	bool bFireClasses = false;  // the replay reports intensity classes (M_Terrain FireClasses)
+	void SetFireClasses(bool bOn);
 	void ApplyFire(UMaterialInstanceDynamic* MID) const;
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> TerrainMaster;

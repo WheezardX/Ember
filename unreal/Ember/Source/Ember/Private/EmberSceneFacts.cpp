@@ -241,6 +241,13 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		FireJ->SetNumberField(TEXT("burned_ha"), It->CellsBurned * It->CellM * It->CellM / 1e4);
 		FireJ->SetNumberField(TEXT("start_s"), It->StartS);
 		FireJ->SetNumberField(TEXT("end_s"), It->EndS);
+		// HCP4: what the fire is doing (the stream's own numbers, so reviews can check the picture)
+		FireJ->SetBoolField(TEXT("intensity_reported"), It->bIntensityReported);
+		FireJ->SetNumberField(TEXT("burning_class1"), static_cast<double>(It->CellsByClass[1]));
+		FireJ->SetNumberField(TEXT("burning_class2"), static_cast<double>(It->CellsByClass[2]));
+		FireJ->SetNumberField(TEXT("burning_class3"), static_cast<double>(It->CellsByClass[3]));
+		FireJ->SetNumberField(TEXT("wind_ms"), It->WindSpeedMs());
+		FireJ->SetNumberField(TEXT("wind_from_deg"), It->WindFromDeg());
 		TSharedRef<FJsonObject> ProbesJ = MakeShared<FJsonObject>();
 		for (const AEmberFireActor::FProbe& Pr : It->Probes)
 		{

@@ -26,7 +26,10 @@ struct FEmberSmokeSource
 /**
  * The fire state player (EPIC_5_PLAN D1, D7). Loads an Epic 4 replay (+ its state stream) and,
  * for any sim time, writes the fire state into one texture over the replay's world grid:
- *   R  burning (flame strength)      G  burned (1 for burning and burned cells)
+ *   R  burning: 85 x intensity class (1 surface .. 3 crown fire), 0 = not burning
+ *   G  burned (incl. burning): 64 + 63 x the class it burned at (127 / 190 / 253), 0 = not
+ *      (HCP4: the class drives flame size, crown scorch vs crown fire, trunk char height; a
+ *      stream without intensity - a playback - is drawn as class 3, the HCP3 look)
  *   B  sqrt(hours since arrival / 200): minute-scale near the front, ~8 days at 1
  *   A  1 inside the grid
  * Terrain (M_Terrain) and trees (M_Veg) sample it by world position through FireTex / FireRect /
@@ -60,6 +63,13 @@ public:
 	int32 StartS = 0;
 	int32 EndS = 0;
 	FString ModelId;
+	bool bIntensityReported = false;  // the stream carries intensity classes (>= 2 somewhere)
+	// The tick's grid-mean 10 m wind (stream metrics): velocity, the air moves TOWARD (u, v).
+	double WindU = 0.0, WindV = 0.0;  // m/s, east / north
+	double WindSpeedMs() const { return FMath::Sqrt(WindU * WindU + WindV * WindV); }
+	/** Compass bearing the wind blows FROM (what SetWind takes). */
+	double WindFromDeg() const { return FMath::Fmod(FMath::RadiansToDegrees(FMath::Atan2(-WindU, -WindV)) + 360.0, 360.0); }
+	int64 CellsByClass[4] = {0, 0, 0, 0};  // burning cells per intensity class (facts)
 	double CellM = 30.0;
 	int32 Nx = 0;
 	int32 Ny = 0;

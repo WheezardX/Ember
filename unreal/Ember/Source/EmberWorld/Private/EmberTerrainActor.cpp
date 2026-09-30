@@ -809,6 +809,16 @@ void AEmberTerrainActor::ApplyFire(UMaterialInstanceDynamic* MID) const
 	MID->SetVectorParameterValue(TEXT("FireRect"), FireRect);
 	MID->SetScalarParameterValue(TEXT("FireOn"), 1.f);
 	MID->SetScalarParameterValue(TEXT("FireTime"), static_cast<float>(FireTimeS));
+	MID->SetScalarParameterValue(TEXT("FireClasses"), bFireClasses ? 1.f : 0.f);
+}
+
+void AEmberTerrainActor::SetFireClasses(bool bOn)
+{
+	bFireClasses = bOn;
+	for (UMaterialInstanceDynamic* MID : SectionMaterials)
+	{
+		ApplyFire(MID);
+	}
 }
 
 void AEmberTerrainActor::SetFire(UTexture* FireTex, const FLinearColor& InRect)

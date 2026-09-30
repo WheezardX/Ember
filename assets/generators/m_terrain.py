@@ -12,8 +12,9 @@ Parameters (the runtime surface; docs/viz/assets.md):
     DetailScale     scalar     noise frequency (1/cm)               default 0.004  (~2.5 m features)
     Roughness       scalar                                          default 0.92
     FireTex         texture2D  fire state over the replay grid (EmberFireActor, linear):
-                               R burning, G burned (incl. burning), B hours since arrival
-                               (/255), A 1 inside the grid              default black
+                               R burning (85 x intensity class 1-3), G burned incl. burning
+                               (64 + 63 x class), B sqrt(hours since arrival / 200), A 1 inside
+                               the grid                                 default black
     FireRect        vector     fire grid in UE cm: (x0, y0, width, height)
     FireOn          scalar     0 = no fire bound                        default 0
     FireTime        scalar     the player's clock (s) for flame flicker default 0
@@ -307,7 +308,7 @@ link(fuv, "", ftex, "UVs")
 # Ground: charcoal black -> dark ash (noise), settling over the days after the burn. Warm, not
 # grey: a neutral grey reads slate-blue under the skylight at altitude (HCP3 Jolly).
 fcol = custom("EmberFireGround", -450, 450, ["Base", "F", "N", "On", "Macro"], (
-    "float burned = smoothstep(0.35, 0.65, F.g + N * 0.18) * F.a * On;\n"
+    "float burned = smoothstep(0.35, 0.65, saturate(F.g * 2.0) + N * 0.18) * F.a * On;\n"
     "float age_h = F.b * F.b * 200.0;\n"
     "float ash = saturate(N * 0.9 + 0.35);\n"
     "float3 fresh = lerp(float3(0.010, 0.009, 0.008), float3(0.035, 0.032, 0.03), ash * ash);\n"
@@ -326,10 +327,13 @@ link(fire_on, "", fcol, "On")
 to_property(fcol, "", unreal.MaterialProperty.MP_BASE_COLOR)
 # Emissive: flickering flames on burning cells; a fading ember glow for ~12 h after the front.
 femi = custom("EmberFireGlow", -450, 700,
-              ["F", "N", "On", "T", "G", "WP", "Cam", "Ground", "Macro"], (
+              ["F", "N", "On", "T", "G", "WP", "Cam", "Ground", "Macro", "RepClass"], (
     "float inside = F.a * On;\n"
     "float age_h = F.b * F.b * 200.0;\n"
-    "float burning = smoothstep(0.3, 0.7, F.r + N * 0.2) * inside;\n"
+    "float cls = F.r * 3.0;\n"                                   # intensity class 1..3 (0 = out)
+    "float burning = smoothstep(0.3, 0.7, min(cls, 1.0) * 0.725 + N * 0.2) * inside;\n"
+    # HCP4: flame strength by class - a creeping surface fire is a low glow, the head is bright
+    "float clsk = lerp(0.3, 1.0, saturate((cls - 1.0) * 0.5));\n"
     # hottest at the front (first ~hour after arrival), fading to smouldering over the burn. From
     # altitude the band widens (decay grows with camera distance) so the active edge stays a few
     # pixels wide, like the IR maps (design doc 5.2: legibility first); unchanged within 3 km.
@@ -338,6 +342,12 @@ femi = custom("EmberFireGlow", -450, 700,
     "float breakup = saturate(N * 1.0 + 0.75);\n"
     "float flick = 0.7 + 0.3 * sin(T * 7.0 + N * 23.0) * sin(T * 3.1 + N * 11.0);\n"
     "float3 flame = lerp(float3(3.0, 0.45, 0.04), float3(5.0, 1.8, 0.25), front) * flick;\n"
+    # HCP4: the class reads as colour, not only brightness (IR-map legibility, design doc 5.2):
+    # creeping surface fire a dim deep red, class 2 the orange above, crown fire yellow-white.
+    # A stream without classes is drawn as 3 = the flame above (the HCP3 look).
+    "float3 c1 = float3(2.0, 0.18, 0.02) * flick;\n"
+    "float3 c3 = lerp(flame, float3(7.0, 4.2, 1.4) * flick, 0.35);\n"
+    "flame = cls < 2.0 ? lerp(c1, flame, saturate(cls - 1.0)) : lerp(flame, c3, saturate(cls - 2.0) * RepClass);\n"
     "float patch = saturate(N * 2.0 - 0.2);\n"
     # ground plane v1: near the camera the glow breaks up into embers on the bright bits of the
     # ground detail (needles, twigs) instead of a 2.5 m wash; unchanged past ~300 m
@@ -350,9 +360,9 @@ femi = custom("EmberFireGlow", -450, 700,
     # eye level: a smouldering floor is dim - the 2.5 m wash lit the whole scene red (Lumen GI)
     "patch *= lerp(1.0, 0.35, nearc);\n"
     "float smoulder = burning * (1.0 - front) * 0.07 * patch;\n"
-    "float embers = F.g * (1.0 - saturate(F.r * 4.0)) * inside\n"
+    "float embers = saturate(F.g * 2.0) * (1.0 - saturate(F.r * 4.0)) * inside\n"
     "             * saturate(1.0 - age_h / 12.0) * patch * 0.08;\n"
-    "return G * (burning * front * breakup * flame\n"
+    "return G * (burning * clsk * front * breakup * flame\n"
     "            + (smoulder + embers) * float3(1.2, 0.18, 0.02));\n"))
 link(ftex, "RGBA", femi, "F")
 link(noise, "", femi, "N")
@@ -362,6 +372,7 @@ link(fire_gain, "", femi, "G")
 link(wp, "", femi, "WP")
 link(expr(unreal.MaterialExpressionCameraPositionWS, -650, 900), "", femi, "Cam")
 link(ground, "", femi, "Ground")
+link(scalar("FireClasses", 0.0, -650, 980), "", femi, "RepClass")  # 1 = the stream reports intensity classes
 link(base, "", femi, "Macro")
 to_property(femi, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 

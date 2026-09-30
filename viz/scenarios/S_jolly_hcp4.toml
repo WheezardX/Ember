@@ -1,0 +1,83 @@
+# HCP4 "The fire reads" (EPIC_5_PLAN 8h): the Epic 4 MODEL run of Jolly Mountain 2017
+# (runs/cp5 cp5-jolly-shadow-ca: ember-ca on the same 800 x 627 x 30 m grid as the render world,
+# 564 h at 60 s ticks) - unlike the HCP3 playback it reports intensity classes, spot fires and a
+# wind that changes every tick. Moments picked from the stream (ember.sim.stream.iter_frames):
+#   t (h)   burning c1 / c2 / c3     wind            spots / 30 min
+#   460     124 / 1125 / 1636        5.5 m/s from 337  up to 21  (mixed fire + spotting)
+#   503      16 /  638 / 3394        3.3 m/s from 305             (peak crown fire)
+# Wind comes from the replay (wind_from_replay): the smoke plume and the trees follow the fire's
+# own wind, so the plume can never contradict it.
+render_scenario_version = 1
+
+[scenario]
+name = "S_jolly_hcp4"
+description = "HCP4: Jolly Mountain CA model run - intensity classes, heading, spotting, wind-driven plume"
+world = "terrain:jolly_mountain_2017"
+replay = "../../runs/cp5/cp5-jolly-shadow-ca.replay.json"
+resolution = [2560, 1440]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 4000
+wind_from_replay = true
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "mixed_oblique"        # 460 h: the whole active area from upwind (NNW), looking downwind
+target_frac = [0.414, 0.543]
+distance_m = 5000
+yaw_deg = 157
+pitch_deg = -32
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "mixed_side"           # 460 h: from the flank, wind crossing the frame left to right
+target_frac = [0.414, 0.543]
+distance_m = 3500
+yaw_deg = 247
+pitch_deg = -22
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "crown_oblique"        # 503 h: the crown-fire run, from upwind (WNW)
+target_frac = [0.489, 0.511]
+distance_m = 3000
+yaw_deg = 125
+pitch_deg = -25
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "crown_close"          # 503 h: the head from 900 m
+target_frac = [0.489, 0.511]
+distance_m = 900
+yaw_deg = 125
+pitch_deg = -15
+fov_deg = 60
+sun = "afternoon"
+
+[[captures]]
+name = "mixed_oblique_460h"
+bookmark = "mixed_oblique"
+t_s = 1656000
+
+[[captures]]
+name = "mixed_side_460h"
+bookmark = "mixed_side"
+t_s = 1656000
+
+[[captures]]
+name = "crown_oblique_503h"
+bookmark = "crown_oblique"
+t_s = 1810800
+
+[[captures]]
+name = "crown_close_503h"
+bookmark = "crown_close"
+t_s = 1810800
+
+[[assert]]
+fact = "fire.intensity_reported"
+op = "=="
+value = true

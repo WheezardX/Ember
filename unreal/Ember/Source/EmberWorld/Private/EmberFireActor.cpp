@@ -53,6 +53,14 @@ bool AEmberFireActor::Load(const FString& ReplayPath, AEmberTerrainActor* Terrai
 	Texture->NeverStream = true;
 	Texture->UpdateResource();
 	Pixels.SetNumZeroed(Nx * Ny * 4);
+	{
+		// Does the stream report intensity? (the playback model writes 1 everywhere)
+		const emberworld::fire::State End = Stream.at(EndS);
+		for (size_t I = 0; I < End.intensity.size() && !bIntensityReported; ++I)
+		{
+			bIntensityReported = End.phase[I] >= emberworld::fire::Burning && End.intensity[I] >= 2;
+		}
+	}
 	UE_LOG(LogEmberFire, Log, TEXT("fire replay %s: model %s, %dx%d cells of %.0f m, t %d..%d s, %u ticks"),
 		*ReplayPath, *ModelId, Nx, Ny, CellM, StartS, EndS, Stream.ticks());
 	SetTime(StartS);
@@ -69,6 +77,12 @@ void AEmberFireActor::SetTime(double TSeconds)
 	State = Stream.at(static_cast<int32>(FMath::FloorToDouble(TSeconds)));
 	Tick = State.tick;
 	StreamBurned = State.metrics.burned;
+	WindU = State.metrics.wind_u_cms / 100.0;
+	WindV = State.metrics.wind_v_cms / 100.0;
+	for (int64& C : CellsByClass)
+	{
+		C = 0;
+	}
 	const std::vector<int32_t>& Arrival = Stream.final_arrival();
 	CellsBurning = 0;
 	CellsBurned = 0;
@@ -107,12 +121,16 @@ void AEmberFireActor::SetTime(double TSeconds)
 				B.Burning += bBurning;
 			}
 		}
-		// Intensity 0..3 (0 = model does not report it; the playback model reports 1).
-		const uint8 Flame = bBurning ? static_cast<uint8>(FMath::Clamp(150 + 35 * State.intensity[I], 0, 255)) : 0;
+		// Intensity class 1..3 (a stream that does not report it is drawn as 3: the HCP3 look).
+		const int32 Cls = bIntensityReported ? FMath::Clamp(static_cast<int32>(State.intensity[I]), 1, 3) : 3;
+		if (bBurning)
+		{
+			++CellsByClass[Cls];
+		}
 		uint8* P = &Pixels[I * 4];  // B G R A
 		P[0] = Age;
-		P[1] = bBurned ? 255 : 0;
-		P[2] = Flame;
+		P[1] = bBurned ? static_cast<uint8>(64 + 63 * Cls) : 0;
+		P[2] = bBurning ? static_cast<uint8>(85 * Cls) : 0;
 		P[3] = 255;
 	}
 	SmokeSources.Reset();
