@@ -345,6 +345,44 @@ def wind_vane(name: str = typer.Argument(..., help="Replay scenario with a fixed
     typer.secho(f"wind vane {dst}", fg=typer.colors.GREEN)
 
 
+@app.command()
+def naip(region: str = typer.Argument(..., help="Terrain region, e.g. three_queens_2026"),
+         res: float = typer.Option(10.0, "--res", help="Mosaic resolution (m); overviews only"),
+         ) -> None:
+    """Fetch NAIP colour reference for a region (overviews only; metered in the ledger)."""
+    from ember.dev import naip as N
+    from ember.dev.scenario import terrain_store_root
+
+    from ember.dev.water import render_store
+
+    region_dir = terrain_store_root() / region
+    out = render_store(ue.repo_root(), region) / "naip"
+    prov = N.fetch(region_dir, out, res)
+    typer.secho(f"naip {region}: {prov['year']}, {len(prov['items'])} items, coverage "
+                f"{prov['coverage']:.1%} -> {out}", fg=typer.colors.GREEN)
+
+
+@app.command("naip-probe")
+def naip_probe(name: str, run: str = typer.Option(None, "--run", help="Run dir (default: latest)."),
+               ) -> None:
+    """Render vs NAIP colour per fuel group for a straight-down probe scenario (advisory)."""
+    from ember.dev import naip as N
+    from ember.dev.water import render_store
+
+    sc = _sc(name)
+    run_dir = _resolve_run(name, run)
+    tif = render_store(ue.repo_root(), sc.world_path.name) / "naip" / "naip_rgb.tif"
+    rep = N.probe(run_dir, tif, sc.world_path / "fuels" / "fbfm40.cog.tif",
+                  [c.name for c in sc.spec.captures])
+    typer.echo(f"brightness gain (auto exposure) {rep['brightness_gain']}")
+    typer.echo(f"{'group':20s} {'cells':>6s}  {'dE':>5s} {'dE*':>5s}  render L a b -> NAIP L a b")
+    for g, v in rep["groups"].items():
+        typer.echo(f"{g:20s} {v['cells']:6d}  {v['delta_e']:5.1f} {v['delta_e_brightness_matched']:5.1f}"
+                   f"  {v['render_lab']} -> {v['naip_lab']}")
+    typer.secho(f"report {run_dir / 'naip_probe.json'}, sheet {run_dir / 'naip_probe.jpg'}",
+                fg=typer.colors.GREEN)
+
+
 @app.command("ref-camera")
 def ref_camera(photo: Path = typer.Argument(..., help="A photo with EXIF GPS"),
                name: str = typer.Option(None, "--name", help="Bookmark name (default: file stem)")

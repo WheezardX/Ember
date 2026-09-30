@@ -328,6 +328,11 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 		P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 		Camera = GetWorld()->SpawnActor<ACameraActor>(Loc, Rot, P);
 		Camera->GetCameraComponent()->bConstrainAspectRatio = false;
+		// fov_deg is the HORIZONTAL field of view at any aspect ratio (a photo's lens, 8i R1).
+		// The engine default holds the vertical FOV of a 16:9 frame, so a square or 4:3 capture
+		// came out ~40 % narrower than asked (found by the NAIP probe's alignment check).
+		Camera->GetCameraComponent()->bOverrideAspectRatioAxisConstraint = true;
+		Camera->GetCameraComponent()->AspectRatioAxisConstraint = EAspectRatioAxisConstraint::AspectRatio_MaintainXFOV;
 	}
 	Camera->SetActorLocationAndRotation(Loc, Rot);
 	if (Smoke)

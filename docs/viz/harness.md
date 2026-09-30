@@ -151,6 +151,22 @@ nothing is cropped. Absolute cameras are kept 0.3 m over the ground (not the 3 m
 bookmarks) and cannot start an orbit. Scene facts report `camera.world_x_m / world_y_m /
 world_z_m / agl_m / bearing_deg`; `S_refcam_tq` asserts a camera lands where asked.
 
+`fov_deg` is the **horizontal** field of view at every aspect ratio (the capture camera keeps
+X-FOV). Before 2026-09-30 the engine default held a 16:9 frame's vertical FOV, so non-16:9
+captures came out narrower than asked; every scenario then was 16:9 except the new two.
+
+### NAIP colour probe (EPIC_5_PLAN 8i R2, advisory)
+
+`ember-dev naip <region>` fetches the latest NAIP year over the region (Planetary Computer COGs,
+overview level nearest 10 m only: ~30 MB for Three Queens, logged in the store's download
+ledger) -> `store/render/<region>/naip/naip_rgb.tif`. `S_naip_tq` renders a 3 x 3 grid of
+straight-down sites 2.5 km up (vegetation streamed in, fog and atmosphere off, noon); then
+`ember-dev naip-probe S_naip_tq` maps every pixel to the ground from the camera facts, averages
+into NAIP's cells and compares median CIELAB colour per FBFM40 group (timber, grass, shrub,
+barren, water, ...): delta-E raw and after one global brightness match. Output:
+`<run>/naip_probe.json` and a render | NAIP sheet (`naip_probe.jpg`: check alignment there
+first). Advisory - no pass / fail until tolerances are tuned (8i open question 2).
+
 ## Evaluate: what PASS means
 
 * **Golden diff** per capture: SSIM on luminance, globally and on a 4×4 region grid; the region

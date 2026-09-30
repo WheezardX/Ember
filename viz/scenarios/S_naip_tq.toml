@@ -1,0 +1,141 @@
+# NAIP colour probe (EPIC_5_PLAN 8i R2): straight-down captures over a 3 x 3 grid of sites,
+# 2.5 km up (low enough that vegetation streams in; each footprint ~1.8 km at 40 deg), noon sun,
+# fog and atmosphere off (NAIP is atmospherically corrected). `ember-dev naip-probe S_naip_tq`
+# compares render vs NAIP colour per fuel group (advisory). Needs `ember-dev naip three_queens_2026`.
+render_scenario_version = 1
+
+[scenario]
+name = "S_naip_tq"
+description = "8i R2: straight-down probe sites for the NAIP colour comparison, Three Queens"
+world = "terrain:three_queens_2026"
+resolution = [1600, 1600]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 3500
+exec_cmds = ["ShowFlag.Fog 0", "ShowFlag.Atmosphere 0"]
+
+[[bookmarks]]
+name = "site_00"
+target_frac = [0.2, 0.2]
+distance_m = 2500
+yaw_deg = 0
+pitch_deg = -89.9
+fov_deg = 40
+sun = "noon"
+
+[[bookmarks]]
+name = "site_01"
+target_frac = [0.5, 0.2]
+distance_m = 2500
+yaw_deg = 0
+pitch_deg = -89.9
+fov_deg = 40
+sun = "noon"
+
+[[bookmarks]]
+name = "site_02"
+target_frac = [0.8, 0.2]
+distance_m = 2500
+yaw_deg = 0
+pitch_deg = -89.9
+fov_deg = 40
+sun = "noon"
+
+[[bookmarks]]
+name = "site_10"
+target_frac = [0.2, 0.5]
+distance_m = 2500
+yaw_deg = 0
+pitch_deg = -89.9
+fov_deg = 40
+sun = "noon"
+
+[[bookmarks]]
+name = "site_11"
+target_frac = [0.5, 0.5]
+distance_m = 2500
+yaw_deg = 0
+pitch_deg = -89.9
+fov_deg = 40
+sun = "noon"
+
+[[bookmarks]]
+name = "site_12"
+target_frac = [0.8, 0.5]
+distance_m = 2500
+yaw_deg = 0
+pitch_deg = -89.9
+fov_deg = 40
+sun = "noon"
+
+[[bookmarks]]
+name = "site_20"
+target_frac = [0.2, 0.8]
+distance_m = 2500
+yaw_deg = 0
+pitch_deg = -89.9
+fov_deg = 40
+sun = "noon"
+
+[[bookmarks]]
+name = "site_21"
+target_frac = [0.5, 0.8]
+distance_m = 2500
+yaw_deg = 0
+pitch_deg = -89.9
+fov_deg = 40
+sun = "noon"
+
+[[bookmarks]]
+name = "site_22"
+target_frac = [0.8, 0.8]
+distance_m = 2500
+yaw_deg = 0
+pitch_deg = -89.9
+fov_deg = 40
+sun = "noon"
+
+[[captures]]
+name = "site_00"
+bookmark = "site_00"
+golden = false
+
+[[captures]]
+name = "site_01"
+bookmark = "site_01"
+golden = false
+
+[[captures]]
+name = "site_02"
+bookmark = "site_02"
+golden = false
+
+[[captures]]
+name = "site_10"
+bookmark = "site_10"
+golden = false
+
+[[captures]]
+name = "site_11"
+bookmark = "site_11"
+golden = false
+
+[[captures]]
+name = "site_12"
+bookmark = "site_12"
+golden = false
+
+[[captures]]
+name = "site_20"
+bookmark = "site_20"
+golden = false
+
+[[captures]]
+name = "site_21"
+bookmark = "site_21"
+golden = false
+
+[[captures]]
+name = "site_22"
+bookmark = "site_22"
+golden = false
