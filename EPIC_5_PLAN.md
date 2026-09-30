@@ -409,6 +409,8 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   clock as a date / local time of day + elapsed since ignition (replay t0 + sim time), not
   just "fire t = 503.0 h" (`,` `.` step 1 h; P plays at the shown rate). Later: drive the sun
   from that clock instead of the fixed 1-5 presets, so lighting matches the time shown.
+  Plus a camera spotlight toggled with L (Brad: inspect dense foliage) - attached to the fly
+  pawn, ~40 deg cone, 30-50 m range, warm white, no shadows (cheap); play mode only.
 - **Ground still flat - no volume (Brad, 2026-09-30, after ground v2):** better, but the bump
   does not read; it still feels flat. Why (agent): ground v2's relief is normal perturbation
   only - no silhouette, no self-shadowing, no parallax - and under canopy the light is soft
