@@ -20,6 +20,11 @@ eal = unreal.EditorAssetLibrary
 mel = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 
+# Foliage grade defaults (M_Veg FoliageSaturation / FoliageBrightness), tuned against NAIP with
+# S_naip_tq + `ember-dev naip-probe` (8i R2).
+FOLIAGE_SATURATION = 0.65
+FOLIAGE_BRIGHTNESS = 1.5
+
 
 def vnoise3(p, expr, out):
     """HLSL for a smooth 3-D value noise of `expr` (small coordinates) into float `out` (0..1).
@@ -79,9 +84,25 @@ def build_material():
         "float y = frac(Rnd * 7.31) - 0.5;\n"
         "return float3(v * (1.0 + 0.10 * y), v, v * (1.0 - 0.12 * y));\n"))
     link(rnd, "", tint, "Rnd")
-    fol = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -450, -150)
-    link(col, "", fol, "A")
-    link(tint, "", fol, "B")
+    # Foliage grade (8i R2, NAIP: timber rendered ~2x too saturated green and too dark from
+    # above). Saturation and brightness on the tinted foliage colour; the transmission colour
+    # below takes the same graded colour, so crowns do not glow game-green in backlight.
+    grade = {}
+    for i, (name, default) in enumerate((("FoliageSaturation", FOLIAGE_SATURATION),
+                                          ("FoliageBrightness", FOLIAGE_BRIGHTNESS))):
+        p = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter,
+                                           -900, -700 - 90 * i)
+        p.set_editor_property("parameter_name", name)
+        p.set_editor_property("default_value", default)
+        grade[name] = p
+    fol = custom("EmberFoliageGrade", -450, -150, ["C", "T", "Sat", "Br"], (
+        "float3 c = C.rgb * T;\n"
+        "float l = dot(c, float3(0.2126, 0.7152, 0.0722));\n"
+        "return lerp(float3(l, l, l), c, Sat) * Br;\n"))
+    link(col, "", fol, "C")
+    link(tint, "", fol, "T")
+    link(grade["FoliageSaturation"], "", fol, "Sat")
+    link(grade["FoliageBrightness"], "", fol, "Br")
     lerp = mel.create_material_expression(mat, unreal.MaterialExpressionLinearInterpolate,
                                           -300, -250)
     link(trunk_col, "", lerp, "A")
@@ -93,7 +114,8 @@ def build_material():
     # Needles and leaves transmit light: Two-Sided Foliage shading with a subsurface colour of
     # the foliage tint (x alpha, so bark transmits nothing). Without it crowns render near-black.
     sss_gain = mel.create_material_expression(mat, unreal.MaterialExpressionConstant, -300, 50)
-    sss_gain.set_editor_property("r", 0.6)
+    # the grade's brightness is for the lit colour only: backlit crowns went frosty with it
+    sss_gain.set_editor_property("r", 0.6 / FOLIAGE_BRIGHTNESS)
     sss = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -150, 50)
     link(fol, "", sss, "A")
     link(sss_gain, "", sss, "B")

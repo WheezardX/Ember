@@ -11,27 +11,27 @@ name = "terrain_default"
 
 [classes]
 unknown     = "#7A7566"
-urban       = "#8C877D"   # NB1 91
+urban       = "#807D70"   # NB1 91
 snow        = "#EEF1F4"   # NB2 92
 agriculture = "#9C9A5C"   # NB3 93
 water       = "#2F4A5A"   # NB8 98
-barren      = "#8E8A84"   # NB9 99
-grass       = "#A89A6A"   # GR 101-109 (cured grass reads tan; NDVI greens it)
-grass_shrub = "#8E8A5A"   # GS 121-124
-shrub       = "#6E7148"   # SH 141-149
+barren      = "#CABDA6"   # NB9 99 (NAIP: bright, warm)
+grass       = "#A09C80"   # GR 101-109 (cured grass reads tan; NDVI greens it)
+grass_shrub = "#8E8A6C"   # GS 121-124
+shrub       = "#7A7658"   # SH 141-149
 timber_understory = "#4F5A3A"  # TU 161-165
 timber_litter     = "#55553B"  # TL 181-189
 slash_blowdown    = "#6A5E48"  # SB 201-204
 
 [vegetation]
-green          = "#4E6B32"   # full-vigour colour NDVI pulls toward
+green          = "#56673E"   # full-vigour colour NDVI pulls toward
 ndvi_low       = 0.25        # at/below: no greening
 ndvi_high      = 0.85        # at/above: full greening
 green_strength = 0.55        # max mix fraction toward `green`
-canopy_darken  = 0.45        # colour *= 1 - canopy_darken * cc/100 (shade under canopy)
+canopy_darken  = 0.30        # colour *= 1 - canopy_darken * cc/100 (shade under canopy)
 
 [slope]
-rock           = "#7F7A72"
+rock           = "#BDB2A0"
 start_deg      = 35.0        # rock blending begins
 full_deg       = 55.0        # fully rock
 

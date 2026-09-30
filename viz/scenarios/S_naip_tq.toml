@@ -1,6 +1,7 @@
 # NAIP colour probe (EPIC_5_PLAN 8i R2): straight-down captures over a 3 x 3 grid of sites,
 # 2.5 km up (low enough that vegetation streams in; each footprint ~1.8 km at 40 deg), noon sun,
-# fog and atmosphere off (NAIP is atmospherically corrected). `ember-dev naip-probe S_naip_tq`
+# fog, atmosphere and the tonemapper off (NAIP is atmospherically corrected, roughly linear: this
+# calibrates albedo x lighting; the film curve is a look choice judged separately). `ember-dev naip-probe S_naip_tq`
 # compares render vs NAIP colour per fuel group (advisory). Needs `ember-dev naip three_queens_2026`.
 render_scenario_version = 1
 
@@ -12,7 +13,7 @@ resolution = [1600, 1600]
 look = "viz/looks/terrain_default.toml"
 vegetation = true
 veg_radius_m = 3500
-exec_cmds = ["ShowFlag.Fog 0", "ShowFlag.Atmosphere 0"]
+exec_cmds = ["ShowFlag.Fog 0", "ShowFlag.Atmosphere 0", "ShowFlag.Tonemapper 0"]
 
 [[bookmarks]]
 name = "site_00"
