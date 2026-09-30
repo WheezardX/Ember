@@ -400,6 +400,17 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   S_jolly_hcp4/head_eye_503h (eye-level fire), S_ground_tq/litter (under canopy, lowered
   exposure floor). Suspects: Lumen / translucency temporal history, auto exposure amplifying it.
   Find the source and restore the tight thresholds.
+- **Ground still flat - no volume (Brad, 2026-09-30, after ground v2):** better, but the bump
+  does not read; it still feels flat. Why (agent): ground v2's relief is normal perturbation
+  only - no silhouette, no self-shadowing, no parallax - and under canopy the light is soft
+  (sunflecks + dim ambient), where normals barely show; at grazing eye-level angles a flat
+  plane stays flat. Options, cheapest first: (1) much stronger detail + hummock normals and a
+  height-based micro-shadow / cavity term so crevices darken in the sun too; (2) parallax
+  occlusion mapping on the near ground (depth between needles, sticks standing proud);
+  (3) real geometry near the camera - Nanite displacement / a tessellated near-ground mesh from
+  the detail height, so the surface has actual lumps and sticks cast shadows; (4) more small
+  3-D debris meshes in the ground cover (sticks, bark slabs, cone clusters, duff mounds).
+  (3) + (4) are what give "volume"; (1) + (2) alone will still read flat up close.
 - **Charred area too uniform (Brad, 2026-09-30, S_jolly_play fly-around):** every burned tree
   keeps orange needles. In a big fire most stand-replacing areas are burned clean of needles
   (black bare stems and branches) or the trees are consumed / fallen; orange (scorched, dead but
