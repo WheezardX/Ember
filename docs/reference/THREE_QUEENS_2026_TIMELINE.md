@@ -24,6 +24,36 @@ creeping, smouldering, single-tree torching, group torching, sustained torching,
 crown run, uphill run, spotting (in drainages; across the lake; 200–300 ft isolated), rolling
 material, interior pockets, night-time push.
 
+## Progression data (the Jolly-style reconstruction)
+
+Jolly 2017 was rebuilt from 35 GeoMAC perimeters. For 2026 the equivalent is **NIROPS** — the
+nightly infrared flights the updates quote ("acres listed reflect most recent infrared flight").
+31 flights, Aug 7 → Sep 20, downloaded from the public fire file server (29 MB, ledger), each
+parsed into heat perimeter + intense / scattered / isolated heat and clipped to Three Queens
+(some nights' files also carry King and Goat; one file is mis-dated 2026-07-14 in the source and
+is the Aug 14 flight). Data: `three_queens_2026_ir_flights.csv`, per-flight GeoJSON under
+`store/incidents/dfa477f2-…/observations/ir_perimeters/`, arrival raster (same
+`perimeter-interp-v1` as Jolly) under `…/derived_ir/`: 31 snapshots, 1,055 h, **38.9 km² =
+9,612 ac** vs 9,575 ac published (+0.4 %), observed fraction 11 % (Jolly: 1 %).
+
+![ir](three_queens_2026_ir.png)
+
+How it lines up:
+- **Published acreage = IR acreage.** The two series sit on top of each other; the incident's
+  numbers are the IR flight of the night before. The step shape is real, not reporting cadence.
+- **Intense heat marks the runs**: 1,136 ac (Aug 8), 2,191 ac (Aug 21 — almost exactly the
+  2,530 ac the fire added that day), ~1,150 (Aug 24), then **zero intense heat after Sep 2**.
+- **Scattered heat covers most of the footprint for weeks**: 4,000–8,200 ac (half to nine
+  tenths of everything burned) from Aug 24 to Sep 9. The fire did not go cold behind the front.
+- **Isolated heat points keep climbing as the fire dies**: ~20 on Aug 7, 500–600 mid-August,
+  **1,227 on Sep 14** — hundreds of smouldering logs and stumps scattered across the scar.
+
+What that means for us: our playback treats a cell as burning for ~6 h after arrival, then cold.
+The real fire, every night from Aug 24 on, had a thin rim of intense heat (or none), a scattered
+glow over most of the scar, and hundreds of point sources. The IR classes map directly onto what
+the renderer needs: **intense → flame cards / torching, scattered → smoulder glow + smoke,
+isolated → single smoking logs and stumps** — and they are measured, night by night.
+
 ## Compared with our timelines
 
 What we have: **Jolly Mountain 2017** as observed (Epic 3 raster, the CP2 playback the renderer
