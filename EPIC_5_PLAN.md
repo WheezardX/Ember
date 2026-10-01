@@ -568,6 +568,16 @@ In order:
 **Review 2026-09-30 evening (Brad, S_jolly_play after steps 3-5):** "BIG improvement. More
 litter, more chaos. Non-uniform burn, trees hanging up correctly ... this is the level of
 iteration I'd expected between runs." Take that as the bar for a review round.
+- **Burn mosaic: survivors should cluster, not salt-and-pepper (Brad, same review):** the mix of
+  burned-out / charred / untouched is good, and real burns do vary - but single unaffected trees
+  inside large scars are not realistic. Survivors come in POCKETS protected by terrain: draws,
+  streams / riparian strips, wet north-facing benches. Today the outcome is a per-tree hash (and
+  class 2 cells keep 38 % green individually), so green trees are scattered one by one.
+  Direction: pick outcomes from a spatially coherent field instead - smooth noise at ~50-150 m
+  for the patch structure, biased by terrain shelter (distance to water / drainage lines, valley
+  bottoms from the DEM, north aspect, the fire's own intensity class); within a patch neighbours
+  share their outcome, with only a small per-tree jitter. Keep the overall variation; drop
+  isolated green trees inside crown-fire areas.
 
 Deferred until reference material exists: smoke volume (column, pall, interior smoke) and
 smouldering logs (smoke / ash). Waiting: river / shore edges, fire lines and fuel removal,
