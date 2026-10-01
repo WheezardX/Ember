@@ -22,7 +22,8 @@ CELL_M = 30.0
 
 
 def synth(region_dir: Path, out_dir: Path, *, ignition_frac=(0.5, 0.5), hours=48,
-          head_ms=0.05, wind_to_deg=60.0, residence_h=6, seed=7) -> Path:
+          head_ms=0.05, wind_to_deg=60.0, residence_h=6, seed=7, classes=False,
+          name="synth") -> Path:
     import rasterio
     from rasterio.enums import Resampling
 
@@ -69,6 +70,16 @@ def synth(region_dir: Path, out_dir: Path, *, ignition_frac=(0.5, 0.5), hours=48
     arrival_s = np.full(arrival.shape, -1, np.int32)
     arrival_s[fin] = (arrival[fin] // 60 * 60).astype(np.int32)
     arrival_s = arrival_s.ravel()
+    # Intensity classes (classes=True, look-lab fixtures): head fire 3, flanks 2, backing 1 by the
+    # direction from the ignition, nudged a class up / down by the same noise; kept after the cell
+    # burns out (the renderer's burned mosaic reads the class a cell burned at). Without: 1 while
+    # burning, 0 after (the HCP3 fixture, drawn as class 3 everywhere).
+    cls = np.ones(n, np.uint8)
+    if classes:
+        dist = np.hypot(along, across) + 1e-6
+        c = np.where(along / dist > 0.55, 3, np.where(along / dist < -0.3, 1, 2))
+        c = c + (noise > 0.62) - (noise < 0.38)
+        cls = np.clip(c, 1, 3).astype(np.uint8).ravel()
 
     h = StreamHeader(nx=nx, ny=ny, cell_mm=int(CELL_M * 1000), t0_unix=1_500_000_000, dt_s=3600,
                      keyframe_every=24, model_id="synthetic-ellipse", model_version="1",
@@ -83,7 +94,10 @@ def synth(region_dir: Path, out_dir: Path, *, ignition_frac=(0.5, 0.5), hours=48
         out = lit & (arrival_s + residence_h * 3600 <= ts)
         new_phase[lit & (phase == 1)] = 2
         new_phase[out] = 3
-        new_int = np.where(new_phase == 2, 1, 0).astype(np.uint8)
+        if classes:
+            new_int = np.where(new_phase >= 2, cls, 0).astype(np.uint8)
+        else:
+            new_int = np.where(new_phase == 2, 1, 0).astype(np.uint8)
         idx = np.nonzero((new_phase != phase) | (new_int != inten))[0].astype(np.uint32)
         d = np.zeros(len(idx), DIRTY_DT)
         d["idx"], d["phase"], d["intensity"] = idx, new_phase[idx], new_int[idx]
@@ -97,17 +111,18 @@ def synth(region_dir: Path, out_dir: Path, *, ignition_frac=(0.5, 0.5), hours=48
             recs.append(Keyframe(tick, ts, rle_encode(phase), rle_encode(inten)))
     recs.append(End(hours, 0))
     out_dir.mkdir(parents=True, exist_ok=True)
-    ess = out_dir / "synth.ess"
+    ess = out_dir / f"{name}.ess"
     write_stream(ess, h, recs)
     replay = {"format": "ember-replay", "version": 1, "interface_version": "1.0.0",
               "stream_version": 1,
               "model": {"id": "synthetic-ellipse", "version": "1",
                         "overrides": {"head_ms": head_ms, "wind_to_deg": wind_to_deg,
+                                      "classes": classes,
                                       "residence_h": residence_h, "seed": seed}},
               "world": {"name": region_dir.name, "t0_unix": h.t0_unix,
                         "grid": {"nx": nx, "ny": ny, "cell_size_m": CELL_M, "crs": crs,
                                  "origin_x": west, "origin_y": north}},
               "result": {"ticks": hours}, "stream": ess.name}
-    path = out_dir / "synth.replay.json"
+    path = out_dir / f"{name}.replay.json"
     path.write_text(json.dumps(replay, indent=1), encoding="utf-8")
     return path

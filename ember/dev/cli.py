@@ -179,6 +179,8 @@ def _print_verdict(v: dict) -> None:
 @app.command()
 def regress(full: bool = typer.Option(False, "--full", help="Every scenario (before commits)."),
             only: list[str] = typer.Option(None, "--only", help="These scenarios (repeatable)."),
+            tier_name: str = typer.Option(None, "--tier",
+                                          help="A tier from viz/regress.toml, e.g. look."),
             ) -> None:
     """Run + evaluate a regression tier (viz/regress.toml): quick by default, --full before a
     commit. Stops at the first material compile failure (renders would be meaningless). Prints a
@@ -190,7 +192,7 @@ def regress(full: bool = typer.Option(False, "--full", help="Every scenario (bef
 
     repo = ue.repo_root()
     tiers = tomllib.loads((repo / "viz" / "regress.toml").read_text(encoding="utf-8"))
-    tier = "full" if full else "quick"
+    tier = tier_name or ("full" if full else "quick")
     names = list(only) if only else tiers[tier]["scenarios"]
     eng = ue.load_engine()
     t_all = time.time()
@@ -421,14 +423,19 @@ def water(region: str = typer.Argument(..., help="Terrain region, e.g. three_que
 def synth_fire(region: str = typer.Argument(..., help="Terrain region, e.g. three_queens_2026"),
                hours: int = typer.Option(48, "--hours"),
                ignition: str = typer.Option("0.5,0.5", "--ignition",
-                                            help="ignition as data-extent fractions x,y")) -> None:
+                                            help="ignition as data-extent fractions x,y"),
+               classes: bool = typer.Option(False, "--classes",
+                                            help="intensity classes: head 3 / flank 2 / backing 1"),
+               name: str = typer.Option("synth", "--name",
+                                        help="output name: fire/<name>.replay.json")) -> None:
     """Write a synthetic wind-driven fire replay (.ess + .replay.json) over a region."""
     from ember.dev import firesynth, water
     from ember.dev.scenario import terrain_store_root
 
     fx, fy = (float(v) for v in ignition.split(","))
     out = water.render_store(ue.repo_root(), region) / "fire"
-    path = firesynth.synth(terrain_store_root() / region, out, ignition_frac=(fx, fy), hours=hours)
+    path = firesynth.synth(terrain_store_root() / region, out, ignition_frac=(fx, fy), hours=hours,
+                           classes=classes, name=name)
     typer.secho(f"synthetic fire {region}: {path}", fg=typer.colors.GREEN)
 
 
@@ -586,6 +593,21 @@ def forest_report(region: str = typer.Argument(..., help="Terrain region, e.g. t
         typer.echo(f"  CC {d['cc_pct'][0]:>2}-{d['cc_pct'][1]:<3}% {d['trees_per_ha']:>6}/ha "
                    f"(exp {d['expected_trees_per_cell'] * 100:.0f})  cover rendered "
                    f"{d['rendered_crown_cover_pct']}% vs LANDFIRE {d['landfire_cc_pct']}%")
+
+
+@app.command()
+def look(name: str = typer.Argument(..., help="Look-lab scenario, e.g. L_ground"),
+         build: bool = typer.Option(True, "--build/--no-build", help="Incremental build first."),
+         regen: bool = typer.Option(True, "--regen/--no-regen",
+                                    help="Run changed asset generators first.")) -> None:
+    """The look loop: build, regen changed generators, render, sheet now | previous | reference."""
+    from ember.dev import look as lk
+
+    run_dir, sheet, steps = lk.run(name, build=build, regen=regen)
+    for step, secs in steps:
+        typer.echo(f"  {step:34s} {secs:6.1f} s")
+    typer.echo(f"  {'total':34s} {sum(s for _, s in steps):6.1f} s")
+    typer.secho(f"look {name}: {sheet}", fg=typer.colors.GREEN)
 
 
 @app.command("fetch-textures")

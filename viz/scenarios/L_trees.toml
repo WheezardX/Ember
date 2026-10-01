@@ -1,0 +1,27 @@
+# Look lab: trees - one per species in a row (bark, trunks, crowns, silhouettes) + a stand view.
+render_scenario_version = 1
+
+[scenario]
+name = "L_trees"
+description = "Look lab: species lineup (bark, trunks, crowns) + a stand at eye height"
+world = "terrain:teanaway_dev"
+resolution = [1600, 900]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_lineup = true
+wind_strength = 6.0
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "lineup"
+target_frac = [0.5, 0.5]
+distance_m = 70
+yaw_deg = 20
+pitch_deg = 6
+fov_deg = 60
+sun = "afternoon"
+
+[[captures]]
+name = "lineup"
+bookmark = "lineup"
+reference = "../../store/reference/video-wetc/video-wetc-undated-0503b333.jpg"

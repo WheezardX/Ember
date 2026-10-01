@@ -1,0 +1,33 @@
+# Look lab (Brad 2026-10-01): one view, small world, fast. Fire = a 24 h synthetic fire with intensity
+# classes on teanaway_dev (head 3 / flank 2 / backing 1), regenerate with:
+#   ember-dev synth-fire teanaway_dev --hours 24 --ignition 0.25,0.5 --classes --name lab
+render_scenario_version = 1
+
+[scenario]
+name = "L_night"
+description = "Look lab: the same front after dark (fire as the light source, smoke lit from below)"
+world = "terrain:teanaway_dev"
+replay = "../../store/render/teanaway_dev/fire/lab.replay.json"
+resolution = [1600, 900]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 1500
+veg_near_radius_m = 400
+ground_cover = true
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "night_front"
+target_frac = [0.53, 0.33]   # front / scar from the lab fire arrival field
+distance_m = 60
+yaw_deg = 240
+pitch_deg = -6
+fov_deg = 60
+sun = "315,-14"
+exposure_ev_min = 2.0
+
+[[captures]]
+name = "night_front"
+bookmark = "night_front"
+t_s = 21600
+reference = "../../store/reference/video-swfsc/video-swfsc-undated-ecfcbcfd.jpg"

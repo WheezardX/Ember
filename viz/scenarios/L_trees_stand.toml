@@ -1,0 +1,29 @@
+# Look lab: a stand at eye height (bark close up, trunk spacing, crown base) - scattered trees.
+render_scenario_version = 1
+
+[scenario]
+name = "L_trees_stand"
+description = "Look lab: forest stand at eye height (bark, trunks, crown base)"
+world = "terrain:teanaway_dev"
+resolution = [1600, 900]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 800
+veg_near_radius_m = 400
+ground_cover = true
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "stand_eye"
+target_frac = [0.128, 0.344]   # densest timber in the fixture (cc 65 %, TU5)
+distance_m = 25
+yaw_deg = 330
+pitch_deg = 2
+fov_deg = 65
+sun = "afternoon"
+exposure_ev_min = -1.5
+
+[[captures]]
+name = "stand_eye"
+bookmark = "stand_eye"
+reference = "../../store/reference/kachess-album/kachess-album-2022-06-17-dece6f74.jpg"

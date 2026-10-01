@@ -1,0 +1,48 @@
+# Look lab (Brad 2026-10-01: "small scenarios for testing, especially for iterating on look").
+# Ground: shader depth, cover clumping / debris, relief - at eye height on a timber floor of the
+# small teanaway_dev fixture (1.44 km: loads in seconds). `ember-dev look L_ground` renders and
+# sheets render | previous | reference.
+render_scenario_version = 1
+
+[scenario]
+name = "L_ground"
+description = "Look lab: timber floor at eye height + a close-up (ground shader, cover, relief)"
+world = "terrain:teanaway_dev"
+resolution = [1600, 900]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 600
+veg_near_radius_m = 300
+ground_cover = true
+ground_relief = true
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "floor_eye"
+target_frac = [0.128, 0.344]   # densest timber in the fixture (cc 65 %, TU5)
+distance_m = 9
+yaw_deg = 150
+pitch_deg = -10
+fov_deg = 65
+sun = "afternoon"
+exposure_ev_min = -1.5
+
+[[bookmarks]]
+name = "floor_close"
+target_frac = [0.128, 0.344]   # densest timber in the fixture (cc 65 %, TU5)
+distance_m = 4
+yaw_deg = 150
+pitch_deg = -35
+fov_deg = 60
+sun = "afternoon"
+exposure_ev_min = -1.5
+
+[[captures]]
+name = "floor_eye"
+bookmark = "floor_eye"
+reference = "../../store/reference/kachess-album/kachess-album-2022-07-07-90e0839e.jpg"
+
+[[captures]]
+name = "floor_close"
+bookmark = "floor_close"
+reference = "../../store/reference/kachess-album/kachess-album-2022-05-28-6c5abde7.jpg"
