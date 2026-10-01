@@ -127,9 +127,19 @@ def finish(rgb: np.ndarray, height: np.ndarray, rough: np.ndarray, relief: float
     rgb = luma2[..., None] + (rgb - luma[..., None]) * chroma
     rgb = np.clip(rgb * (0.5 / rgb.reshape(-1, 3).mean(0)), 0, 1)
     h = (height - height.min()) / (np.ptp(height) + 1e-9)
+    # Depth (Brad 2026-10-01: "still reads like a texture"): the tallest few features (sticks,
+    # cones) set the range and squeezed everything else into a thin low band - compress the top
+    # so the mats, lumps and hollows between them carry most of the relief.
+    lo, hi = np.percentile(h, 2), np.percentile(h, 97)
+    h = np.clip((h - lo) / (hi - lo + 1e-9), 0, 1)
+    h = np.where(h > 0.75, 0.75 + 0.25 * np.tanh((h - 0.75) / 0.25), h)
+    h = (h - h.min()) / (np.ptp(h) + 1e-9)
     gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * 0.5 * relief
     gy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * 0.5 * relief
-    ao = np.clip(1.0 - np.clip(blur(h, 6) - h, 0, None) * 3.0, 0.35, 1.0)
+    # Cavity at two scales: crevices between needles / under sticks, and the hollows between mats
+    # (was one 6 px scale, mean ~0.94 - barely any darkening).
+    cav = np.clip(blur(h, 3) - h, 0, None) * 4.0 + np.clip(blur(h, 14) - h, 0, None) * 2.5
+    ao = np.clip(1.0 - cav, 0.3, 1.0)   # (x^1.3 at 0.2 took the floor near-black in shade)
     c = np.dstack([rgb, h[..., None]])
     nrm = np.dstack([np.clip(-gx * 0.5 + 0.5, 0, 1), np.clip(-gy * 0.5 + 0.5, 0, 1),
                      np.clip(rough, 0, 1), ao])
@@ -195,10 +205,15 @@ def litter(n: int):
     rgb = np.where((sh > 0.1)[..., None], stick_col * (0.65 + 0.45 * sh[..., None]), rgb)
     rgb = np.where((ch > 0.05)[..., None], palette(cid, [(0, "#4E2E18"), (1, "#7A4A28")]) *
                    (0.7 + 0.4 * ch[..., None]), rgb)
-    height = (base * 0.12 + mat * 0.35 + nh * 0.35 + moss_m * 0.5 + bh * 0.3 + th * 0.8
-              + sh * 1.6 + ch * 1.4)
+    # duff lumps (3-10 cm): needles pile into small mounds with dark hollows between - the
+    # mid-scale structure the eye reads as depth (the photos' floor is lumpy at every scale)
+    lumps = 0.5 + 0.5 * np.tanh(spectral(n, rng, 1.6, 10, 60) * 0.8)   # soft-edged, no flat floors
+    grain = spectral(n, rng, 1.2, 120, 450)                              # duff crumbs in the hollows
+    rgb = rgb * (0.75 + 0.45 * lumps[..., None])          # hollows darker, crowns of the mounds lit
+    height = (base * 0.12 + mat * 0.4 + lumps * 0.45 + grain * 0.05 + nh * 0.3 + moss_m * 0.5 + bh * 0.3
+              + th * 0.6 + sh * 0.9 + ch * 0.8)
     rough = 0.85 + 0.08 * (1 - nh) - 0.12 * moss_m - 0.1 * (sh > 0.1)
-    return finish(rgb, height, rough, relief=14.0, chroma=0.85, contrast=1.0)
+    return finish(rgb, height, rough, relief=22.0, chroma=0.85, contrast=1.0)
 
 
 def grass(n: int):

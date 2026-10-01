@@ -67,6 +67,11 @@ def run_generator(eng: Engine, gen: Generator, log_dir: Path) -> tuple[bool, str
     # Generators that need numpy (texture synthesis) call back into this host Python.
     env = dict(os.environ)
     env["EMBER_HOST_PYTHON"] = sys.executable
+    # ...and its native DLLs (numpy / MKL in a conda env's Library\bin): without an activated env
+    # the host process dies on load (0xC06D007E, no output) - seen 2026-10-01.
+    prefix = Path(sys.executable).parent
+    dll_dirs = [prefix, prefix / "Library" / "bin", prefix / "Library" / "usr" / "bin", prefix / "Scripts"]
+    env["PATH"] = os.pathsep.join([str(d) for d in dll_dirs if d.exists()] + [env.get("PATH", "")])
     t = time.perf_counter()
     p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
                        env=env)
@@ -80,10 +85,12 @@ def run_generator(eng: Engine, gen: Generator, log_dir: Path) -> tuple[bool, str
     return ok, why, secs
 
 
-def regen(eng: Engine, repo: Path | None = None, force: bool = False) -> dict:
+def regen(eng: Engine, repo: Path | None = None, force: bool = False,
+          only: list[str] | None = None) -> dict:
     """Run the generators whose inputs changed since the lock (script + declared dependencies),
     or whose outputs are missing; `force` runs them all. Tree meshes take ~20 min to rebuild, so
-    unchanged generators are skipped."""
+    unchanged generators are skipped. `only` (script names, with or without .py) defers every
+    other generator: it keeps its old lock entry, so --check still reports it stale."""
     repo = repo or repo_root()
     gens = load_manifest(repo)
     lock_path = repo / LOCK
@@ -92,9 +99,16 @@ def regen(eng: Engine, repo: Path | None = None, force: bool = False) -> dict:
         old = json.loads(lock_path.read_text(encoding="utf-8"))["generators"]
     results = []
     all_ok = True
+    wanted = {n if n.endswith(".py") else n + ".py" for n in only} if only else None
     for g in gens:
         files = [asset_file(eng, a) for a in g.outputs]
         entry = old.get(g.script.name)
+        if wanted is not None and g.script.name not in wanted:
+            if entry is not None:
+                results.append({"script": g.script.name, "ok": True, "error": "", "seconds": 0.0,
+                                "skipped": True, "deferred": True,
+                                "script_sha256": entry["script_sha256"], "outputs": entry["outputs"]})
+            continue
         current = (not force and entry is not None and entry["script_sha256"] == gen_sha(g)
                    and sorted(entry["outputs"]) == sorted(g.outputs)
                    and all(f.exists() for f in files))

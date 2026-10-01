@@ -1189,7 +1189,8 @@ bool AEmberHarness::CompilesPending()
 	const int32 Assets = FAssetCompilingManager::Get().GetNumRemainingAssets()
 		+ ((Terrain && Terrain->IsStreamingBusy()) ? 1 : 0)
 		+ ((Vegetation && !Vegetation->bSyncStreaming && Vegetation->IsStreamingBusy()) ? 1 : 0)
-		+ ((Cover && Cover->IsStreamingBusy()) ? 1 : 0);
+		+ ((Cover && Cover->IsStreamingBusy()) ? 1 : 0)
+		+ ((Relief && Relief->IsBusy()) ? 1 : 0);
 	const double Now = FPlatformTime::Seconds();
 	if (Shaders + Assets == 0)
 	{
@@ -1311,6 +1312,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		{
 			Relief = GetWorld()->SpawnActor<AEmberGroundRelief>(FVector::ZeroVector, FRotator::ZeroRotator, P);
 			Relief->Init(Terrain, GroundReliefRadiusM, GroundReliefSpacingM);
+			Relief->bSync = !bPlay;   // stills: every block in the frame; play: a few per frame
 			if (Cover)
 			{
 				// items stand on the relief (same function, parameters and lift), not under it

@@ -15,6 +15,17 @@ AEmberGroundRelief::AEmberGroundRelief()
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 }
 
+void AEmberGroundRelief::Init(AEmberTerrainActor* InTerrain, double InRadiusM, double InSpacingM)
+{
+	Terrain = InTerrain;
+	SpacingM = FMath::Clamp(InSpacingM, 0.1, 2.0);
+	BlockM = BlockCells * SpacingM;
+	Rb = FMath::Max(1, FMath::CeilToInt32(FMath::Max(8.0, InRadiusM) / BlockM - 0.5));
+	RadiusM = (Rb + 0.5) * BlockM;
+	FadeOutM = RadiusM;
+	FadeInM = FMath::Max(BlockM, RadiusM - 8.0);
+}
+
 void AEmberGroundRelief::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -25,57 +36,126 @@ void AEmberGroundRelief::Tick(float DeltaSeconds)
 	}
 }
 
-void AEmberGroundRelief::Init(AEmberTerrainActor* InTerrain, double InRadiusM, double InSpacingM)
+double AEmberGroundRelief::FadeAt(double X, double Y) const
 {
-	Terrain = InTerrain;
-	RadiusM = FMath::Max(8.0, InRadiusM);
-	SpacingM = FMath::Clamp(InSpacingM, 0.1, 2.0);
-	Mesh = NewObject<UProceduralMeshComponent>(this);
-	Mesh->SetMobility(EComponentMobility::Movable);
-	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	Mesh->SetCastShadow(true);
-	Mesh->bCastFarShadow = false;
-	Mesh->SetupAttachment(RootComponent);
-	Mesh->RegisterComponent();
+	const double Px = (Centre.X + 0.5) * BlockM, Py = (Centre.Y + 0.5) * BlockM;
+	const double D = FMath::Max(FMath::Abs(X - Px), FMath::Abs(Y - Py));
+	const double T = FMath::Clamp((D - FadeInM) / FMath::Max(1e-3, FadeOutM - FadeInM), 0.0, 1.0);
+	return 1.0 - T * T * (3.0 - 2.0 * T);
 }
 
-void AEmberGroundRelief::Update(const FVector& CameraUE, bool bForce)
+void AEmberGroundRelief::Requeue(const FVector2D& CameraXY)
 {
-	if (!Terrain || !Mesh)
+	// Drop blocks outside the patch (components back to the pool).
+	for (auto It = Blocks.CreateIterator(); It; ++It)
+	{
+		if (FMath::Abs(It.Key().X - Centre.X) > Rb || FMath::Abs(It.Key().Y - Centre.Y) > Rb)
+		{
+			if (It.Value().Comp)
+			{
+				It.Value().Comp->ClearAllMeshSections();
+				It.Value().Comp->SetVisibility(false);
+				Pool.Add(It.Value().Comp);
+			}
+			It.RemoveCurrent();
+		}
+	}
+	Queue.Reset();
+	for (int32 By = Centre.Y - Rb; By <= Centre.Y + Rb; ++By)
+	{
+		for (int32 Bx = Centre.X - Rb; Bx <= Centre.X + Rb; ++Bx)
+		{
+			const FIntPoint K(Bx, By);
+			const FBlock* B = Blocks.Find(K);
+			// The block's farthest corner from the patch centre (Chebyshev) - inside FadeIn, the
+			// relief there does not depend on where the centre is.
+			const double Px = (Centre.X + 0.5) * BlockM, Py = (Centre.Y + 0.5) * BlockM;
+			const double Far = FMath::Max(FMath::Max(FMath::Abs(Bx * BlockM - Px), FMath::Abs((Bx + 1) * BlockM - Px)),
+				FMath::Max(FMath::Abs(By * BlockM - Py), FMath::Abs((By + 1) * BlockM - Py)));
+			const bool bFullNow = Far <= FadeInM;
+			const bool bStale = !B || B->Generation != Generation || !(B->bFull && bFullNow) && B->Centre != Centre;
+			if (bStale)
+			{
+				Queue.Add(K);
+			}
+		}
+	}
+	// Nearest first (the far rim can wait a few frames)
+	Queue.Sort([&](const FIntPoint& A, const FIntPoint& B)
+	{
+		const double Da = FVector2D::DistSquared(FVector2D((A.X + 0.5) * BlockM, (A.Y + 0.5) * BlockM), CameraXY);
+		const double Db = FVector2D::DistSquared(FVector2D((B.X + 0.5) * BlockM, (B.Y + 0.5) * BlockM), CameraXY);
+		return Da > Db;   // popped from the end
+	});
+}
+
+void AEmberGroundRelief::Update(const FVector& CameraUE)
+{
+	if (!Terrain)
 	{
 		return;
 	}
 	const emberworld::Frame& F = Terrain->GetFrame();
-	const double X = F.anchor_x + CameraUE.X / 100.0;
-	const double Y = F.anchor_y - CameraUE.Y / 100.0;
-	const bool bMoved = !bBuilt || FMath::Max(FMath::Abs(X - Cx), FMath::Abs(Y - Cy)) > RecentreM;
-	if (bForce || bMoved || Terrain->GetTileGeneration() != BuiltGeneration)
+	const FVector2D Cam(F.anchor_x + CameraUE.X / 100.0, F.anchor_y - CameraUE.Y / 100.0);
+	const FIntPoint C(FMath::FloorToInt32(Cam.X / BlockM), FMath::FloorToInt32(Cam.Y / BlockM));
+	const int32 Gen = Terrain->GetTileGeneration();
+	if (C != Centre || Gen != Generation)
 	{
-		Build(X, Y);
+		Centre = C;
+		Generation = Gen;
+		Requeue(Cam);
+	}
+	const double T0 = FPlatformTime::Seconds();
+	while (Queue.Num() && (bSync || (FPlatformTime::Seconds() - T0) * 1000.0 < BuildBudgetMs))
+	{
+		const FIntPoint K = Queue.Pop(EAllowShrinking::No);
+		BuildBlock(K, Blocks.FindOrAdd(K));
+	}
+	LastBuildMs = (FPlatformTime::Seconds() - T0) * 1000.0;
+	NumSections = Blocks.Num();
+	NumVerts = 0;
+	for (const auto& Kv : Blocks)
+	{
+		NumVerts += Kv.Value.Verts;
 	}
 }
 
-void AEmberGroundRelief::Build(double CenterX, double CenterY)
+void AEmberGroundRelief::BuildBlock(const FIntPoint& Bk, FBlock& Out)
 {
-	const double T0 = FPlatformTime::Seconds();
-	// Snap the patch to its own lattice so the same world point always gets the same vertex.
-	Cx = FMath::RoundToDouble(CenterX / SpacingM) * SpacingM;
-	Cy = FMath::RoundToDouble(CenterY / SpacingM) * SpacingM;
-	BuiltGeneration = Terrain->GetTileGeneration();
-	bBuilt = true;
-	const int32 Half = FMath::CeilToInt32(RadiusM / SpacingM);
-	const int32 N = 2 * Half + 1;
-	const double X0 = Cx - Half * SpacingM, Y0 = Cy + Half * SpacingM;   // NW corner, rows run south
+	if (!Out.Comp)
+	{
+		if (Pool.Num())
+		{
+			Out.Comp = Pool.Pop();
+			Out.Comp->SetVisibility(true);
+		}
+		else
+		{
+			Out.Comp = NewObject<UProceduralMeshComponent>(this);
+			Out.Comp->SetMobility(EComponentMobility::Movable);
+			Out.Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Out.Comp->SetCastShadow(true);
+			Out.Comp->bCastFarShadow = false;
+			Out.Comp->SetupAttachment(RootComponent);
+			Out.Comp->RegisterComponent();
+			AllComps.Add(Out.Comp);
+		}
+	}
+	// Vertex lattice of the block plus a one-cell apron (normals across block edges). Rows run
+	// south from the block's north edge; shared edges get the same world points -> no cracks.
+	const int32 C = BlockCells;
+	const int32 N = C + 3;                         // -1 .. C+1
+	const double X0 = Bk.X * BlockM, Y0 = (Bk.Y + 1) * BlockM;
 	TArray<double> Z;
 	TArray<uint8> Valid;
 	Z.SetNumUninitialized(N * N);
 	Valid.SetNumZeroed(N * N);
-	const double FadeIn = RadiusM - 8.0, FadeOut = RadiusM - SpacingM;
+	bool bFull = true;
 	for (int32 J = 0; J < N; ++J)
 	{
 		for (int32 I = 0; I < N; ++I)
 		{
-			const double X = X0 + I * SpacingM, Y = Y0 - J * SpacingM;
+			const double X = X0 + (I - 1) * SpacingM, Y = Y0 - (J - 1) * SpacingM;
 			double Zs = 0.0;
 			if (!Terrain->SurfaceAt(X, Y, Zs))
 			{
@@ -84,11 +164,9 @@ void AEmberGroundRelief::Build(double CenterX, double CenterY)
 			float W4[4] = {0, 0, 0, 0};
 			Terrain->GroundMixAt(X, Y, W4);
 			const double R = emberworld::micro_relief(X, Y, {W4[0], W4[1], W4[2], W4[3]}, Params);
-			// Full relief in the middle; at the rim it sinks 6 cm under the terrain (no seam).
-			const double D = FMath::Max(FMath::Abs(X - Cx), FMath::Abs(Y - Cy));
-			const double T = FMath::Clamp((D - FadeIn) / (FadeOut - FadeIn), 0.0, 1.0);
-			const double Fd = 1.0 - T * T * (3.0 - 2.0 * T);
-			Z[J * N + I] = Zs + Fd * (LiftM + R) - (1.0 - Fd) * 0.06;
+			const double Fd = FadeAt(X, Y);
+			bFull &= Fd >= 1.0;
+			Z[J * N + I] = Zs + Fd * (LiftM + R) - (1.0 - Fd) * 0.06;   // rim: 6 cm under the terrain
 			Valid[J * N + I] = 1;
 		}
 	}
@@ -101,38 +179,36 @@ void AEmberGroundRelief::Build(double CenterX, double CenterY)
 		TArray<int32> Tris;
 		TMap<int32, int32> Remap;
 	};
-	TArray<FSection> Sections;
+	TArray<FSection, TInlineAllocator<2>> Sections;
 	TMap<uint64, int32> SectionOf;
-	auto Vert = [&](FSection& S, int32 I, int32 J) -> int32
+	auto Vert = [&](FSection& S, int32 I, int32 J) -> int32   // I, J in 0..C (lattice, no apron)
 	{
-		const int32 Node = J * N + I;
+		const int32 Node = (J + 1) * N + (I + 1);
 		if (const int32* Found = S.Remap.Find(Node))
 		{
 			return *Found;
 		}
 		const double X = X0 + I * SpacingM, Y = Y0 - J * SpacingM;
-		auto Zc = [&](int32 Ii, int32 Jj)
+		auto Zc = [&](int32 Di, int32 Dj)
 		{
-			Ii = FMath::Clamp(Ii, 0, N - 1);
-			Jj = FMath::Clamp(Jj, 0, N - 1);
-			return Valid[Jj * N + Ii] ? Z[Jj * N + Ii] : Z[Node];
+			const int32 M = Node + Dj * N + Di;
+			return Valid[M] ? Z[M] : Z[Node];
 		};
-		// UE normal: X east, Y south
-		const double Dzdx = (Zc(I + 1, J) - Zc(I - 1, J)) / (2.0 * SpacingM);
-		const double DzdySouth = (Zc(I, J + 1) - Zc(I, J - 1)) / (2.0 * SpacingM);
+		const double Dzdx = (Zc(1, 0) - Zc(-1, 0)) / (2.0 * SpacingM);
+		const double DzdySouth = (Zc(0, 1) - Zc(0, -1)) / (2.0 * SpacingM);
 		const int32 Idx = S.V.Num();
 		S.V.Add(Terrain->WorldToUE(X, Y, Z[Node]));
-		S.Nrm.Add(FVector(-Dzdx, -DzdySouth, 1.0).GetSafeNormal());
+		S.Nrm.Add(FVector(-Dzdx, -DzdySouth, 1.0).GetSafeNormal());   // UE: X east, Y south
 		S.UV0.Emplace((X - S.S.MinX) / S.S.Width, (S.S.MaxY - Y) / S.S.Height);
 		S.UV1.Emplace((X - S.S.RMinX) / S.S.RWidth, (S.S.RMaxY - Y) / S.S.RHeight);
 		S.Remap.Add(Node, Idx);
 		return Idx;
 	};
-	for (int32 J = 0; J + 1 < N; ++J)
+	for (int32 J = 0; J < C; ++J)
 	{
-		for (int32 I = 0; I + 1 < N; ++I)
+		for (int32 I = 0; I < C; ++I)
 		{
-			const int32 A = J * N + I;
+			const int32 A = (J + 1) * N + (I + 1);
 			if (!Valid[A] || !Valid[A + 1] || !Valid[A + N] || !Valid[A + N + 1])
 			{
 				continue;
@@ -152,22 +228,21 @@ void AEmberGroundRelief::Build(double CenterX, double CenterY)
 			FSection& S = Sections[*Si];
 			const int32 V00 = Vert(S, I, J), V10 = Vert(S, I + 1, J);
 			const int32 V01 = Vert(S, I, J + 1), V11 = Vert(S, I + 1, J + 1);
-			// the terrain's winding and diagonal (heightfield.cpp: a c b, b c d)
-			S.Tris.Append({V00, V01, V10, V10, V01, V11});
+			S.Tris.Append({V00, V01, V10, V10, V01, V11});   // the terrain's winding (heightfield.cpp)
 		}
 	}
-	Mesh->ClearAllMeshSections();
-	NumVerts = 0;
+	Out.Comp->ClearAllMeshSections();
+	Out.Verts = 0;
 	for (int32 K = 0; K < Sections.Num(); ++K)
 	{
 		FSection& S = Sections[K];
-		Mesh->CreateMeshSection(K, S.V, S.Tris, S.Nrm, S.UV0, S.UV1, TArray<FVector2D>(), TArray<FVector2D>(),
+		Out.Comp->CreateMeshSection(K, S.V, S.Tris, S.Nrm, S.UV0, S.UV1, TArray<FVector2D>(), TArray<FVector2D>(),
 			TArray<FColor>(), TArray<FProcMeshTangent>(), false);
-		Mesh->SetMaterial(K, S.S.Material);
-		NumVerts += S.V.Num();
+		Out.Comp->SetMaterial(K, S.S.Material);
+		Out.Verts += S.V.Num();
 	}
-	NumSections = Sections.Num();
+	Out.Generation = Generation;
+	Out.Centre = Centre;
+	Out.bFull = bFull;
 	++Builds;
-	LastBuildMs = (FPlatformTime::Seconds() - T0) * 1000.0;
-	UE_LOG(LogEmberRelief, Verbose, TEXT("ground relief: %d verts, %d sections, %.1f ms"), NumVerts, NumSections, LastBuildMs);
 }

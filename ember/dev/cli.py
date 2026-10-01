@@ -574,7 +574,10 @@ def forest_report(region: str = typer.Argument(..., help="Terrain region, e.g. t
 def regen_assets(check: bool = typer.Option(False, "--check",
                                            help="Engine-free: is the lock current?"),
                  force: bool = typer.Option(False, "--force",
-                                            help="Run every generator, changed or not.")) -> None:
+                                            help="Run every generator, changed or not."),
+                 only: list[str] = typer.Option(None, "--only",
+                                                help="Only these generators (e.g. m_terrain); the "
+                                                     "rest wait (stale in the lock).")) -> None:
     """Regenerate .uassets from assets/generators (headless commandlet); unchanged generators
     are skipped unless --force."""
     from ember.dev import assets
@@ -588,11 +591,11 @@ def regen_assets(check: bool = typer.Option(False, "--check",
         if problems:
             raise typer.Exit(1)
         return
-    res = assets.regen(ue.load_engine(), force=force)
+    res = assets.regen(ue.load_engine(), force=force, only=only or None)
     for g in res["generators"]:
         fg = typer.colors.GREEN if g["ok"] else typer.colors.RED
         if g.get("skipped"):
-            typer.echo(f"{g['script']}: unchanged, skipped")
+            typer.echo(f"{g['script']}: {'deferred (--only)' if g.get('deferred') else 'unchanged, skipped'}")
             continue
         typer.secho(f"{g['script']}: {'ok' if g['ok'] else 'FAILED'} in {g['seconds']}s "
                     f"-> {', '.join(g['outputs'])}", fg=fg)

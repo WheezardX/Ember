@@ -24,7 +24,7 @@ Parameters (the runtime surface; docs/viz/assets.md):
     GroundOn        scalar     0 = no ground detail (look without [ground])  default 0
     GroundFadeNear  scalar     full detail inside this distance (cm)    default 15000
     GroundFadeFar   scalar     no detail past this distance (cm)        default 40000
-    GroundNormal    scalar     detail normal strength                   default 1
+    GroundNormal    scalar     detail normal strength                   default 1.4
     GroundHeight    scalar     height-blend contrast between sets       default 0.6
     GroundCliffNz   scalar     |normal.z| below which detail projects on a vertical plane
                                (YZ or XZ, whichever the normal faces) default 0.707 (45 deg)
@@ -246,7 +246,8 @@ float t = saturate(Nlo * 0.5 + 0.5);
 // (C alpha: 0 = deepest duff, 1 = top of sticks / needle mats, PomDepth cm deep) and sample there,
 // so needles and sticks occlude what lies behind them; then march toward the sun - what is
 // shadowed by higher litter darkens. Litter only (the forest floor is where the eye is).
-float pomW = saturate((2000.0 - dist) / 800.0) * saturate(Mix.x * 1.5) * step(CliffZ, an.z) * step(0.01, PomDepth);
+// (depth pass 2026-10-01, Brad: "still reads like a texture": out to 35 m, was 20)
+float pomW = saturate((3500.0 - dist) / 1200.0) * saturate(Mix.x * 1.5) * step(CliffZ, an.z) * step(0.01, PomDepth);
 float shade = 1.0;
 if (pomW > 0.01) {
     float2 p0 = p;
@@ -293,7 +294,7 @@ if (pomW > 0.01) {
                             Texture2DSampleGrad(LC, LCSampler, qs / RL, gx * 0.37, gy * 0.37).a, t);
             occ = max(occ, hs - (h + f));
         }
-        shade = lerp(1.0, 1.0 - 0.55 * saturate(occ * 6.0), pomW);
+        shade = lerp(1.0, 1.0 - 0.75 * saturate(occ * 8.0), pomW);   // was 0.55 / x6: shadows in the litter barely showed
     }
 }
 float2 q = float2(p.x * 0.8 - p.y * 0.6, p.x * 0.6 + p.y * 0.8) * 0.37 + 1731.0;
@@ -349,9 +350,9 @@ float3 hn = float3(-hg * HumS, 0.0);
 ao *= lerp(1.0, 0.8 + 0.4 * saturate(hh / 1.45), HumS > 0 ? 1.0 : 0.0);
 NormalWS = normalize(vn + ((tu * slope.x + tv * slope.y) * NS + hn) * fade);
 Rough = lerp(R0, rough, fade);
-// crevices: half the detail AO darkens the colour, all of it shades the sky light
+// crevices: 60 % of the detail AO darkens the colour (was half; 80 % went near-black), all of it shades the sky light
 Occ *= lerp(1.0, ao, fade);
-return lerp(Base, own * lerp(1.0, ao, 0.5) * shade, fade);
+return lerp(Base, own * lerp(1.0, ao, 0.6) * shade, fade);
 """
 
 mixtex = expr(unreal.MaterialExpressionTextureSampleParameter2D, -850, -420)
@@ -396,7 +397,7 @@ link(expr(unreal.MaterialExpressionVertexNormalWS, -650, -700), "", ground, "VN"
 link(scalar("GroundOn", 0.0, -650, -760), "", ground, "On")
 link(scalar("GroundFadeNear", 15000.0, -650, -820), "", ground, "FadeNear")
 link(scalar("GroundFadeFar", 40000.0, -650, -880), "", ground, "FadeFar")
-link(scalar("GroundNormal", 1.0, -650, -940), "", ground, "NS")
+link(scalar("GroundNormal", 1.4, -650, -940), "", ground, "NS")   # 1.0 read flat under soft canopy light
 link(scalar("GroundHeight", 0.6, -650, -1000), "", ground, "HC")
 link(scalar("Roughness", 0.92, -650, -1060), "", ground, "R0")
 link(scalar("GroundCliffNz", 0.707, -650, -1120), "", ground, "CliffZ")  # |N.z| below: vertical projection
@@ -428,7 +429,7 @@ to_property(ground, "Occ", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
 link(scalar("CanopyFarStart", 0.0, -650, -1300), "", ground, "FarStart")
 link(scalar("CanopyImpression", 1.0, -650, -1360), "", ground, "CanopyOn")
 # litter parallax depth (cm; 0 = off) and the sun for its self-shadow
-link(scalar("GroundPomDepth", 8.0, -650, -1420), "", ground, "PomDepth")
+link(scalar("GroundPomDepth", 11.0, -650, -1420), "", ground, "PomDepth")   # cm; litter v3 height has real mid-scale relief
 link(expr(unreal.MaterialExpressionSkyAtmosphereLightDirection, -650, -1480), "", ground, "SunDir")
 for i, (set_name, pin, rep) in enumerate((("Litter", "L", 250.0), ("Grass", "G", 300.0),
                                           ("Rock", "R", 400.0), ("Shrub", "S", 300.0))):
