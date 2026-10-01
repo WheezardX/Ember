@@ -8,8 +8,10 @@
     ember-dev bless S [--run DIR]          accept a run's captures as the new goldens
     ember-dev bundle HCPn --run L=DIR ...  copy labelled runs into checkpoints/HCPn/ for review
     ember-dev regen-assets [--check]       run asset generators headless / check the lock
-    ember-dev regress [--full]             quick tier (~3 min) after a change; --full before a commit
-    ember-dev timing [--since D]           where the iteration time went (budgets: viz/budgets.toml [steps])
+    ember-dev regress [--full]             quick tier (~3 min) after a change; --full before a
+                                           commit
+    ember-dev timing [--since D]           where the iteration time went (budgets:
+                                           viz/budgets.toml [steps])
     ember-dev scenarios                    list render scenarios
 """
 
@@ -138,7 +140,8 @@ def play(name: str,
         raise typer.Exit(2) from None
     typer.echo(f"playing {sc.name} (pid {proc.pid}); log {run_dir / 'log' / 'Ember.log'}")
     typer.echo("  mouse look | WASD | E/Space up, Q/C down | Shift x4, Ctrl x0.25 | wheel speed")
-    typer.echo("  G walk/fly | 1-5 sun | P play fire, , . -/+1 h, [ ] rate | L lamp | H help | Esc quit")
+    typer.echo("  G walk/fly | 1-5 sun | P play fire, , . -/+1 h, [ ] rate | L lamp | H help"
+               " | Esc quit")
     if wait:
         proc.wait()
 
@@ -195,7 +198,8 @@ def regress(full: bool = typer.Option(False, "--full", help="Every scenario (bef
     for n in names:
         sc = _sc(n)
         t0 = time.time()
-        run_dir = ue.run_scenario(eng, sc, timeout_s=900, exposure_bias=sc.spec.scenario.exposure_bias)
+        run_dir = ue.run_scenario(eng, sc, timeout_s=900,
+                                  exposure_bias=sc.spec.scenario.exposure_bias)
         t_run = time.time() - t0
         meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
         timing.record("run-scenario", n, t_run, meta["exit_code"] == 0, repo=repo, nested=True)
@@ -209,13 +213,15 @@ def regress(full: bool = typer.Option(False, "--full", help="Every scenario (bef
         t_eval = time.time() - t1
         s = v["summary"]
         checks_ok = s["checks_failed"] == 0 and s["run_exit_code"] == 0
-        imgs = f"{s['match']}/{s['captures']} match" + (f", {s['mismatch']} changed" if s["mismatch"] else "")
+        imgs = (f"{s['match']}/{s['captures']} match"
+                + (f", {s['mismatch']} changed" if s["mismatch"] else ""))
         status = ("PASS" if v["pass"] else ("IMAGES" if checks_ok else "FAIL"))
         if status == "FAIL":
             failed.append(n)
         rows.append((n, t_run, t_eval, status, imgs))
         typer.secho(f"{n:22s} {status:7s} {imgs:28s} run {t_run:5.0f}s eval {t_eval:4.0f}s",
-                    fg={"PASS": typer.colors.GREEN, "IMAGES": typer.colors.YELLOW}.get(status, typer.colors.RED))
+                    fg={"PASS": typer.colors.GREEN,
+                        "IMAGES": typer.colors.YELLOW}.get(status, typer.colors.RED))
     total = time.time() - t_all
     timing.record(f"regress:{tier if not only else 'only'}", ",".join(names)[:80], total,
                   not failed, repo=repo)
@@ -228,8 +234,10 @@ def regress(full: bool = typer.Option(False, "--full", help="Every scenario (bef
                      for r in rows if r[3] != "COMPILE FAIL")
         P.timeline_html(repo)
         typer.echo(f"progression: {n_arch} new image(s) archived (checkpoints/progression)")
-    typer.echo(f"\n{tier if not only else 'selected'}: {len(rows)} scenario(s) in {total / 60:.1f} min "
-               f"(runs {sum(r[1] for r in rows) / 60:.1f}, evaluate {sum(r[2] for r in rows) / 60:.1f}); "
+    typer.echo(f"\n{tier if not only else 'selected'}: {len(rows)} scenario(s) in "
+               f"{total / 60:.1f} min "
+               f"(runs {sum(r[1] for r in rows) / 60:.1f}, "
+               f"evaluate {sum(r[2] for r in rows) / 60:.1f}); "
                f"IMAGES = checks pass, captures changed (bless if intended)")
     if failed:
         typer.secho(f"failed: {', '.join(failed)}", fg=typer.colors.RED)
@@ -238,7 +246,8 @@ def regress(full: bool = typer.Option(False, "--full", help="Every scenario (bef
 
 @app.command()
 def progression(action: str = typer.Argument("timeline", help="backfill | timeline | archive"),
-                scenario: str = typer.Option(None, "--scenario", help="archive: this scenario's latest run"),
+                scenario: str = typer.Option(None, "--scenario",
+                                             help="archive: this scenario's latest run"),
                 note: str = typer.Option("", "--note")) -> None:
     """Progression archive for pitching (checkpoints/progression): backfill from git goldens,
     archive a run, build timeline.html."""
@@ -251,13 +260,15 @@ def progression(action: str = typer.Argument("timeline", help="backfill | timeli
         if not scenario:
             typer.secho("archive needs --scenario", fg=typer.colors.RED)
             raise typer.Exit(2)
-        typer.echo(f"archive {scenario}: {P.archive_run(repo, scenario, _resolve_run(scenario, None), note)} new image(s)")
+        n = P.archive_run(repo, scenario, _resolve_run(scenario, None), note)
+        typer.echo(f"archive {scenario}: {n} new image(s)")
     out = P.timeline_html(repo)
     typer.secho(f"timeline: {out}", fg=typer.colors.GREEN)
 
 
 @app.command("timing")
-def timing_cmd(since: str = typer.Option(None, "--since", help="ISO date/time (UTC), e.g. 2026-09-30"),
+def timing_cmd(since: str = typer.Option(None, "--since",
+                                         help="ISO date/time (UTC), e.g. 2026-09-30"),
                ) -> None:
     """Where the iteration time went (runs/dev/timing.jsonl): per step kind, slowest, overruns."""
     from ember.dev import timing
@@ -274,7 +285,8 @@ def timing_cmd(since: str = typer.Option(None, "--since", help="ISO date/time (U
     if s["overruns"]:
         typer.secho("\nover budget:", fg=typer.colors.YELLOW)
         for r in s["overruns"][-15:]:
-            typer.echo(f"  {r['utc']}  {r['kind']} {r['label']}: {r['seconds']:.0f}s (budget {r['budget']:.0f}s)")
+            typer.echo(f"  {r['utc']}  {r['kind']} {r['label']}: {r['seconds']:.0f}s "
+                       f"(budget {r['budget']:.0f}s)")
 
 
 @app.command()
@@ -440,7 +452,8 @@ def split(name: str = typer.Argument(..., help="Replay scenario, e.g. S_jolly_fi
 
 
 @app.command("wind-vane")
-def wind_vane(name: str = typer.Argument(..., help="Replay scenario with a fixed-heading timelapse"),
+def wind_vane(name: str = typer.Argument(...,
+                                         help="Replay scenario with a fixed-heading timelapse"),
               orbit: str = typer.Option(..., "--orbit"),
               run: str = typer.Option(None, "--run", help="Run dir (default: latest)."),
               out: Path = typer.Option(None, "--out")) -> None:
@@ -458,7 +471,6 @@ def naip(region: str = typer.Argument(..., help="Terrain region, e.g. three_quee
     """Fetch NAIP colour reference for a region (overviews only; metered in the ledger)."""
     from ember.dev import naip as N
     from ember.dev.scenario import terrain_store_root
-
     from ember.dev.water import render_store
 
     region_dir = terrain_store_root() / region
@@ -483,7 +495,8 @@ def naip_probe(name: str, run: str = typer.Option(None, "--run", help="Run dir (
     typer.echo(f"brightness gain (auto exposure) {rep['brightness_gain']}")
     typer.echo(f"{'group':20s} {'cells':>6s}  {'dE':>5s} {'dE*':>5s}  render L a b -> NAIP L a b")
     for g, v in rep["groups"].items():
-        typer.echo(f"{g:20s} {v['cells']:6d}  {v['delta_e']:5.1f} {v['delta_e_brightness_matched']:5.1f}"
+        typer.echo(f"{g:20s} {v['cells']:6d}  {v['delta_e']:5.1f} "
+                   f"{v['delta_e_brightness_matched']:5.1f}"
                    f"  {v['render_lab']} -> {v['naip_lab']}")
     typer.secho(f"report {run_dir / 'naip_probe.json'}, sheet {run_dir / 'naip_probe.jpg'}",
                 fg=typer.colors.GREEN)
@@ -520,8 +533,10 @@ def ref_pair(name: str, run: str = typer.Option(None, "--run", help="Run dir (de
 
 @app.command("ref-add")
 def ref_add(paths: list[Path] = typer.Argument(..., help="Image files or folders"),
-            source: str = typer.Option(..., "--source", help="Library folder, e.g. brad-field, facebook-3q"),
-            licence: str = typer.Option("reference-only", "--licence", help="shippable | reference-only"),
+            source: str = typer.Option(..., "--source",
+                                       help="Library folder, e.g. brad-field, facebook-3q"),
+            licence: str = typer.Option("reference-only", "--licence",
+                                        help="shippable | reference-only"),
             credit: str = typer.Option("", "--credit"),
             tag: list[str] = typer.Option([], "--tag", help="Subject tag (repeatable)"),
             notes: str = typer.Option("", "--notes")) -> None:
@@ -536,8 +551,11 @@ def ref_add(paths: list[Path] = typer.Argument(..., help="Image files or folders
 
 
 @app.command("ref-sheet")
-def ref_sheet(tag: str = typer.Option(None, "--tag", help="Only images with any of these tags (comma-separated)"),
-              name: str = typer.Option("sheet", "--name", help="Output file name (store/reference/<name>.html)")) -> None:
+def ref_sheet(tag: str = typer.Option(None, "--tag",
+                                      help="Only images with any of these tags (comma-separated)"),
+              name: str = typer.Option("sheet", "--name",
+                                       help="Output file name (store/reference/<name>.html)"),
+              ) -> None:
     """Contact sheet of the reference library (local HTML) for keep / reject / tag passes."""
     from ember.dev import reference
 
@@ -577,7 +595,8 @@ def fetch_textures(manifest: Path = typer.Argument(..., help="assets/sources/<se
     from ember.dev import texsource
 
     for r in texsource.fetch(manifest, ue.repo_root() / "store", res):
-        typer.echo(f"  {r['key']}: " + ("on disk, skipped" if r.get("skipped") else f"{', '.join(r['maps'])}  {r['mb']} MB"))
+        typer.echo(f"  {r['key']}: " + ("on disk, skipped" if r.get("skipped")
+                                        else f"{', '.join(r['maps'])}  {r['mb']} MB"))
 
 
 @app.command("regen-assets")
@@ -605,7 +624,8 @@ def regen_assets(check: bool = typer.Option(False, "--check",
     for g in res["generators"]:
         fg = typer.colors.GREEN if g["ok"] else typer.colors.RED
         if g.get("skipped"):
-            typer.echo(f"{g['script']}: {'deferred (--only)' if g.get('deferred') else 'unchanged, skipped'}")
+            why = "deferred (--only)" if g.get("deferred") else "unchanged, skipped"
+            typer.echo(f"{g['script']}: {why}")
             continue
         typer.secho(f"{g['script']}: {'ok' if g['ok'] else 'FAILED'} in {g['seconds']}s "
                     f"-> {', '.join(g['outputs'])}", fg=fg)

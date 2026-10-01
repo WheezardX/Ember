@@ -127,7 +127,8 @@ def ingest(repo: Path, data: bytes, *, source: str, origin: str, credit: str, li
 def add_files(repo: Path, paths: list[Path], **kw) -> list[dict]:
     out = []
     for p in paths:
-        files = sorted(x for x in p.rglob("*") if x.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")) \
+        files = sorted(x for x in p.rglob("*")
+                       if x.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")) \
             if p.is_dir() else [p]
         for f in files:
             r = ingest(repo, f.read_bytes(), origin=str(f.resolve()), **kw)
@@ -149,17 +150,21 @@ def sheet_html(repo: Path, tag: str | None = None, name: str = "sheet") -> Path:
         meta = " ".join(x for x in [(r.get("taken") or "")[:10], r["licence"],
                                     f"{r['bearing_deg']:.0f}°" if "bearing_deg" in r else "",
                                     "GPS" if "lat" in r else ""] if x)
-        cells.append(f'<figure><a href="{root}/{r["file"]}"><img loading="lazy" src="{root}/{r["file"]}"></a>'
+        cells.append(f'<figure><a href="{root}/{r["file"]}">'
+                     f'<img loading="lazy" src="{root}/{r["file"]}"></a>'
                      f'<figcaption><b>{html.escape(r["id"])}</b><br>{html.escape(meta)}<br>'
-                     f'{html.escape(", ".join(r["tags"]))}<br><i>{html.escape(r.get("notes", ""))}</i>'
+                     f'{html.escape(", ".join(r["tags"]))}<br>'
+                     f'<i>{html.escape(r.get("notes", ""))}</i>'
                      f'</figcaption></figure>')
     page = ("<!doctype html><meta charset=utf-8><title>Ember reference library</title><style>"
             "body{font:13px system-ui;background:#16181b;color:#e6e2da;margin:0;padding:16px}"
             ".grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}"
             "figure{margin:0}img{width:100%;border-radius:3px;display:block}"
             "figcaption{color:#aaa;margin-top:4px;line-height:1.35}b{color:#e6e2da}</style>"
-            f"<h1>Reference library</h1><p>{len(rows)} images{' tagged ' + html.escape(tag) if tag else ''}."
-            " Keep / reject / retag: tell the agent the ids.</p><div class=grid>" + "".join(cells) + "</div>")
+            f"<h1>Reference library</h1>"
+            f"<p>{len(rows)} images{' tagged ' + html.escape(tag) if tag else ''}."
+            " Keep / reject / retag: tell the agent the ids.</p><div class=grid>"
+            + "".join(cells) + "</div>")
     out = library_root() / f"{name}.html"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")

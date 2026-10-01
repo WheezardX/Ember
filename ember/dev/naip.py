@@ -148,7 +148,6 @@ def probe(run_dir: Path, naip_tif: Path, fbfm40_tif: Path, captures: list[str]) 
     with rasterio.open(fbfm40_tif) as f:
         fb = f.read(1)
         ftf = f.transform
-    code_to_group = {c: g for g, cs in GROUPS.items() for c in cs}
     acc: dict[str, dict[str, list]] = {}
     sheets = []
     for name in captures:
@@ -176,7 +175,8 @@ def probe(run_dir: Path, naip_tif: Path, fbfm40_tif: Path, captures: list[str]) 
         fc = np.floor((wx - ftf.c) / ftf.a).astype(int)
         fr = np.floor((wy - ftf.f) / ftf.e).astype(int)
         inside = (fc >= 0) & (fr >= 0) & (fc < fb.shape[1]) & (fr < fb.shape[0])
-        codes = np.where(inside, fb[np.clip(fr, 0, fb.shape[0] - 1), np.clip(fc, 0, fb.shape[1] - 1)], -1)
+        codes = np.where(inside,
+                         fb[np.clip(fr, 0, fb.shape[0] - 1), np.clip(fc, 0, fb.shape[1] - 1)], -1)
         for g in GROUPS:
             m = good & np.isin(codes, GROUPS[g])
             if m.any():

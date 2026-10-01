@@ -374,7 +374,7 @@ def test_manifest_lists_every_treegen_asset():
     mats = next(g for g in m["generator"] if g["script"] == "veg_materials.py")
     assert veg["outputs"] == [n for n in names if "/MI_Veg_" not in n]
     assert mats["outputs"] == [n for n in names if "/MI_Veg_" in n]
-    assert veg["depends"] == ["treegen.py"] and mats["depends"] == ["treegen.py"]
+    assert veg["depends"] == ["treegen.py"] and mats["depends"] == ["treegen.py", "../sources/bark.toml"]
     order = [g["script"] for g in m["generator"]]
     # instances need their parent; meshes need their instances
     assert order.index("m_veg.py") < order.index("veg_materials.py") < order.index("veg_species.py")

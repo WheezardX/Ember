@@ -56,6 +56,10 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.lint.per-file-ignores]
 # Verbatim compiler log lines are test data.
 "tests/test_dev_harness.py" = ["E501"]
+# Asset generators embed HLSL (material custom nodes) and long UE editor-API calls as string
+# literals: wrapping them hurts more than it helps. They are also hashed into the asset lock -
+# a style-only edit to treegen.py forces a ~20 min tree rebuild - hence E702 / F841 too.
+"assets/generators/*.py" = ["E501", "E702", "F841"]
 # Typer's API *requires* `typer.Option(...)` as a parameter default — B008 is a
 # false positive for this idiom.
 "ember/cli.py" = ["B008"]

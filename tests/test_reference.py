@@ -1,4 +1,5 @@
-"""Reference library (ember.dev.reference): ingest downsizes, keeps EXIF facts, dedupes by origin."""
+"""Reference library (ember.dev.reference): ingest downsizes, keeps EXIF facts, dedupes by
+origin."""
 
 import io
 
@@ -26,7 +27,8 @@ def _jpeg(w=3000, h=2000, bearing=147.0) -> bytes:
 def test_ingest_downsizes_keeps_exif_and_dedupes(tmp_path, monkeypatch):
     monkeypatch.setenv("EMBER_REFERENCE_DIR", str(tmp_path / "store" / "reference"))
     repo = tmp_path / "repo"
-    kw = dict(source="test", origin="x:1", credit="me", licence="shippable", tags=["stand", "stand"])
+    kw = dict(source="test", origin="x:1", credit="me", licence="shippable",
+              tags=["stand", "stand"])
     r = reference.ingest(repo, _jpeg(), **kw)
     assert r["w"] == reference.MAX_EDGE and r["h"] < reference.MAX_EDGE
     assert r["taken"] == "2025-04-13T12:48:37"
@@ -41,7 +43,8 @@ def test_ingest_downsizes_keeps_exif_and_dedupes(tmp_path, monkeypatch):
 def test_unknown_licence_rejected(tmp_path, monkeypatch):
     monkeypatch.setenv("EMBER_REFERENCE_DIR", str(tmp_path / "store" / "reference"))
     try:
-        reference.ingest(tmp_path, _jpeg(), source="t", origin="o", credit="", licence="cc-by", tags=[])
+        reference.ingest(tmp_path, _jpeg(), source="t", origin="o", credit="", licence="cc-by",
+                         tags=[])
     except ValueError:
         return
     raise AssertionError("licence outside the two classes must be rejected")

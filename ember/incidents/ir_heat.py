@@ -5,12 +5,14 @@ hot: intense heat (the active front), scattered heat (interior burning, often mo
 weeks), isolated heat points. The client (EmberFireActor) reads this to drive interior smoke
 columns, smoulder and ground glow from the record instead of a fixed decay.
 
-    python -m ember.incidents.ir_heat --obs <incident>/observations/ir_perimeters --replay <run>.replay.json
+    python -m ember.incidents.ir_heat --obs <incident>/observations/ir_perimeters \\
+        --replay <run>.replay.json
 
 Writes beside the world pack (`<pack>.heat.json` + `.heat.bin`): one uint8 grid per flight, row 0
 north, 0 none / 1 isolated / 2 scattered / 3 intense. ~0.36 MB per flight on a 620 x 576 grid.
 """
-import argparse, json
+import argparse
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -38,7 +40,8 @@ def build(obs: Path, replay: Path) -> Path:
         counts = {}
         # lowest class first so intense wins where they overlap
         for name, cls in sorted(CLASSES.items(), key=lambda kv: kv[1]):
-            geoms = [shp_transform(lambda x, y, z=None: to_grid.transform(x, y), shape(ft["geometry"]))
+            geoms = [shp_transform(lambda x, y, z=None: to_grid.transform(x, y),
+                                   shape(ft["geometry"]))
                      for ft in fc["features"] if ft["properties"]["class"] == name]
             if not geoms:
                 continue

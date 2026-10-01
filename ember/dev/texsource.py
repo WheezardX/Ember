@@ -16,8 +16,8 @@ import zipfile
 from pathlib import Path
 
 UA = {"User-Agent": "ember-textures/0"}
-PH_MAPS = {"Diffuse": "color", "nor_gl": "normal_gl", "Rough": "roughness", "Displacement": "height",
-           "AO": "ao"}
+PH_MAPS = {"Diffuse": "color", "nor_gl": "normal_gl", "Rough": "roughness",
+           "Displacement": "height", "AO": "ao"}
 ACG_SUFFIX = {"_Color": "color", "_NormalGL": "normal_gl", "_Roughness": "roughness",
               "_Displacement": "height", "_AmbientOcclusion": "ao"}
 

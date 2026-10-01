@@ -10,7 +10,8 @@ from ember.dev import timing
 def _repo(tmp_path: Path) -> Path:
     (tmp_path / "viz").mkdir()
     (tmp_path / "viz" / "budgets.toml").write_text(
-        '[steps]\n"run-scenario" = 120\n"gen:*" = 60\n"gen:veg_species.py" = 1500\n', encoding="utf-8")
+        '[steps]\n"run-scenario" = 120\n"gen:*" = 60\n"gen:veg_species.py" = 1500\n',
+        encoding="utf-8")
     return tmp_path
 
 

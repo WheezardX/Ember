@@ -3,8 +3,8 @@ useful to pitching to investors ... err on the side of lots of progression data"
 
 checkpoints/progression/
     <scenario>/<capture>/<YYYY-MM-DD>_<HHMM>_<sha7>.jpg   one image per blessed / archived version
-    index.json                                            every entry: view, date, commit, message, source
-    timeline.html                                         per view, oldest -> newest (built by `timeline`)
+    index.json      every entry: view, date, commit, message, source
+    timeline.html   per view, oldest -> newest (built by `timeline`)
 
 Sources:
   * `backfill`: every version of every golden in git history (each bless overwrote the golden,
@@ -127,14 +127,17 @@ def timeline_html(repo: Path) -> Path:
     for view in sorted(views, key=lambda v: -len(views[v])):
         es = sorted(views[view], key=lambda e: e["date"])
         cells = "".join(
-            f'<figure><img loading="lazy" src="{html.escape(Path(e["image"]).relative_to(ROOT).as_posix())}">'
-            f'<figcaption><b>{e["date"][:10]}</b> {html.escape(e["commit"])}<br>{html.escape(e["message"][:90])}'
+            f'<figure><img loading="lazy" '
+            f'src="{html.escape(Path(e["image"]).relative_to(ROOT).as_posix())}">'
+            f'<figcaption><b>{e["date"][:10]}</b> {html.escape(e["commit"])}'
+            f'<br>{html.escape(e["message"][:90])}'
             f'</figcaption></figure>' for e in es)
         rows.append(f'<section><h2>{html.escape(view)} <span>{len(es)} versions</span></h2>'
                     f'<div class="strip">{cells}</div></section>')
     page = ("<!doctype html><meta charset=utf-8><title>Ember progression</title><style>"
             "body{font:14px system-ui;background:#16181b;color:#e6e2da;margin:0;padding:20px}"
-            "h1{font-weight:600}h2{font-size:16px;margin:24px 0 8px}h2 span{color:#999;font-weight:400}"
+            "h1{font-weight:600}h2{font-size:16px;margin:24px 0 8px}"
+            "h2 span{color:#999;font-weight:400}"
             ".strip{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px}"
             "figure{margin:0;flex:0 0 360px}img{width:360px;border-radius:3px;display:block}"
             "figcaption{font-size:12px;color:#aaa;margin-top:4px}</style>"

@@ -12,11 +12,13 @@ def test_heat_grid_classes_and_order(tmp_path):
     (tmp_path / "w.ewp").mkdir()
     replay = tmp_path / "r.replay.json"
     replay.write_text(json.dumps({"world": {"pack_relative": "w.ewp", "grid": {
-        "nx": 10, "ny": 10, "cell_size_m": 30.0, "crs": "EPSG:32610", "origin_x": ox, "origin_y": oy}}}))
+        "nx": 10, "ny": 10, "cell_size_m": 30.0, "crs": "EPSG:32610",
+        "origin_x": ox, "origin_y": oy}}}))
     to_ll = Transformer.from_crs("EPSG:32610", "EPSG:4326", always_xy=True)
 
     def box(x0, y0, x1, y1):
-        ring = [to_ll.transform(x, y) for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0))]
+        ring = [to_ll.transform(x, y)
+                for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0))]
         return {"type": "Polygon", "coordinates": [ring]}
 
     obs = tmp_path / "obs"
@@ -27,7 +29,8 @@ def test_heat_grid_classes_and_order(tmp_path):
          "geometry": box(ox, oy - 150, ox + 300, oy)},
         {"properties": {"class": "Intense Heat", "acquired_utc": "2026-08-11T05:10:00+00:00"},
          "geometry": box(ox, oy - 150, ox + 60, oy)},
-        {"properties": {"class": "Isolated Heat point", "acquired_utc": "2026-08-11T05:10:00+00:00"},
+        {"properties": {"class": "Isolated Heat point",
+                        "acquired_utc": "2026-08-11T05:10:00+00:00"},
          "geometry": {"type": "Point", "coordinates": list(to_ll.transform(ox + 255, oy - 255))}}]}
     (obs / "20260811T0510.geojson").write_text(json.dumps(fc))
     early = {"type": "FeatureCollection", "features": [

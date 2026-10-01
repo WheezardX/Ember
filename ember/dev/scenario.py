@@ -175,7 +175,8 @@ class ScenarioMeta(_Strict):
     # Near-ground relief (ground feel): a dense patch around the camera carrying hummocks / duff
     # mounds the terrain mesh cannot (AEmberGroundRelief, worldcore micro_relief).
     ground_relief: bool = False
-    ground_relief_radius_m: float = 56.0   # > ground covers visible range: items stand on the relief
+    # > ground covers visible range: items stand on the relief
+    ground_relief_radius_m: float = 56.0
     ground_relief_spacing_m: float = 0.3
     veg_near_radius_m: float = 500.0      # near tier: full trees, wind, live shadows (D11 s2)
     veg_mid_min_height_m: float = 12.0    # mid tier skips understory shorter than this

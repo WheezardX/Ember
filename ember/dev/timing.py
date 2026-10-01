@@ -34,7 +34,8 @@ def budgets(repo: Path | None = None) -> dict[str, float]:
     p = (repo or _repo()) / "viz" / "budgets.toml"
     if not p.exists():
         return {}
-    return {k: float(v) for k, v in tomllib.loads(p.read_text(encoding="utf-8")).get("steps", {}).items()}
+    steps = tomllib.loads(p.read_text(encoding="utf-8")).get("steps", {})
+    return {k: float(v) for k, v in steps.items()}
 
 
 def budget_for(kind: str, table: dict[str, float]) -> float | None:
@@ -104,7 +105,9 @@ def summary(rows: list[dict]) -> dict:
         e["max"] = max(e["max"], r["seconds"])
         e["over"] += 1 if r.get("over") else 0
     # top-level time only: generator runs sit inside regen-assets, scenario runs inside regress
-    total = sum(r["seconds"] for r in rows if not r.get("nested") and not r["kind"].startswith("gen:"))
-    return {"total_s": round(total, 1), "by_kind": dict(sorted(by.items(), key=lambda kv: -kv[1]["seconds"])),
+    total = sum(r["seconds"] for r in rows
+                if not r.get("nested") and not r["kind"].startswith("gen:"))
+    return {"total_s": round(total, 1),
+            "by_kind": dict(sorted(by.items(), key=lambda kv: -kv[1]["seconds"])),
             "slowest": sorted(rows, key=lambda r: -r["seconds"])[:10],
             "overruns": [r for r in rows if r.get("over")]}

@@ -70,7 +70,8 @@ def run_generator(eng: Engine, gen: Generator, log_dir: Path) -> tuple[bool, str
     # ...and its native DLLs (numpy / MKL in a conda env's Library\bin): without an activated env
     # the host process dies on load (0xC06D007E, no output) - seen 2026-10-01.
     prefix = Path(sys.executable).parent
-    dll_dirs = [prefix, prefix / "Library" / "bin", prefix / "Library" / "usr" / "bin", prefix / "Scripts"]
+    dll_dirs = [prefix, prefix / "Library" / "bin", prefix / "Library" / "usr" / "bin",
+                prefix / "Scripts"]
     env["PATH"] = os.pathsep.join([str(d) for d in dll_dirs if d.exists()] + [env.get("PATH", "")])
     t = time.perf_counter()
     p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -107,7 +108,8 @@ def regen(eng: Engine, repo: Path | None = None, force: bool = False,
             if entry is not None:
                 results.append({"script": g.script.name, "ok": True, "error": "", "seconds": 0.0,
                                 "skipped": True, "deferred": True,
-                                "script_sha256": entry["script_sha256"], "outputs": entry["outputs"]})
+                                "script_sha256": entry["script_sha256"],
+                                "outputs": entry["outputs"]})
             continue
         current = (not force and entry is not None and entry["script_sha256"] == gen_sha(g)
                    and sorted(entry["outputs"]) == sorted(g.outputs)

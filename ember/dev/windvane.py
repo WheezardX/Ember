@@ -113,8 +113,8 @@ def overlay(sc: LoadedScenario, run_dir: Path, orbit: str, out: Path | None = No
     w, h = int(wh[0]), int(wh[1])
     ts, uv = stream_wind(stream)
     dst = out or src.with_name(f"{orbit}_vane.mp4")
-    dec = subprocess.Popen([ff, "-v", "error", "-i", str(src), "-f", "rawvideo", "-pix_fmt", "rgb24",
-                            "-"], stdout=subprocess.PIPE)
+    dec = subprocess.Popen([ff, "-v", "error", "-i", str(src), "-f", "rawvideo",
+                            "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
     enc = subprocess.Popen([ff, "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s",
                             f"{w}x{h}", "-framerate", str(o.fps), "-i", "-", "-c:v", "libx264",
                             "-pix_fmt", "yuv420p", "-crf", "18", "-movflags", "+faststart",
