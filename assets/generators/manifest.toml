@@ -23,12 +23,23 @@ script = "m_terrain.py"
 outputs = ["/Game/Ember/Generated/M_Terrain", "/Game/Ember/Generated/T_LinearBlack"]
 
 [[generator]]
+script = "t_bark.py"            # CC0 bark sets (assets/sources/bark.toml; ember-dev fetch-textures first)
+outputs = [
+  "/Game/Ember/Generated/Bark/T_Bark_douglas_fir_C", "/Game/Ember/Generated/Bark/T_Bark_douglas_fir_N",
+  "/Game/Ember/Generated/Bark/T_Bark_pine_C", "/Game/Ember/Generated/Bark/T_Bark_pine_N",
+  "/Game/Ember/Generated/Bark/T_Bark_cedar_C", "/Game/Ember/Generated/Bark/T_Bark_cedar_N",
+  "/Game/Ember/Generated/Bark/T_Bark_hemlock_C", "/Game/Ember/Generated/Bark/T_Bark_hemlock_N",
+  "/Game/Ember/Generated/Bark/T_Bark_true_fir_C", "/Game/Ember/Generated/Bark/T_Bark_true_fir_N",
+  "/Game/Ember/Generated/Bark/T_Bark_spruce_C", "/Game/Ember/Generated/Bark/T_Bark_spruce_N",
+]
+
+[[generator]]
 script = "m_veg.py"
 outputs = ["/Game/Ember/Generated/M_Veg"]
 
 [[generator]]
 script = "veg_materials.py"
-depends = ["treegen.py"]
+depends = ["treegen.py", "../sources/bark.toml"]
 outputs = [
   "/Game/Ember/Generated/Veg/MI_Veg_pseudotsuga_menziesii",
   "/Game/Ember/Generated/Veg/MI_Veg_tsuga_heterophylla",

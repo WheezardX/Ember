@@ -117,9 +117,78 @@ def build_material():
     link(tint, "", fol, "T")
     link(grade["FoliageSaturation"], "", fol, "Sat")
     link(grade["FoliageBrightness"], "", fol, "Br")
+    # Bark (2026-10-01, Brad: CC0 bark sets "a small change that increases visual fidelity a lot"):
+    # the species' bark texture (t_bark.py, per-species MI: BarkOn / BarkColor / BarkNormal) mapped
+    # from the tree's own position - two side projections blended by the normal, BarkScale cm per
+    # repeat, no UVs needed - as VARIATION around TrunkColor (texture / its own mean), so the
+    # species colour stays the tuned one and the far fade lands on the same average. Full to 40 m,
+    # gone by 60 m (bark is unreadable further out).
+    bark_on = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -1300, -500)
+    bark_on.set_editor_property("parameter_name", "BarkOn")
+    bark_on.set_editor_property("default_value", 0.0)
+    bark_scale = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -1300, -420)
+    bark_scale.set_editor_property("parameter_name", "BarkScale")
+    bark_scale.set_editor_property("default_value", 120.0)
+    bark_bump = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter, -1300, -340)
+    bark_bump.set_editor_property("parameter_name", "BarkBump")
+    bark_bump.set_editor_property("default_value", 1.0)
+    black_tex = unreal.load_asset(f"{PATH}/T_LinearBlack")  # m_terrain.py (runs first)
+    bark_tex = {}
+    for i, name in enumerate(("BarkColor", "BarkNormal")):
+        t = mel.create_material_expression(mat, unreal.MaterialExpressionTextureObjectParameter,
+                                           -1300, -700 - 90 * i)
+        t.set_editor_property("parameter_name", name)
+        t.set_editor_property("texture", black_tex)
+        bark_tex[name] = t
+    cam = mel.create_material_expression(mat, unreal.MaterialExpressionCameraPositionWS, -1300, -260)
+    vnws = mel.create_material_expression(mat, unreal.MaterialExpressionVertexNormalWS, -1300, -180)
+    wpos_b = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1300, -100)
+    bark_common = (
+        "float k = On * saturate((6000.0 - length(Cam - WP)) / 2000.0) * (1.0 - A);\n"
+        "float3 n = normalize(VN);\n"
+        "float2 wv = pow(abs(n.xy), 4.0) + 1e-3; wv /= (wv.x + wv.y);\n"
+        "float2 ux = float2(Local.y, Local.z) / S, uy = float2(Local.x, Local.z) / S;\n")
+    bark = custom("EmberBark", -650, -450, ["TC", "BC", "On", "S", "A", "Local", "VN", "Cam", "WP"], (
+        bark_common +
+        "if (k <= 0.0) { return TC; }\n"
+        "float3 c = Texture2DSample(BC, BCSampler, ux).rgb * wv.x + Texture2DSample(BC, BCSampler, uy).rgb * wv.y;\n"
+        "float3 m = Texture2DSampleLevel(BC, BCSampler, float2(0.5, 0.5), 14.0).rgb;\n"   # 1x1 mip: the mean
+        "return lerp(TC, TC * c / max(m, 0.02), k);\n"))
+    link(trunk_col, "", bark, "TC")
+    link(bark_tex["BarkColor"], "", bark, "BC")
+    link(bark_on, "", bark, "On")
+    link(bark_scale, "", bark, "S")
+    link(vc, "A", bark, "A")
+    link(vnws, "", bark, "VN")
+    link(cam, "", bark, "Cam")
+    link(wpos_b, "", bark, "WP")
+    # Bark relief: the normal map's slope applied in world space along each projection's axes,
+    # then into the mesh's tangent frame (foliage and far trees: exactly the vertex normal).
+    bark_n = custom("EmberBarkNormal", -650, -300, ["BN", "On", "S", "B", "A", "Local", "VN", "Cam", "WP"], (
+        bark_common +
+        "if (k <= 0.0) { return n; }\n"
+        "float2 nx = Texture2DSample(BN, BNSampler, ux).rg * 2.0 - 1.0;\n"
+        "float2 ny = Texture2DSample(BN, BNSampler, uy).rg * 2.0 - 1.0;\n"
+        "float3 dx = float3(0.0, nx.x * sign(n.x + 1e-4), nx.y);\n"   # X projection: u = +Y, v = +Z
+        "float3 dy = float3(ny.x * -sign(n.y + 1e-4), 0.0, ny.y);\n"  # Y projection: u = +X, v = +Z
+        "return normalize(n + (dx * wv.x + dy * wv.y) * B * k);\n"))
+    link(bark_tex["BarkNormal"], "", bark_n, "BN")
+    link(bark_on, "", bark_n, "On")
+    link(bark_scale, "", bark_n, "S")
+    link(bark_bump, "", bark_n, "B")
+    link(vc, "A", bark_n, "A")
+    link(vnws, "", bark_n, "VN")
+    link(cam, "", bark_n, "Cam")
+    link(wpos_b, "", bark_n, "WP")
+    to_tangent = mel.create_material_expression(mat, unreal.MaterialExpressionTransform, -450, -300)
+    to_tangent.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_WORLD)
+    to_tangent.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_TANGENT)
+    link(bark_n, "", to_tangent, "")
+    if not mel.connect_material_property(to_tangent, "", unreal.MaterialProperty.MP_NORMAL):
+        raise RuntimeError("normal")
     lerp = mel.create_material_expression(mat, unreal.MaterialExpressionLinearInterpolate,
                                           -300, -250)
-    link(trunk_col, "", lerp, "A")
+    link(bark, "", lerp, "A")
     link(fol, "", lerp, "B")
     link(vc, "A", lerp, "Alpha")          # vertex alpha: 0 = bark, 1 = foliage
     mul = mel.create_material_expression(mat, unreal.MaterialExpressionMultiply, -150, -100)
@@ -179,6 +248,8 @@ def build_material():
     local.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
     link(lpos, "", local, "")
     link(local, "", occ, "Local")                     # canopy occlusion's height above the pivot
+    link(local, "", bark, "Local")                    # bark projection (world-scale cm from the pivot)
+    link(local, "", bark_n, "Local")
     wpos = mel.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1100, 300)
     wpos.set_editor_property("world_position_shader_offset",
                              unreal.WorldPositionIncludedOffsets.WPT_EXCLUDE_ALL_SHADER_OFFSETS)

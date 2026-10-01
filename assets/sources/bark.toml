@@ -8,10 +8,10 @@
 [[set]]
 key = "douglas_fir"
 source = "polyhaven"
-id = "bark_brown_01"
+id = "bark_willow_02"
 licence = "CC0"
 species = ["pseudotsuga_menziesii"]
-why = "deep furrowed brown ridges"
+why = "deep grey-brown furrows, raised corky ridges; tinted red-brown in the material (Brad picked it 2026-10-01 over bark_brown_01, too tan / fine). Weakest match of the set - first to replace with a photo of a Kachess Doug-fir"
 
 [[set]]
 key = "pine"
@@ -40,10 +40,10 @@ why = "darker, moderately furrowed and scaly"
 [[set]]
 key = "true_fir"
 source = "ambientcg"
-id = "Bark001"
+id = "Bark002"
 licence = "CC0"
 species = ["abies_grandis", "abies_amabilis", "abies_lasiocarpa"]
-why = "grey blocky bark"
+why = "smooth with fine vertical cracks (young grand / silver / subalpine fir); tinted grey (Brad picked it 2026-10-01 over Bark001's blocky plates)"
 
 [[set]]
 key = "spruce"

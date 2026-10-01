@@ -29,14 +29,31 @@
         "/Game/Ember/Generated/T_LinearBlack": "unreal/Ember/Content/Ember/Generated/T_LinearBlack.uasset"
       }
     },
+    "t_bark.py": {
+      "script_sha256": "8261f149322959398570b1d1b44b9fa24ae0c773d0900db17eb49e87b327e80f",
+      "outputs": {
+        "/Game/Ember/Generated/Bark/T_Bark_douglas_fir_C": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_douglas_fir_C.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_douglas_fir_N": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_douglas_fir_N.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_pine_C": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_pine_C.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_pine_N": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_pine_N.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_cedar_C": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_cedar_C.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_cedar_N": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_cedar_N.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_hemlock_C": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_hemlock_C.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_hemlock_N": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_hemlock_N.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_true_fir_C": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_true_fir_C.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_true_fir_N": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_true_fir_N.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_spruce_C": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_spruce_C.uasset",
+        "/Game/Ember/Generated/Bark/T_Bark_spruce_N": "unreal/Ember/Content/Ember/Generated/Bark/T_Bark_spruce_N.uasset"
+      }
+    },
     "m_veg.py": {
-      "script_sha256": "01af398b859e4fb48690cb1b952147c265431196ef4178889758267698b4c847",
+      "script_sha256": "52f3712ad0257d5b30d151aed7cdba2776be93025b4b6efc783079e3006ca526",
       "outputs": {
         "/Game/Ember/Generated/M_Veg": "unreal/Ember/Content/Ember/Generated/M_Veg.uasset"
       }
     },
     "veg_materials.py": {
-      "script_sha256": "99a542b3dcb358dbb72ed8e121a920f462eaecbcdb163a90e6c768c7259b532c",
+      "script_sha256": "77b83207f43ad44b0fa97151f2066b9618268346608ed8a9c862649751b7274d",
       "outputs": {
         "/Game/Ember/Generated/Veg/MI_Veg_pseudotsuga_menziesii": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_pseudotsuga_menziesii.uasset",
         "/Game/Ember/Generated/Veg/MI_Veg_tsuga_heterophylla": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_tsuga_heterophylla.uasset",

@@ -21,6 +21,10 @@ import treegen  # noqa: E402
 
 PATH = "/Game/Ember/Generated"
 VEG = f"{PATH}/Veg"
+import tomllib  # noqa: E402
+
+_bark = tomllib.load(open(os.path.join(_here, "..", "sources", "bark.toml"), "rb"))
+BARK = {sp: s["key"] for s in _bark["set"] for sp in s["species"]}   # species key -> bark set
 eal = unreal.EditorAssetLibrary
 mel = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -51,6 +55,15 @@ def build_instance(key, master):
     # low plants keep the cover-style collapse
     tree = key in treegen.CONIFERS or key in treegen.BROADLEAF
     mel.set_material_instance_scalar_parameter_value(mi, "FireOutcomes", 1.0 if tree else 0.0)
+    # bark texture (t_bark.py; species -> set in assets/sources/bark.toml); none: flat TrunkColor
+    bset = BARK.get(key)
+    mel.set_material_instance_scalar_parameter_value(mi, "BarkOn", 1.0 if bset else 0.0)
+    if bset:
+        for param, kind in (("BarkColor", "C"), ("BarkNormal", "N")):
+            tex = unreal.load_asset(f"{PATH}/Bark/T_Bark_{bset}_{kind}")
+            if tex is None:
+                raise RuntimeError(f"T_Bark_{bset}_{kind} missing: t_bark.py must run before veg_materials.py")
+            mel.set_material_instance_texture_parameter_value(mi, param, tex)
     mel.update_material_instance(mi)
     eal.save_asset(full, only_if_is_dirty=False)
     unreal.log(f"EMBER_GENERATED {full}")
