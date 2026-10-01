@@ -8,6 +8,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 
 #include "EmberTerrainActor.h"
+#include "EmberVegetationActor.h"
 
 THIRD_PARTY_INCLUDES_START
 #include "emberworld/scatter.h"
@@ -72,7 +73,7 @@ bool AEmberGroundCoverActor::Init(AEmberTerrainActor* InTerrain, const FString& 
 }
 
 bool AEmberGroundCoverActor::PlaceLying(const emberworld::CoverInstance& In, const FBoxSphereBounds& B, double S,
-	emberworld::CoverPose Pose, FTransform& Out) const
+	emberworld::CoverPose Pose, FTransform& Out, bool& bOutPending) const
 {
 	// Lying meshes (logs, poles) run along +X from their foot at x = 0 and sit on z = 0.
 	const double LenM = FMath::Max(0.1, (B.Origin.X + B.BoxExtent.X) * S / 100.0);
@@ -92,11 +93,107 @@ bool AEmberGroundCoverActor::PlaceLying(const emberworld::CoverInstance& In, con
 	double Zfoot;
 	if (Pose == emberworld::CoverPose::Leaner)
 	{
-		// Foot dug in a little, stem pitched up 20-40 deg into the neighbours' crowns.
-		const double A = FMath::DegreesToRadians(20.0 + 20.0 * U1);
-		Zfoot = Z0 - 0.3 * DiaM;
-		Fwd = FVector(Dx * FMath::Cos(A), -Dy * FMath::Cos(A), FMath::Sin(A));
-		Up = FVector::UpVector;
+		// Hung-up tree (8g, Brad: they floated - mid-air or on a crown's outermost twigs). Anchor on
+		// a REAL tree first: a host >= 8 m within 12 m; contact on its trunk at 30-70 % of its
+		// height, pushed a little into the crown toward the foot side; the foot on the rendered
+		// ground for a 20-45 deg lean; the stem scaled so the contact sits ~70 % up it (the top
+		// pokes past the host into its crown). No sane host / foot -> no hung-up tree here.
+		if (!Vegetation)
+		{
+			return false;
+		}
+		// Ladder fuel (Brad): the look's density is the maximum, reached where crowns start low
+		// (LANDFIRE CBH); where they start high only 15 % of it remains.
+		float Ladder = 0.f;
+		if (!Terrain->LadderAt(In.x, In.y, Ladder))
+		{
+			Ladder = 0.5f;               // no CBH layer: half density
+		}
+		if (emberworld::scatter::u01(H ^ 0x1ADDE5ull) > 0.15 + 0.85 * Ladder)
+		{
+			++LeanersThinned;
+			return false;
+		}
+		TArray<AEmberVegetationActor::FTreeInfo> Near;
+		if (!Vegetation->TreesNear(In.x, In.y, 12.0, Near))
+		{
+			bOutPending = true;          // vegetation not streamed in here yet: retry the cell
+			return false;
+		}
+		Near.RemoveAll([](const AEmberVegetationActor::FTreeInfo& T) { return T.HeightM < 8.f; });
+		if (Near.Num() == 0)
+		{
+			++LeanersNoHost;
+			return false;
+		}
+		Near.Sort([](const AEmberVegetationActor::FTreeInfo& A, const AEmberVegetationActor::FTreeInfo& B)
+			{ return A.X != B.X ? A.X < B.X : A.Y < B.Y; });   // order-independent pick
+		const AEmberVegetationActor::FTreeInfo& Host = Near[static_cast<int32>(U2 * Near.Num()) % Near.Num()];
+		// foot side: from the host toward the candidate point (the scatter's random position)
+		FVector2D Dir(In.x - Host.X, In.y - Host.Y);
+		if (!Dir.Normalize())
+		{
+			Dir = FVector2D(Dx, Dy);
+		}
+		const double Frac = 0.3 + 0.4 * U1;
+		const double Lean = FMath::DegreesToRadians(20.0 + 25.0 * emberworld::scatter::u01(H ^ 0x5151ull));
+		const FVector Contact = Host.BaseUE + Host.UpUE * (Host.HeightM * Frac * 100.0)
+			+ FVector(Dir.X, -Dir.Y, 0.0) * (Host.CrownRadiusM * 0.25 * (1.0 - Frac) * 100.0);
+		double Fx = 0, Fy = 0, Fz = 0;
+		const emberworld::Frame& F = Terrain->GetFrame();
+		const double Cx = F.anchor_x + Contact.X / 100.0, Cy = F.anchor_y - Contact.Y / 100.0;
+		double Cz = Contact.Z / 100.0 + F.anchor_z;
+		double Dist = 3.0;
+		bool bFoot = false;
+		for (int32 It = 0; It < 3; ++It)   // foot height depends on where the foot lands: iterate
+		{
+			Fx = Cx + Dir.X * Dist;
+			Fy = Cy + Dir.Y * Dist;
+			if (!Terrain->SurfaceAt(Fx, Fy, Fz))
+			{
+				break;
+			}
+			bFoot = true;
+			Dist = FMath::Max(1.0, (Cz - Fz) / FMath::Tan(Lean));
+		}
+		if (!bFoot)
+		{
+			return false;
+		}
+		Fx = Cx + Dir.X * Dist;
+		Fy = Cy + Dir.Y * Dist;
+		if (!Terrain->SurfaceAt(Fx, Fy, Fz))
+		{
+			return false;
+		}
+		const FVector Foot = Terrain->WorldToUE(Fx, Fy, Fz - 0.15);   // butt dug in 15 cm
+		const FVector Span = Contact - Foot;
+		const double SpanM = Span.Size() / 100.0;
+		const double Pitch = FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(Span.Z / FMath::Max(Span.Size(), 1.0), -1.0, 1.0)));
+		if (SpanM < 4.0 || SpanM > 22.0 || Pitch < 12.0 || Pitch > 55.0)
+		{
+			++LeanersRejected;
+			return false;                // too short / long / flat / steep to read as hung up
+		}
+		for (const AEmberVegetationActor::FTreeInfo& T : Near)   // the foot must not stand in a trunk
+		{
+			if (&T != &Host && FMath::Square(T.X - Fx) + FMath::Square(T.Y - Fy) < 1.0)
+			{
+				return false;
+			}
+		}
+		const double MeshLenCm = FMath::Max(100.0, B.Origin.X + B.BoxExtent.X);
+		const double Scale = Span.Size() / (0.7 * MeshLenCm);
+		Out = FTransform(FRotationMatrix::MakeFromXZ(Span.GetSafeNormal(), FVector::UpVector).ToQuat(), Foot, FVector(Scale));
+		++LeanersPlaced;
+		// facts: the hung-up tree nearest the camera (deterministic for a given camera)
+		const FVector Mid = 0.5 * (Foot + Contact);
+		if (LastLeanerFootUE.IsZero() || FVector::DistSquared2D(Mid, LastCamera) < FVector::DistSquared2D(0.5 * (LastLeanerFootUE + LastLeanerContactUE), LastCamera))
+		{
+			LastLeanerFootUE = Foot;
+			LastLeanerContactUE = Contact;
+		}
+		return true;
 	}
 	else
 	{
@@ -167,7 +264,6 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 			W = {M[0], M[1], M[2], M[3]};
 			return true;
 		}, Out);
-	Cell.bPending = bMissing && ++Cell.Attempts < 120;
 	Cell.BuiltGeneration = Terrain->GetTileGeneration();
 	TArray<TArray<FTransform>> PerMesh;
 	TArray<TArray<float>> PerMeshCanopy;   // M_Veg custom data 0: canopy over the instance (sky occlusion)
@@ -188,7 +284,10 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 		if (Pose != emberworld::CoverPose::Upright)
 		{
 			FTransform Xf;
-			if (PlaceLying(In, B, S, Pose, Xf))
+			bool bPend = false;
+			const bool bPlaced = PlaceLying(In, B, S, Pose, Xf, bPend);
+			bMissing |= bPend;
+			if (bPlaced)
 			{
 				PerMesh[Mi].Add(Xf);
 				PerMeshCanopy[Mi].Add(Canopy);
@@ -217,6 +316,8 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 		PerMesh[Mi].Add(FTransform(FRotator(0.0, FMath::RadiansToDegrees(In.yaw_rad), 0.0), Loc, FVector(S)));
 		PerMeshCanopy[Mi].Add(Canopy);
 	}
+	// pending: a coarse-LOD mix, or trees not streamed in for a hung-up tree's host
+	Cell.bPending = bMissing && ++Cell.Attempts < 120;
 	for (int32 Mi = 0; Mi < PerMesh.Num(); ++Mi)
 	{
 		if (PerMesh[Mi].Num() == 0)

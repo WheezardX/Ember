@@ -78,9 +78,9 @@ TEST_CASE("look: the default look loads and each rule moves colour the right way
 
     // Steep slope (20 m rise per 10 m px ~ 63 deg) becomes rock colour.
     auto rock = centre(L, 165, 50.0f, 0.8f, 20.0f);
-    CHECK(rock[2] == 0x7F);
-    CHECK(rock[1] == 0x7A);
-    CHECK(rock[0] == 0x72);
+    CHECK(rock[2] == 0xBD);   // [slope] rock = #BDB2A0 (palette vs NAIP, 2026-09-30)
+    CHECK(rock[1] == 0xB2);
+    CHECK(rock[0] == 0xA0);
 }
 
 TEST_CASE("look: DEM nodata stays transparent") {
@@ -253,4 +253,13 @@ TEST_CASE("look: supersampled ground mix is aligned with the albedo, and mips ar
     CHECK(mips.back().width == 1);
     CHECK(mips.back().height == 1);
     CHECK(mips[1].bgra.size() == static_cast<size_t>(mips[1].width) * mips[1].height * 4);
+}
+
+TEST_CASE("look: ladder-fuel weight from canopy base height") {
+    CHECK(ladder_weight(0.3f, 60.0f) == 1.0f);       // crowns start low: ladder fuel
+    CHECK(ladder_weight(1.5f, 60.0f) == doctest::Approx(0.5f));
+    CHECK(ladder_weight(3.0f, 60.0f) == 0.0f);       // high crowns
+    CHECK(ladder_weight(0.3f, 10.0f) == 0.0f);       // no canopy to climb into
+    CHECK(ladder_weight(std::nanf(""), 60.0f) == 0.0f);
+    CHECK(ladder_weight(-9999.0f, 60.0f) == 0.0f);
 }

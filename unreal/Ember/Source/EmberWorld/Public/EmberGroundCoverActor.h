@@ -11,6 +11,7 @@
 #include "EmberGroundCoverActor.generated.h"
 
 class AEmberTerrainActor;
+class AEmberVegetationActor;
 class UInstancedStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UStaticMesh;
@@ -41,6 +42,9 @@ public:
 	bool IsStreamingBusy() const { return Queue.Num() > 0; }
 	int64 GetInstanceCount() const { return Instances; }
 	int32 GetCellCount() const { return Cells.Num(); }
+	// Hung-up trees (8g): placed, and rejected for no host / no sane foot (facts, tuning).
+	mutable int64 LeanersPlaced = 0, LeanersNoHost = 0, LeanersRejected = 0, LeanersThinned = 0;
+	mutable FVector LastLeanerFootUE = FVector::ZeroVector, LastLeanerContactUE = FVector::ZeroVector;
 
 private:
 	struct FCoverCell
@@ -60,10 +64,15 @@ private:
 	void ClearCell(FCoverCell& Cell);
 	/** Conform (logs) / leaner (hung-up stems) placement on the rendered surface; false = skip. */
 	bool PlaceLying(const emberworld::CoverInstance& In, const FBoxSphereBounds& B, double S,
-		emberworld::CoverPose Pose, FTransform& Out) const;
+		emberworld::CoverPose Pose, FTransform& Out, bool& bOutPending) const;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AEmberTerrainActor> Terrain;
+public:
+	/** Hung-up trees anchor on real trees (8g): set by the harness when trees are drawn. */
+	UPROPERTY(Transient)
+	TObjectPtr<AEmberVegetationActor> Vegetation;
+private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMesh>> Meshes;          // per item, per variant (flattened)
 	UPROPERTY(Transient)

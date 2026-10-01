@@ -160,6 +160,8 @@ struct AEmberTerrainActor::FPreparedTile
 	std::string LookError;
 	emberworld::Albedo Albedo;                  // level 0 (+ mix); mips below
 	std::vector<emberworld::Albedo> Mips, MixMips;
+	int32 LW = 0, LH = 0;
+	TArray<uint8> Ladder;                       // ladder-fuel weights, native res
 	double ComposeMs = 0.0;
 };
 
@@ -203,6 +205,16 @@ AEmberTerrainActor::FPreparedPtr AEmberTerrainActor::PrepareTile(const emberworl
 		if (emberworld::load_look_inputs(*Region, Tile, In, P->LookError))
 		{
 			P->Albedo = emberworld::compose_albedo(*Look, In);
+			if (!In.cbh.empty())
+			{
+				P->LW = In.width;
+				P->LH = In.height;
+				P->Ladder.SetNumUninitialized(In.width * In.height);
+				for (int32 I = 0; I < In.width * In.height; ++I)
+				{
+					P->Ladder[I] = static_cast<uint8>(255.f * emberworld::ladder_weight(In.cbh[I], In.cc[I]) + 0.5f);
+				}
+			}
 			P->Mips = emberworld::build_mips(P->Albedo);
 			if (!P->Albedo.mix.empty())
 			{
@@ -262,6 +274,9 @@ void AEmberTerrainActor::BindLook(int32 Section, UProceduralMeshComponent* Comp,
 		TM.W = A.width;
 		TM.H = A.height;
 		TM.Rgba = TArray<uint8>(A.mix.data(), static_cast<int32>(A.mix.size()));
+		TM.LW = P.LW;
+		TM.LH = P.LH;
+		TM.Ladder = MoveTemp(P.Ladder);
 	}
 	MID->SetScalarParameterValue(TEXT("CanopyFarStart"), static_cast<float>(CanopyFarStartM * 100.0));
 	MID->SetScalarParameterValue(TEXT("AlbedoScale"), Region->tile_px / Full);
@@ -810,6 +825,24 @@ bool AEmberTerrainActor::GroundMixAt(double WorldX, double WorldY, float OutW[4]
 		OutW[C] = Px[C] / 255.0f;
 	}
 	return true;
+}
+
+bool AEmberTerrainActor::LadderAt(double WorldX, double WorldY, float& OutW) const
+{
+	for (int32 Lod = FinestLod; Lod >= CoarsestLod; --Lod)
+	{
+		uint64 K = 0;
+		const FTileMix* M = KeyAt(Lod, WorldX, WorldY, K) ? TileMixes.Find(K) : nullptr;
+		if (!M || M->Ladder.Num() == 0)
+		{
+			continue;
+		}
+		const int32 X = FMath::Clamp(static_cast<int32>((WorldX - M->MinX) / M->Width * M->LW), 0, M->LW - 1);
+		const int32 Y = FMath::Clamp(static_cast<int32>((M->MaxY - WorldY) / M->Height * M->LH), 0, M->LH - 1);
+		OutW = M->Ladder[Y * M->LW + X] / 255.f;
+		return true;
+	}
+	return false;
 }
 
 bool AEmberTerrainActor::SurfaceAt(double WorldX, double WorldY, double& OutZ) const

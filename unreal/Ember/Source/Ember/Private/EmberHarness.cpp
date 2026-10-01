@@ -1094,6 +1094,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			Cover = GetWorld()->SpawnActor<AEmberGroundCoverActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
 			Cover->RadiusM = GroundCoverRadiusM;
 			Cover->bSyncStreaming = !bPlay;
+			Cover->Vegetation = Vegetation;   // hung-up trees anchor on the drawn trees (null: none)
 			if (!Cover->Init(Terrain, LookPath, Err))
 			{
 				Finish(2, TEXT("ground cover: ") + Err);

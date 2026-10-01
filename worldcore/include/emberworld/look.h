@@ -64,6 +64,7 @@ struct LookInputs {
     std::vector<int32_t> fbfm40;   // 0 = nodata
     std::vector<float> cc;         // canopy cover %, <0 = nodata
     std::vector<float> ndvi;       // may be empty (no season layer); NaN = nodata
+    std::vector<float> cbh;        // canopy base height (m, LANDFIRE); may be empty; NaN = nodata
     double origin_x_m = 0.0;       // world coords of the raster's NW corner (for world-aligned
     double origin_y_m = 0.0;       //   noise, so tile edges match)
 };
@@ -87,7 +88,12 @@ EMBERWORLD_CORE_API std::vector<Albedo> build_mips(const Albedo& level0);
 // channels (weights, not colour: no alpha weighting). Returned as Albedo with .bgra = the level.
 EMBERWORLD_CORE_API std::vector<Albedo> build_mix_mips(const Albedo& level0);
 
-// Read the tile's layers (height + fuels_fbfm40 + fuels_cc + season_greenness if present).
+// Ladder-fuel weight 0..1 (8g hung-up trees, Brad: foliage-carrying hung-up trees are ladder
+// fuel): high where crowns start low. 1 at CBH <= 0.5 m, 0 at >= 2.5 m, and 0 under < 20 %
+// canopy cover (no crowns to climb into). NaN / negative inputs -> 0.
+EMBERWORLD_CORE_API float ladder_weight(float cbh_m, float cc_pct);
+
+// Read the tile's layers (height + fuels_fbfm40 + fuels_cc + fuels_cbh + season_greenness if present).
 EMBERWORLD_CORE_API bool load_look_inputs(const Region& region, const TileEntry& tile, LookInputs& out,
                                           std::string& error);
 

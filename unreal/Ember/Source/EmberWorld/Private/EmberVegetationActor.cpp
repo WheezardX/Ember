@@ -194,6 +194,10 @@ AEmberVegetationActor::FPreparedVegPtr AEmberVegetationActor::PrepareTile(const 
 	FVegTile& VT = P->Tile;
 	const double CW = Tile.content.width() / CellsPerSide;
 	const double CH = Tile.content.height() / CellsPerSide;
+	VT.MinX = Tile.content.min_x;
+	VT.MaxY = Tile.content.max_y;
+	VT.CW = CW;
+	VT.CH = CH;
 	for (int32 Cy = 0; Cy < CellsPerSide; ++Cy)
 	{
 		for (int32 Cx = 0; Cx < CellsPerSide; ++Cx)
@@ -232,6 +236,7 @@ AEmberVegetationActor::FPreparedVegPtr AEmberVegetationActor::PrepareTile(const 
 		T.Slot = Slot;
 		T.Variant = static_cast<int32>(VariantHash % static_cast<uint64>(SlotNumMeshes[Slot]));
 		T.HeightM = static_cast<float>(In.height_m);
+		T.CrownRadiusM = static_cast<float>(In.radius_m);
 		// Grounding (Brad, 8g): on a slope the trunk's downhill side floated over the ground and
 		// every tree stood perfectly plumb. The rendered surface's slope at the trunk sinks the base
 		// by slope x trunk radius (+10 cm), and the tree leans a little downhill (15 % of the slope
@@ -292,6 +297,58 @@ bool AEmberVegetationActor::InstallTile(FPreparedVeg& P, FString& OutError)
 	NoSurfaceInstances += P.NoSurface;
 	ScatterMs += P.Ms;
 	return true;
+}
+
+bool AEmberVegetationActor::TreesNear(double X, double Y, double QueryM, TArray<FTreeInfo>& Out) const
+{
+	Out.Reset();
+	const emberworld::Frame& F = Terrain->GetFrame();
+	const double R2 = QueryM * QueryM;
+	// Coverage: the query square's corners must each fall in a loaded tile.
+	int32 Covered = 0;
+	const FVector2D Corners[4] = {{X - QueryM, Y - QueryM}, {X + QueryM, Y - QueryM}, {X - QueryM, Y + QueryM}, {X + QueryM, Y + QueryM}};
+	for (const auto& KV : Tiles)
+	{
+		const FVegTile& VT = KV.Value;
+		const double MaxX = VT.MinX + VT.CW * CellsPerSide, MinY = VT.MaxY - VT.CH * CellsPerSide;
+		for (const FVector2D& C : Corners)
+		{
+			Covered += (C.X >= VT.MinX && C.X < MaxX && C.Y > MinY && C.Y <= VT.MaxY) ? 1 : 0;
+		}
+		if (X + QueryM < VT.MinX || X - QueryM >= MaxX || Y + QueryM <= MinY || Y - QueryM > VT.MaxY)
+		{
+			continue;
+		}
+		const int32 Cx0 = FMath::Clamp(static_cast<int32>((X - QueryM - VT.MinX) / VT.CW), 0, CellsPerSide - 1);
+		const int32 Cx1 = FMath::Clamp(static_cast<int32>((X + QueryM - VT.MinX) / VT.CW), 0, CellsPerSide - 1);
+		const int32 Cy0 = FMath::Clamp(static_cast<int32>((VT.MaxY - (Y + QueryM)) / VT.CH), 0, CellsPerSide - 1);
+		const int32 Cy1 = FMath::Clamp(static_cast<int32>((VT.MaxY - (Y - QueryM)) / VT.CH), 0, CellsPerSide - 1);
+		for (int32 Cy = Cy0; Cy <= Cy1; ++Cy)
+		{
+			for (int32 Cx = Cx0; Cx <= Cx1; ++Cx)
+			{
+				for (int32 Ti : VT.Cells[Cy * CellsPerSide + Cx].Trees)
+				{
+					const FVegTree& T = VT.Trees[Ti];
+					const FVector B = T.Xf.GetLocation();
+					const double Tx = F.anchor_x + B.X / 100.0, Ty = F.anchor_y - B.Y / 100.0;
+					if (FMath::Square(Tx - X) + FMath::Square(Ty - Y) > R2)
+					{
+						continue;
+					}
+					FTreeInfo I;
+					I.X = Tx;
+					I.Y = Ty;
+					I.BaseUE = B;
+					I.UpUE = T.Xf.GetRotation().GetUpVector();
+					I.HeightM = T.HeightM;
+					I.CrownRadiusM = T.CrownRadiusM;
+					Out.Add(I);
+				}
+			}
+		}
+	}
+	return Covered >= 4;
 }
 
 bool AEmberVegetationActor::LoadTile(const emberworld::TileEntry& Tile, FString& OutError)
@@ -376,7 +433,10 @@ void AEmberVegetationActor::BuildCell(uint64 TileKey, int32 CellIndex, ETier Tie
 			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Always;
 			// Nanite evaluates WPO per instance only within this distance: swaying trees are the
 			// programmable (slow) raster path, and sway is invisible past a few hundred metres.
-			C->SetWorldPositionOffsetDisableDistance(static_cast<int32>(WindRadiusM * 100.0));
+			// With a fire bound, WPO also strips burned trees (bare / consumed outcomes, M_Veg): it
+			// must cover the whole near tier, or burned trees past WindRadiusM keep their needles
+			// and lose them as the camera approaches (the ground-cover "ring" bug, for trees).
+			C->SetWorldPositionOffsetDisableDistance(static_cast<int32>((bFire ? FMath::Max(WindRadiusM, NearRadiusM + 50.0) : WindRadiusM) * 100.0));
 		}
 		else
 		{
@@ -443,6 +503,7 @@ void AEmberVegetationActor::SetFire(UTexture* FireTex, const FLinearColor& FireR
 		M->SetVectorParameterValue(TEXT("FireRect"), FireRect);
 		M->SetScalarParameterValue(TEXT("FireOn"), FireTex ? 1.f : 0.f);
 	}
+	bFire = FireTex != nullptr;
 }
 
 void AEmberVegetationActor::SetFireTime(double Seconds)

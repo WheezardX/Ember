@@ -125,11 +125,42 @@ shrub = 0.05
 height_min_m = 3.0
 height_max_m = 9.0
 variants = 3
-[cover.items.leaner]       # a fallen stem hung up in its neighbours, pitched 20-40 deg (8g)
-mesh = "pole"              # height = the stem's diameter (a lying mesh, like a log)
-pose = "leaner"
+[cover.items.leaner]       # hung-up dead tree, needles gone (8g): anchored on a real host tree, foot on
+mesh = "fallenbare"        # the ground at 20-45 deg, contact 30-70 % up the host's trunk (height_m unused:
+pose = "leaner"            # the stem is sized to span foot -> contact)
 smoulder = 1.0
-litter = 0.08
-height_min_m = 0.18
-height_max_m = 0.32
-variants = 2
+litter = 0.12
+variants = 3
+[cover.items.leaner_green] # hung-up tree that fell recently: green needles - ladder fuel (Brad)
+mesh = "fallen"
+pose = "leaner"
+consume = 1.0
+smoulder = 1.0
+litter = 0.07
+variants = 3
+[cover.items.leaner_red]   # dead a season, red needles - the worst ladder fuel
+mesh = "fallenred"
+pose = "leaner"
+consume = 1.0
+smoulder = 1.0
+litter = 0.09
+variants = 3
+[cover.items.stick]        # down branches and twigs (ground v2 volume: real geometry that casts shadows)
+pose = "conform"
+smoulder = 1.0
+consume = 1.0
+litter = 30.0
+shrub = 6.0
+height_min_m = 0.10        # = the mesh's height incl. twigs (scale ~1)
+height_max_m = 0.18
+[cover.items.bark]         # shed bark plates (ponderosa / fir) under the trees
+pose = "conform"
+consume = 1.0
+litter = 8.0
+height_min_m = 0.04
+height_max_m = 0.07
+[cover.items.cones]        # cone clusters
+consume = 1.0
+litter = 12.0
+height_min_m = 0.05
+height_max_m = 0.07

@@ -23,22 +23,41 @@
       }
     },
     "m_terrain.py": {
-      "script_sha256": "3023b32c6da0ad2ba105226699a384526eb3d983df2006d9654e972b3b349884",
+      "script_sha256": "62549d91cb455abb073765e65d4eb9183808168babe61e5b7397f13416755c3f",
       "outputs": {
         "/Game/Ember/Generated/M_Terrain": "unreal/Ember/Content/Ember/Generated/M_Terrain.uasset",
         "/Game/Ember/Generated/T_LinearBlack": "unreal/Ember/Content/Ember/Generated/T_LinearBlack.uasset"
       }
     },
     "m_veg.py": {
-      "script_sha256": "9c3a698747ba84f8883ff1f19b7ba23aceda9f2e3342802d1b388c7624036fbc",
+      "script_sha256": "01af398b859e4fb48690cb1b952147c265431196ef4178889758267698b4c847",
       "outputs": {
         "/Game/Ember/Generated/M_Veg": "unreal/Ember/Content/Ember/Generated/M_Veg.uasset"
       }
     },
-    "veg_species.py": {
-      "script_sha256": "a8ab8a13b0c23ee77e792e7f6d7f34b38840104d0b032073094cf634ab115018",
+    "veg_materials.py": {
+      "script_sha256": "2da68c6abd8fee3d66c70c7d71a9577c2f51b967b4b16c368db8a8a8582da024",
       "outputs": {
         "/Game/Ember/Generated/Veg/MI_Veg_pseudotsuga_menziesii": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_pseudotsuga_menziesii.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_tsuga_heterophylla": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_tsuga_heterophylla.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_abies_amabilis": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_abies_amabilis.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_thuja_plicata": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_thuja_plicata.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_tsuga_mertensiana": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_tsuga_mertensiana.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_abies_lasiocarpa": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_abies_lasiocarpa.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_picea_engelmannii": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_picea_engelmannii.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_abies_grandis": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_abies_grandis.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_pinus_ponderosa": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_pinus_ponderosa.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_larix_occidentalis": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_larix_occidentalis.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_alnus_rubra": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_alnus_rubra.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_populus_trichocarpa": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_populus_trichocarpa.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_acer_circinatum": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_acer_circinatum.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_artemisia_shrub": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_artemisia_shrub.uasset",
+        "/Game/Ember/Generated/Veg/MI_Veg_bunchgrass": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_bunchgrass.uasset"
+      }
+    },
+    "veg_species.py": {
+      "script_sha256": "f9f9b3a7fa89e279b5d657a1a29ad1112e43d6ab1a2aca1b8a508cdec1f5fdff",
+      "outputs": {
         "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v2.uasset",
@@ -47,7 +66,6 @@
         "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_tsuga_heterophylla": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_tsuga_heterophylla.uasset",
         "/Game/Ember/Generated/Veg/SM_tsuga_heterophylla_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_heterophylla_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_tsuga_heterophylla_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_heterophylla_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_tsuga_heterophylla_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_heterophylla_v2.uasset",
@@ -56,7 +74,6 @@
         "/Game/Ember/Generated/Veg/SM_tsuga_heterophylla_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_heterophylla_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_tsuga_heterophylla_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_heterophylla_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_tsuga_heterophylla_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_heterophylla_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_abies_amabilis": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_abies_amabilis.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_amabilis_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_amabilis_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_amabilis_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_amabilis_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_amabilis_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_amabilis_v2.uasset",
@@ -65,7 +82,6 @@
         "/Game/Ember/Generated/Veg/SM_abies_amabilis_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_amabilis_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_amabilis_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_amabilis_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_amabilis_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_amabilis_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_thuja_plicata": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_thuja_plicata.uasset",
         "/Game/Ember/Generated/Veg/SM_thuja_plicata_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_thuja_plicata_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_thuja_plicata_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_thuja_plicata_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_thuja_plicata_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_thuja_plicata_v2.uasset",
@@ -74,7 +90,6 @@
         "/Game/Ember/Generated/Veg/SM_thuja_plicata_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_thuja_plicata_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_thuja_plicata_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_thuja_plicata_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_thuja_plicata_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_thuja_plicata_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_tsuga_mertensiana": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_tsuga_mertensiana.uasset",
         "/Game/Ember/Generated/Veg/SM_tsuga_mertensiana_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_mertensiana_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_tsuga_mertensiana_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_mertensiana_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_tsuga_mertensiana_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_mertensiana_v2.uasset",
@@ -83,7 +98,6 @@
         "/Game/Ember/Generated/Veg/SM_tsuga_mertensiana_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_mertensiana_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_tsuga_mertensiana_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_mertensiana_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_tsuga_mertensiana_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_tsuga_mertensiana_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_abies_lasiocarpa": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_abies_lasiocarpa.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_lasiocarpa_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_lasiocarpa_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_lasiocarpa_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_lasiocarpa_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_lasiocarpa_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_lasiocarpa_v2.uasset",
@@ -92,7 +106,6 @@
         "/Game/Ember/Generated/Veg/SM_abies_lasiocarpa_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_lasiocarpa_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_lasiocarpa_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_lasiocarpa_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_lasiocarpa_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_lasiocarpa_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_picea_engelmannii": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_picea_engelmannii.uasset",
         "/Game/Ember/Generated/Veg/SM_picea_engelmannii_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_picea_engelmannii_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_picea_engelmannii_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_picea_engelmannii_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_picea_engelmannii_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_picea_engelmannii_v2.uasset",
@@ -101,7 +114,6 @@
         "/Game/Ember/Generated/Veg/SM_picea_engelmannii_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_picea_engelmannii_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_picea_engelmannii_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_picea_engelmannii_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_picea_engelmannii_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_picea_engelmannii_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_abies_grandis": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_abies_grandis.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_grandis_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_grandis_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_grandis_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_grandis_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_grandis_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_grandis_v2.uasset",
@@ -110,7 +122,6 @@
         "/Game/Ember/Generated/Veg/SM_abies_grandis_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_grandis_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_grandis_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_grandis_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_abies_grandis_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_abies_grandis_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_pinus_ponderosa": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_pinus_ponderosa.uasset",
         "/Game/Ember/Generated/Veg/SM_pinus_ponderosa_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_pinus_ponderosa_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_pinus_ponderosa_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_pinus_ponderosa_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_pinus_ponderosa_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_pinus_ponderosa_v2.uasset",
@@ -119,7 +130,6 @@
         "/Game/Ember/Generated/Veg/SM_pinus_ponderosa_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_pinus_ponderosa_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_pinus_ponderosa_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_pinus_ponderosa_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_pinus_ponderosa_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_pinus_ponderosa_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_larix_occidentalis": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_larix_occidentalis.uasset",
         "/Game/Ember/Generated/Veg/SM_larix_occidentalis_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_larix_occidentalis_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_larix_occidentalis_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_larix_occidentalis_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_larix_occidentalis_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_larix_occidentalis_v2.uasset",
@@ -128,7 +138,6 @@
         "/Game/Ember/Generated/Veg/SM_larix_occidentalis_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_larix_occidentalis_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_larix_occidentalis_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_larix_occidentalis_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_larix_occidentalis_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_larix_occidentalis_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_alnus_rubra": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_alnus_rubra.uasset",
         "/Game/Ember/Generated/Veg/SM_alnus_rubra_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_alnus_rubra_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_alnus_rubra_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_alnus_rubra_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_alnus_rubra_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_alnus_rubra_v2.uasset",
@@ -137,7 +146,6 @@
         "/Game/Ember/Generated/Veg/SM_alnus_rubra_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_alnus_rubra_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_alnus_rubra_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_alnus_rubra_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_alnus_rubra_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_alnus_rubra_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_populus_trichocarpa": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_populus_trichocarpa.uasset",
         "/Game/Ember/Generated/Veg/SM_populus_trichocarpa_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_populus_trichocarpa_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_populus_trichocarpa_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_populus_trichocarpa_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_populus_trichocarpa_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_populus_trichocarpa_v2.uasset",
@@ -146,7 +154,6 @@
         "/Game/Ember/Generated/Veg/SM_populus_trichocarpa_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_populus_trichocarpa_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_populus_trichocarpa_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_populus_trichocarpa_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_populus_trichocarpa_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_populus_trichocarpa_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_acer_circinatum": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_acer_circinatum.uasset",
         "/Game/Ember/Generated/Veg/SM_acer_circinatum_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_acer_circinatum_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_acer_circinatum_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_acer_circinatum_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_acer_circinatum_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_acer_circinatum_v2.uasset",
@@ -155,12 +162,10 @@
         "/Game/Ember/Generated/Veg/SM_acer_circinatum_v1_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_acer_circinatum_v1_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_acer_circinatum_v2_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_acer_circinatum_v2_lite.uasset",
         "/Game/Ember/Generated/Veg/SM_acer_circinatum_v3_lite": "unreal/Ember/Content/Ember/Generated/Veg/SM_acer_circinatum_v3_lite.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_artemisia_shrub": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_artemisia_shrub.uasset",
         "/Game/Ember/Generated/Veg/SM_artemisia_shrub_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_artemisia_shrub_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_artemisia_shrub_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_artemisia_shrub_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_artemisia_shrub_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_artemisia_shrub_v2.uasset",
         "/Game/Ember/Generated/Veg/SM_artemisia_shrub_v3": "unreal/Ember/Content/Ember/Generated/Veg/SM_artemisia_shrub_v3.uasset",
-        "/Game/Ember/Generated/Veg/MI_Veg_bunchgrass": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_bunchgrass.uasset",
         "/Game/Ember/Generated/Veg/SM_bunchgrass_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_bunchgrass_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_bunchgrass_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_bunchgrass_v1.uasset",
         "/Game/Ember/Generated/Veg/SM_bunchgrass_v2": "unreal/Ember/Content/Ember/Generated/Veg/SM_bunchgrass_v2.uasset",
@@ -193,7 +198,7 @@
       }
     },
     "ground_cover.py": {
-      "script_sha256": "6000eecaa885feb0edf9359e041256baf2f23e3bed6079183d8869dd6733ab63",
+      "script_sha256": "91d66c7aff141d30ee21f6c51614645953f7f6d6c21a8b408256bf798b08645d",
       "outputs": {
         "/Game/Ember/Generated/Cover/MI_Cover_fern": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_fern.uasset",
         "/Game/Ember/Generated/Cover/SM_Cover_fern_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fern_v0.uasset",
@@ -226,7 +231,31 @@
         "/Game/Ember/Generated/Cover/MI_Cover_pole": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_pole.uasset",
         "/Game/Ember/Generated/Cover/SM_Cover_pole_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_pole_v0.uasset",
         "/Game/Ember/Generated/Cover/SM_Cover_pole_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_pole_v1.uasset",
-        "/Game/Ember/Generated/Cover/SM_Cover_pole_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_pole_v2.uasset"
+        "/Game/Ember/Generated/Cover/SM_Cover_pole_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_pole_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_stick": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_stick.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_stick_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_stick_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_stick_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_stick_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_stick_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_stick_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_bark": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_bark.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_bark_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_bark_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_bark_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_bark_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_bark_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_bark_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_cones": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_cones.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_cones_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_cones_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_cones_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_cones_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_cones_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_cones_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_fallen": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_fallen.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fallen_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallen_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fallen_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallen_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fallen_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallen_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_fallenred": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_fallenred.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fallenred_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallenred_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fallenred_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallenred_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fallenred_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallenred_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_fallenbare": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_fallenbare.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fallenbare_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallenbare_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fallenbare_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallenbare_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_fallenbare_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallenbare_v2.uasset"
       }
     }
   }

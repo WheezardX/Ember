@@ -52,6 +52,7 @@ public:
 	 * tile's cached trees - no re-scatter.
 	 */
 	double NearRadiusM = 500.0;
+	bool bFire = false;            // a fire texture is bound (SetFire): near-tier WPO covers the whole tier
 	double MidMinHeightM = 12.0;
 	double WindRadiusM = 250.0;    // near-tier trees sway only within this distance (per instance)
 
@@ -76,6 +77,19 @@ public:
 	 * everything-now behaviour for capture runs (reproducible goldens).
 	 */
 	bool IsStreamingBusy() const;
+
+	/** A tree as placed (8g hung-up trees anchor on real trees). */
+	struct FTreeInfo
+	{
+		double X = 0, Y = 0;     // trunk base, world metres
+		FVector BaseUE;          // trunk base, UE cm (sunk / leaned as rendered)
+		FVector UpUE;            // trunk axis (unit, UE)
+		float HeightM = 0.f;
+		float CrownRadiusM = 0.f;
+	};
+	/** Trees whose base lies within QueryM of (X, Y) (world m), from loaded tiles. Returns false
+	 *  if the area is not fully covered by loaded tiles (caller retries later). */
+	bool TreesNear(double X, double Y, double QueryM, TArray<FTreeInfo>& Out) const;
 	bool bSyncStreaming = false;
 	double BuildBudgetMs = 3.0;
 	int32 MaxInFlight = 4;
@@ -110,6 +124,7 @@ private:
 		int32 Slot = 0;
 		int32 Variant = 0;
 		float HeightM = 0.f;
+		float CrownRadiusM = 0.f;
 	};
 	struct FVegCell
 	{
@@ -124,6 +139,7 @@ private:
 	{
 		TArray<FVegTree> Trees;
 		FVegCell Cells[CellsPerSide * CellsPerSide];
+		double MinX = 0, MaxY = 0, CW = 1, CH = 1;   // content bounds (world m) and cell size
 	};
 
 	bool LoadTile(const emberworld::TileEntry& Tile, FString& OutError);

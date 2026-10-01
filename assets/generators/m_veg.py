@@ -22,6 +22,20 @@ tools = unreal.AssetToolsHelpers.get_asset_tools()
 
 # Foliage grade defaults (M_Veg FoliageSaturation / FoliageBrightness), tuned against NAIP with
 # S_naip_tq + `ember-dev naip-probe` (8i R2).
+# Burned-tree outcome (8g burned-area mosaic), per tree from PerInstanceRandom and the class it
+# burned at (FireTex G). oc: 0 green survivor, 1 scorched orange crown, 2 black crown,
+# 3 bare black skeleton (needles gone), 4 consumed (broken off to a ~25 % snag).
+#   crown fire (3): 12 % consumed, 63 % bare, 18 % black crown, 7 % orange
+#   class 2:        22 % bare, 40 % orange, 38 % survive green
+#   class 1:        12 % orange, 88 % survive green
+OUTCOME_HLSL = (
+    "float ocls = 1.0 + 2.0 * saturate((F.g - 0.5) * 2.0);\n"
+    "float rr = frac(Rnd * 13.37 + 0.31);\n"
+    "int oc = 0;\n"
+    "if (ocls > 2.5)      { oc = rr < 0.12 ? 4 : (rr < 0.75 ? 3 : (rr < 0.93 ? 2 : 1)); }\n"
+    "else if (ocls > 1.5) { oc = rr < 0.22 ? 3 : (rr < 0.62 ? 1 : 0); }\n"
+    "else                { oc = rr < 0.12 ? 1 : 0; }\n")
+
 FOLIAGE_SATURATION = 0.65
 FOLIAGE_BRIGHTNESS = 1.5
 
@@ -216,7 +230,7 @@ def build_material():
     rect.set_editor_property("default_value", unreal.LinearColor(0.0, 0.0, 1.0, 1.0))
     fire_params = {}
     for i, (name, default) in enumerate((("FireOn", 0.0), ("FireTime", 0.0), ("FireGain", 1.0),
-                                         ("Consume", 0.0), ("Smoulder", 0.0))):
+                                         ("Consume", 0.0), ("Smoulder", 0.0), ("FireOutcomes", 0.0))):
         q = mel.create_material_expression(mat, unreal.MaterialExpressionScalarParameter,
                                            -1100, 1100 + 90 * i)
         q.set_editor_property("parameter_name", name)
@@ -243,8 +257,20 @@ def build_material():
     ftex.set_editor_property("texture", black)
     ftex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     link(fuv, "", ftex, "UVs")
-    burnt = custom("EmberFireChar", -100, 150, ["Base", "F", "A", "On", "Rnd", "Local"], (
+    burnt = custom("EmberFireChar", -100, 150, ["Base", "F", "A", "On", "Rnd", "Local", "Out"], (
         "float burned = saturate(F.g * 2.0) * On;\n"
+        + OUTCOME_HLSL +
+        "if (Out > 0.5 && burned > 0.01) {\n"
+        # 8g burned-area mosaic (Brad: every tree had orange needles): one outcome per tree
+        "    float3 black = float3(0.012, 0.011, 0.010);\n"
+        "    float3 orange = float3(0.22, 0.075, 0.022) * (0.8 + 0.4 * frac(Rnd * 3.1));\n"
+        "    float3 charFol2 = float3(0.016, 0.012, 0.009);\n"
+        "    float3 crown = oc == 0 ? Base : (oc == 1 ? orange : charFol2);\n"
+        "    float charH = oc >= 2 ? 1e7 : lerp(150.0, 1200.0, saturate((ocls - 1.0) * 0.5));\n"
+        "    float barkChar = 1.0 - smoothstep(charH * 0.85, charH, Local.z);\n"
+        "    float3 bark = lerp(Base, black, saturate(barkChar * 1.2));\n"
+        "    return lerp(Base, lerp(bark, crown, A), saturate(burned * 1.2));\n"
+        "}\n"
         # HCP4: the class the stand burned at (G = 64 + 63 x class): a surface fire leaves green
         # crowns and a char band on the trunk, class 2 scorches crowns brown, class 3 (crown
         # fire) blackens them. A stream without classes is drawn as 3 (the HCP3 look).
@@ -265,6 +291,7 @@ def build_material():
     link(fire_params["FireOn"], "", burnt, "On")
     link(rnd, "", burnt, "Rnd")
     link(local, "", burnt, "Local")
+    link(fire_params["FireOutcomes"], "", burnt, "Out")
     if not mel.connect_material_property(burnt, "", unreal.MaterialProperty.MP_BASE_COLOR):
         raise RuntimeError("base colour")
     glow = custom("EmberFireCrown", -100, 300,
@@ -312,19 +339,37 @@ def build_material():
     ftex_v.set_editor_property("mip_value_mode", unreal.TextureMipValueMode.TMVM_MIP_LEVEL)
     ftex_v.set_editor_property("const_mip_value", 0)
     link(fuv, "", ftex_v, "UVs")
-    consume = custom("EmberConsume", -300, 600, ["O", "L", "F", "On", "C"], (
-        "float k = saturate(saturate(F.g * 2.0) * On * C) * 0.85;\n"   # burned: ~15 % stubble
-        "return O * (1.0 - k) - L * k;\n"))
+    tree_h2 = mel.create_material_expression(mat, unreal.MaterialExpressionPerInstanceCustomData, -600, 700)
+    tree_h2.set_editor_property("data_index", 1)      # trees: height (cm)
+    consume = custom("EmberConsume", -300, 600, ["O", "L", "F", "On", "C", "Out", "Rnd", "A", "H"], (
+        "float burned = saturate(F.g * 2.0) * On;\n"
+        "float k = saturate(burned * C) * 0.85;\n"   # burned cover: ~15 % stubble
+        "float3 o = O * (1.0 - k) - L * k;\n"
+        "if (Out > 0.5 && burned > 0.5) {\n"
+        + OUTCOME_HLSL.replace("    ", "") +
+        # bare skeleton: needles gone; consumed: needles and everything above ~25 % height gone (a
+        # snag). Collapse is HORIZONTAL onto the trunk axis - triangles become zero-width lines,
+        # invisible - so the offset stays within a crown radius (Nanite clamps WPO to the
+        # material's max displacement; a collapse to the base would need the tree's height).
+        "    float3 axis = float3(-L.x, -L.y, 0.0);\n"
+        "    if (oc >= 3) { o = A > 0.5 ? axis : float3(0, 0, 0); }\n"   # no wind on a dead stem
+        "    if (oc == 4 && H > 1.0 && L.z > 0.25 * H) { o = axis; }\n"
+        "}\n"
+        "return o;\n"))
     link(wind, "", consume, "O")
     link(local, "", consume, "L")
     link(ftex_v, "RGBA", consume, "F")
     link(fire_params["FireOn"], "", consume, "On")
     link(fire_params["Consume"], "", consume, "C")
+    link(fire_params["FireOutcomes"], "", consume, "Out")
+    link(rnd, "", consume, "Rnd")
+    link(vc, "A", consume, "A")
+    link(tree_h2, "", consume, "H")
     if not mel.connect_material_property(consume, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET):
         raise RuntimeError("world position offset")
     mat.set_editor_property("two_sided", True)                  # foliage is single-layer sprays
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
-    mat.set_editor_property("max_world_position_offset_displacement", 700.0)  # Nanite WPO bounds
+    mat.set_editor_property("max_world_position_offset_displacement", 900.0)  # Nanite WPO bounds: sway + burned collapse onto the trunk (<= crown radius)
     mat.set_editor_property("used_with_instanced_static_meshes", True)
     mat.set_editor_property("used_with_nanite", True)
     mel.recompile_material(mat)

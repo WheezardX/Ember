@@ -224,6 +224,12 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 	{
 		Inst->SetNumberField(TEXT("ground_cover"), static_cast<double>(It->GetInstanceCount()));
 		Inst->SetNumberField(TEXT("ground_cover_cells"), It->GetCellCount());
+		Inst->SetNumberField(TEXT("leaners_placed"), static_cast<double>(It->LeanersPlaced));
+		Inst->SetNumberField(TEXT("leaners_no_host"), static_cast<double>(It->LeanersNoHost));
+		Inst->SetNumberField(TEXT("leaners_rejected"), static_cast<double>(It->LeanersRejected));
+		Inst->SetNumberField(TEXT("leaners_thinned_by_cbh"), static_cast<double>(It->LeanersThinned));
+		Inst->SetArrayField(TEXT("leaner_last_foot_cm"), { MakeShared<FJsonValueNumber>(It->LastLeanerFootUE.X), MakeShared<FJsonValueNumber>(It->LastLeanerFootUE.Y), MakeShared<FJsonValueNumber>(It->LastLeanerFootUE.Z) });
+		Inst->SetArrayField(TEXT("leaner_last_contact_cm"), { MakeShared<FJsonValueNumber>(It->LastLeanerContactUE.X), MakeShared<FJsonValueNumber>(It->LastLeanerContactUE.Y), MakeShared<FJsonValueNumber>(It->LastLeanerContactUE.Z) });
 	}
 	for (TActorIterator<AEmberVegetationActor> It(W); It; ++It)
 	{

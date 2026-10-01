@@ -422,6 +422,14 @@ bool load_look_inputs(const Region& region, const TileEntry& tile, LookInputs& o
             const double v = r.at(static_cast<int>(i % h.width), static_cast<int>(i / h.width));
             out.cc[i] = r.is_nodata(v) ? -1.0f : static_cast<float>(v);
         }
+    out.cbh.clear();
+    if (const LayerTile* lt = layer("fuels_cbh"); lt && read(lt->path, r) && same_size(r)) {
+        out.cbh.resize(n);
+        for (size_t i = 0; i < n; ++i) {
+            const double v = r.at(static_cast<int>(i % h.width), static_cast<int>(i / h.width));
+            out.cbh[i] = r.is_nodata(v) ? nan : static_cast<float>(v);
+        }
+    }
     if (const LayerTile* lt = layer("season_greenness"); lt && read(lt->path, r) && same_size(r)) {
         out.ndvi.resize(n);
         for (size_t i = 0; i < n; ++i) {
@@ -503,6 +511,11 @@ std::vector<Albedo> build_mix_mips(const Albedo& level0) {
         mips.push_back(std::move(d));
     }
     return mips;
+}
+
+float ladder_weight(float cbh_m, float cc_pct) {
+    if (!std::isfinite(cbh_m) || !std::isfinite(cc_pct) || cbh_m < 0.0f || cc_pct < 20.0f) return 0.0f;
+    return std::clamp((2.5f - cbh_m) / 2.0f, 0.0f, 1.0f);
 }
 
 }  // namespace emberworld

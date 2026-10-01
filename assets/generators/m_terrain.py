@@ -240,8 +240,63 @@ if (an.z < CliffZ) {
     if (an.x > an.y) { p = WP.yz; tu = float3(0, 1, 0); tv = float3(0, 0, 1); }
     else             { p = WP.xz; tu = float3(1, 0, 0); tv = float3(0, 0, 1); }
 }
-float2 q = float2(p.x * 0.8 - p.y * 0.6, p.x * 0.6 + p.y * 0.8) * 0.37 + 1731.0;
 float t = saturate(Nlo * 0.5 + 0.5);
+// Parallax + self-shadow on the litter (ground volume, 8g: "the bump doesn't read"). Near the
+// camera on top-down-projected forest floor, march the view ray into the litter height field
+// (C alpha: 0 = deepest duff, 1 = top of sticks / needle mats, PomDepth cm deep) and sample there,
+// so needles and sticks occlude what lies behind them; then march toward the sun - what is
+// shadowed by higher litter darkens. Litter only (the forest floor is where the eye is).
+float pomW = saturate((2000.0 - dist) / 800.0) * saturate(Mix.x * 1.5) * step(CliffZ, an.z) * step(0.01, PomDepth);
+float shade = 1.0;
+if (pomW > 0.01) {
+    float2 p0 = p;
+    float2 g0 = p0 / RL;
+    float2 gx = ddx(g0), gy = ddy(g0);
+    float3 V = normalize(Cam - WP);
+    // relative to the SURFACE (slopes): the view's tangential part over its normal part; fade
+    // out at grazing angles, where any parallax smears into streaks
+    float vdn = dot(V, vn);
+    pomW *= saturate((vdn - 0.2) / 0.25);
+    float2 step2 = -(V.xy - vn.xy * vdn) / max(vdn, 0.35) * PomDepth;   // cm of p shift over the full depth
+    const int N = 16;
+    float d = 0.0, h = 1.0, dPrev = 0.0, gapPrev = 0.0;
+    float2 pp = p0;
+    [loop] for (int i = 0; i <= N; ++i) {
+        float2 qq = float2(pp.x * 0.8 - pp.y * 0.6, pp.x * 0.6 + pp.y * 0.8) * 0.37 + 1731.0;
+        h = lerp(Texture2DSampleGrad(LC, LCSampler, pp / RL, gx, gy).a,
+                 Texture2DSampleGrad(LC, LCSampler, qq / RL, gx * 0.37, gy * 0.37).a, t);
+        float gap = (1.0 - h) - d;              // > 0: the ray is still above the surface
+        if (gap <= 0.0) {
+            // linear refinement between the last two steps (no stair-step bands)
+            float a = (i > 0) ? gapPrev / max(gapPrev - gap, 1e-4) : 0.0;
+            d = lerp(dPrev, d, a);
+            pp = p0 + step2 * d;
+            h = 1.0 - d;
+            break;
+        }
+        dPrev = d;
+        gapPrev = gap;
+        d += 1.0 / N;
+        pp = p0 + step2 * d;
+    }
+    p = lerp(p0, pp, pomW);
+    // toward the sun: rising ray from the hit point; a higher litter sample in between = shadow
+    float3 Ls = normalize(SunDir);
+    if (Ls.z > 0.05) {
+        float occ = 0.0;
+        float2 sun2 = Ls.xy / max(Ls.z, 0.15) * PomDepth;
+        [unroll] for (int k = 1; k <= 4; ++k) {
+            float f = k / 4.0 * (1.0 - h);
+            float2 ps = pp + sun2 * f;
+            float2 qs = float2(ps.x * 0.8 - ps.y * 0.6, ps.x * 0.6 + ps.y * 0.8) * 0.37 + 1731.0;
+            float hs = lerp(Texture2DSampleGrad(LC, LCSampler, ps / RL, gx, gy).a,
+                            Texture2DSampleGrad(LC, LCSampler, qs / RL, gx * 0.37, gy * 0.37).a, t);
+            occ = max(occ, hs - (h + f));
+        }
+        shade = lerp(1.0, 1.0 - 0.55 * saturate(occ * 6.0), pomW);
+    }
+}
+float2 q = float2(p.x * 0.8 - p.y * 0.6, p.x * 0.6 + p.y * 0.8) * 0.37 + 1731.0;
 float4 c0 = lerp(Texture2DSample(LC, LCSampler, p / RL), Texture2DSample(LC, LCSampler, q / RL), t);
 float4 n0 = lerp(Texture2DSample(LN, LNSampler, p / RL), Texture2DSample(LN, LNSampler, q / RL), t);
 float4 c1 = lerp(Texture2DSample(GC, GCSampler, p / RG), Texture2DSample(GC, GCSampler, q / RG), t);
@@ -296,7 +351,7 @@ NormalWS = normalize(vn + ((tu * slope.x + tv * slope.y) * NS + hn) * fade);
 Rough = lerp(R0, rough, fade);
 // crevices: half the detail AO darkens the colour, all of it shades the sky light
 Occ *= lerp(1.0, ao, fade);
-return lerp(Base, own * lerp(1.0, ao, 0.5), fade);
+return lerp(Base, own * lerp(1.0, ao, 0.5) * shade, fade);
 """
 
 mixtex = expr(unreal.MaterialExpressionTextureSampleParameter2D, -850, -420)
@@ -308,7 +363,8 @@ link(add, "", mixtex, "UVs")
 ground = custom("EmberGround", -250, -300,
                 ["Base", "Mix", "WP", "Cam", "VN", "Nlo", "On", "FadeNear", "FadeFar", "NS", "HC",
                  "R0", "LC", "LN", "GC", "GN", "RC", "RN", "SC", "SN", "RL", "RG", "RR", "RS",
-                 "CliffZ", "AC0", "AC1", "AC2", "AC3", "AbsW", "HumS", "CanopyOcc", "FarStart", "CanopyOn"],
+                 "CliffZ", "AC0", "AC1", "AC2", "AC3", "AbsW", "HumS", "CanopyOcc", "FarStart", "CanopyOn",
+                 "PomDepth", "SunDir"],
                 GROUND_CODE)
 outs = []
 for oname, otype in (("NormalWS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
@@ -371,6 +427,9 @@ to_property(ground, "Occ", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
 # far-field canopy impression: starts at the tree radius (cm, set per scenario by the harness)
 link(scalar("CanopyFarStart", 0.0, -650, -1300), "", ground, "FarStart")
 link(scalar("CanopyImpression", 1.0, -650, -1360), "", ground, "CanopyOn")
+# litter parallax depth (cm; 0 = off) and the sun for its self-shadow
+link(scalar("GroundPomDepth", 8.0, -650, -1420), "", ground, "PomDepth")
+link(expr(unreal.MaterialExpressionSkyAtmosphereLightDirection, -650, -1480), "", ground, "SunDir")
 for i, (set_name, pin, rep) in enumerate((("Litter", "L", 250.0), ("Grass", "G", 300.0),
                                           ("Rock", "R", 400.0), ("Shrub", "S", 300.0))):
     for kind in ("C", "N"):

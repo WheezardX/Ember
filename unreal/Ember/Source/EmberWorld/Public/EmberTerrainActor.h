@@ -75,6 +75,9 @@ public:
 	 * the finest loaded tile's composed ground mix (look [ground]). False where no tile covers it.
 	 */
 	bool GroundMixAt(double WorldX, double WorldY, float OutW[4], int32* OutLod = nullptr) const;
+	/** Ladder-fuel weight 0..1 at a world point (worldcore ladder_weight from CBH + canopy cover;
+	 *  8g hung-up trees concentrate where crowns start low). False where no mix is loaded. */
+	bool LadderAt(double WorldX, double WorldY, float& OutW) const;
 	/**
 	 * Height of the RENDERED surface (metres): the finest loaded tile's triangles, exactly as
 	 * meshed (lakebeds included). GroundHeightAt is the nearest DEM corner read from disk - on a
@@ -154,6 +157,8 @@ public:
 		double MinX = 0, MaxY = 0, Width = 1, Height = 1;  // apron bounds, metres
 		int32 W = 0, H = 0;
 		TArray<uint8> Rgba;
+		int32 LW = 0, LH = 0;          // ladder-fuel weight grid (native layer res, same bounds)
+		TArray<uint8> Ladder;
 	};
 	TMap<uint64, FTileMix> TileMixes;
 	struct FTileSurface

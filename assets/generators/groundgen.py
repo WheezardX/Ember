@@ -202,9 +202,124 @@ def pole(seed: int) -> Mesh:
     return m
 
 
+def stick(seed: int) -> Mesh:
+    """Down branch (ground v2 volume, 8g): a crooked 40-140 cm stem along +X from its butt at
+    x = 0 (the renderer lays it on the ground like a log), a few side twigs, one or two lifted
+    clear of the ground so the stick casts a broken shadow."""
+    rng = random.Random(seed)
+    m = Mesh()
+    length = rng.uniform(40, 140)
+    r = rng.uniform(1.2, 2.8)
+    pts = [(0.0, 0.0, r)]
+    y = 0.0
+    for k in range(1, 6):
+        y += rng.uniform(-4, 4)
+        pts.append((length * k / 5, y, r + rng.uniform(-0.5, 1.5)))
+    tube(m, pts, [r, r * 0.9, r * 0.75, r * 0.6, r * 0.45, r * 0.3], 5, 0.5)
+    for _ in range(rng.randint(2, 5)):
+        k = rng.randint(1, 4)
+        p = pts[k]
+        d = norm((rng.uniform(0.2, 0.9), rng.choice((-1, 1)) * rng.uniform(0.5, 1.0), rng.uniform(0.0, 0.6)))
+        L = rng.uniform(8, 30)
+        tube(m, [p, add(p, mul(d, L))], [r * 0.4, r * 0.15], 3, 0.5)
+    return m
+
+
+def bark(seed: int) -> Mesh:
+    """A slab of shed ponderosa / fir bark (ground v2): a curled plate 15-35 cm long along +X,
+    edges thick enough to read, lying concave side down so it stands a few cm proud."""
+    rng = random.Random(seed)
+    m = Mesh()
+    L, W = rng.uniform(15, 35), rng.uniform(8, 16)
+    curl, th = rng.uniform(2.0, 5.0), rng.uniform(1.0, 2.0)
+    nu, nv = 6, 4
+    top, bot = [], []
+    for i in range(nu + 1):
+        for j in range(nv + 1):
+            x = L * i / nu
+            y = W * (j / nv - 0.5) * (1.0 - 0.25 * abs(i / nu - 0.5))
+            z = curl * (1.0 - (2.0 * j / nv - 1.0) ** 2) + rng.uniform(-0.3, 0.3)
+            top.append(m.vert((x, y, z + th), 0.55 + 0.1 * rng.random(), False))
+            bot.append(m.vert((x, y, z), 0.35, False))
+    for i in range(nu):
+        for j in range(nv):
+            a, b = i * (nv + 1) + j, (i + 1) * (nv + 1) + j
+            m.tri(top[a], top[b], top[a + 1]); m.tri(top[a + 1], top[b], top[b + 1])
+            m.tri(bot[a], bot[a + 1], bot[b]); m.tri(bot[a + 1], bot[b + 1], bot[b])
+    for i in range(nu):                      # the two long edges, so the slab has thickness
+        for j in (0, nv):
+            a, b = i * (nv + 1) + j, (i + 1) * (nv + 1) + j
+            m.tri(top[a], bot[a], top[b]); m.tri(top[b], bot[a], bot[b])
+    return m
+
+
+def cones(seed: int) -> Mesh:
+    """A small cluster of fallen cones (ground v2): 2-6 scaled, slightly tilted ovoids built from
+    scale rings (stacked short tubes), ~6-10 cm long."""
+    rng = random.Random(seed)
+    m = Mesh()
+    for _ in range(rng.randint(2, 6)):
+        cx, cy = rng.uniform(-12, 12), rng.uniform(-12, 12)
+        a = rng.uniform(0, 2 * math.pi)
+        L, R = rng.uniform(6, 10), rng.uniform(2.0, 3.2)
+        d = (math.cos(a), math.sin(a), rng.uniform(-0.15, 0.15))
+        base = (cx, cy, R)
+        rings = 5
+        for k in range(rings):               # scales: rings swelling then tapering
+            t0, t1 = k / rings, (k + 1) / rings
+            r0 = R * math.sin(math.pi * (0.15 + 0.7 * t0))
+            r1 = R * math.sin(math.pi * (0.15 + 0.7 * t1)) * 0.85
+            tube(m, [add(base, mul(d, L * t0)), add(base, mul(d, L * t1))], [r0, r1], 6, 0.45 + 0.1 * (k % 2))
+    return m
+
+
+_FALLEN_SPECIES = ("abies_grandis", "pseudotsuga_menziesii", "tsuga_heterophylla")
+
+
+def _fallen(seed: int, foliage: bool) -> Mesh:
+    """A whole fallen conifer (8g hung-up trees, Brad: 'just logs, no limbs'; foliage-carrying
+    ones are ladder fuel): a real generated tree (treegen, lite detail) laid along +X from its
+    butt at x = 0, plus a root wad of torn roots at the butt. foliage=False strips the needles
+    (old dead stems). The renderer pitches it up from a foot on the ground to a contact point in
+    a neighbour's crown."""
+    import treegen
+
+    rng = random.Random(seed)
+    key = _FALLEN_SPECIES[seed % len(_FALLEN_SPECIES)]
+    src = treegen.build(key, 1 + seed % 3, detail=0.45)
+    m = Mesh()
+    remap = {}
+    for i, ((x, y, z), col) in enumerate(zip(src.verts, src.cols, strict=True)):
+        if not foliage and col[3] > 0.5:
+            continue
+        remap[i] = len(m.verts)
+        m.verts.append((z, y, -x))           # tree axis +Z -> +X (lying), butt at x = 0
+        m.cols.append(col)
+    for a, b, c in src.tris:
+        if a in remap and b in remap and c in remap:
+            m.tris.append((remap[a], remap[b], remap[c]))
+    r = 18.0                                  # root wad: torn roots splayed around the butt
+    for k in range(rng.randint(6, 10)):
+        a = k * 2 * math.pi / 8 + rng.uniform(-0.3, 0.3)
+        d = norm((-rng.uniform(0.1, 0.5), math.cos(a), math.sin(a)))
+        L = rng.uniform(40, 110)
+        tube(m, [(0.0, 0.0, 0.0), mul(d, L * 0.5), add(mul(d, L), (0.0, 0.0, -rng.uniform(0, 20)))],
+             [r * 0.35, r * 0.2, r * 0.05], 4, 0.4)
+    return m
+
+
+def fallen(seed: int) -> Mesh:
+    return _fallen(seed, True)
+
+
+def fallenbare(seed: int) -> Mesh:
+    return _fallen(seed, False)
+
+
 # New items go at the END: each item's mesh seed comes from its index here.
 ITEMS = {"fern": fern, "huckleberry": huckleberry, "shrub": shrub, "rock": rock, "log": log,
-         "stump": stump, "snag": snag, "pole": pole}
+         "stump": stump, "snag": snag, "pole": pole, "stick": stick, "bark": bark, "cones": cones,
+         "fallen": fallen, "fallenred": fallen, "fallenbare": fallenbare}
 
 # Material colours (sRGB hex, no '#'): foliage (Color), wood / stone (TrunkColor).
 COLORS = {
@@ -216,11 +331,24 @@ COLORS = {
     "stump": ("5A5A40", "5E4A36"),
     "snag": ("5A5A40", "7A746A"),          # weathered silver-grey dead wood
     "pole": ("5A5A40", "5E4E3C"),
+    "stick": ("5A5A40", "6A5A48"),        # weathered grey-brown
+    "bark": ("5A5A40", "4E3426"),         # weathered dark bark (rust read as orange paint)
+    "cones": ("5A5A40", "6A4428"),
+    "fallen": ("33482A", "4E3A2C"),       # recently fallen: still-green needles
+    "fallenred": ("8A4A22", "4E3A2C"),    # dead a season: red needles (ladder fuel)
+    "fallenbare": ("5A5A40", "6A6258"),   # old: no needles, weathered grey
 }
+
+
+# Meshes whose origin is the trunk axis at the butt (the renderer anchors them by it), not the
+# lowest point: a fallen tree's limbs hang below its stem.
+AXIS_ANCHORED = {"fallen", "fallenred", "fallenbare"}
 
 
 def build(key: str, variant: int) -> Mesh:
     m = ITEMS[key](7001 + 131 * list(ITEMS).index(key) + 977 * variant)
+    if key in AXIS_ANCHORED:
+        return m
     lo = min(v[2] for v in m.verts)
     m.verts = [(x, y, z - lo) for (x, y, z) in m.verts]  # stands on its lowest point
     return m

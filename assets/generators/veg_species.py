@@ -1,7 +1,7 @@
-"""Generator: vegetation species meshes v2 + their materials (EPIC_5_PLAN B3 v2, HCP2 round 2).
+"""Generator: vegetation species meshes v2 (EPIC_5_PLAN B3 v2, HCP2 round 2).
 
-    (the master /Game/Ember/Generated/M_Veg comes from m_veg.py)
-    /Game/Ember/Generated/Veg/MI_Veg_<key>            per species: Color / TrunkColor (treegen.COLORS)
+    (materials: M_Veg from m_veg.py, MI_Veg_<key> from veg_materials.py - split out so a
+    material change does not rebuild these meshes, ~20 min)
     /Game/Ember/Generated/Veg/SM_<key>_v<N>           per species x treegen.VARIANTS: Nanite mesh
     /Game/Ember/Generated/Veg/SM_<key>_v<N>_lite      trees only: the same tree with ~45 % of the
                                                       foliage, for the mid vegetation tier
@@ -43,26 +43,6 @@ def srgb(hexcol):
     c = [int(hexcol[i:i + 2], 16) / 255.0 for i in (0, 2, 4)]
     lin = [x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
     return unreal.LinearColor(lin[0], lin[1], lin[2], 1.0)
-
-
-def build_instance(key, master):
-    name = f"MI_Veg_{key}"
-    full = f"{VEG}/{name}"
-    fresh(full)
-    mi = tools.create_asset(name, VEG, unreal.MaterialInstanceConstant,
-                            unreal.MaterialInstanceConstantFactoryNew())
-    mel.set_material_instance_parent(mi, master)  # (set_editor_property left no parameters)
-    foliage, bark = treegen.COLORS[key]
-    for param, hexcol in (("Color", foliage), ("TrunkColor", bark)):
-        want = srgb(hexcol)
-        mel.set_material_instance_vector_parameter_value(mi, param, want)
-        got = mel.get_material_instance_vector_parameter_value(mi, param)
-        if abs(got.r - want.r) > 1e-4 or abs(got.g - want.g) > 1e-4:  # verify by reading back
-            raise RuntimeError(f"{name}: {param} not set (got {got})")
-    mel.update_material_instance(mi)
-    eal.save_asset(full, only_if_is_dirty=False)
-    unreal.log(f"EMBER_GENERATED {full}")
-    return mi
 
 
 # ------------------------------------------------------------------ meshes
@@ -116,11 +96,10 @@ for old in ("pseudotsuga_menziesii", "pinus_ponderosa", "abies_grandis", "artemi
             "bunchgrass"):
     fresh(f"{VEG}/SM_{old}")
 
-master = unreal.load_asset(f"{PATH}/M_Veg")  # m_veg.py (runs first)
-if master is None:
-    raise RuntimeError("M_Veg missing: m_veg.py must run before veg_species.py")
 for k in treegen.SPECIES:
-    mi = build_instance(k, master)
+    mi = unreal.load_asset(f"{VEG}/MI_Veg_{k}")  # veg_materials.py (runs first)
+    if mi is None:
+        raise RuntimeError(f"MI_Veg_{k} missing: veg_materials.py must run before veg_species.py")
     for v in range(treegen.VARIANTS):
         build_mesh(k, v, mi)
         if treegen.has_lite(k):  # mid tier (D11 section 2): same tree, less foliage
