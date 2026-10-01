@@ -219,12 +219,41 @@ def regress(full: bool = typer.Option(False, "--full", help="Every scenario (bef
     total = time.time() - t_all
     timing.record(f"regress:{tier if not only else 'only'}", ",".join(names)[:80], total,
                   not failed, repo=repo)
+    if full and not only:
+        # progression archive (Brad: timelines sell in pitches): every view that changed since
+        # its last archived version, at every pre-commit full regression
+        from ember.dev import progression as P
+
+        n_arch = sum(P.archive_run(repo, r[0], _resolve_run(r[0], None), "regress --full")
+                     for r in rows if r[3] != "COMPILE FAIL")
+        P.timeline_html(repo)
+        typer.echo(f"progression: {n_arch} new image(s) archived (checkpoints/progression)")
     typer.echo(f"\n{tier if not only else 'selected'}: {len(rows)} scenario(s) in {total / 60:.1f} min "
                f"(runs {sum(r[1] for r in rows) / 60:.1f}, evaluate {sum(r[2] for r in rows) / 60:.1f}); "
                f"IMAGES = checks pass, captures changed (bless if intended)")
     if failed:
         typer.secho(f"failed: {', '.join(failed)}", fg=typer.colors.RED)
         raise typer.Exit(1)
+
+
+@app.command()
+def progression(action: str = typer.Argument("timeline", help="backfill | timeline | archive"),
+                scenario: str = typer.Option(None, "--scenario", help="archive: this scenario's latest run"),
+                note: str = typer.Option("", "--note")) -> None:
+    """Progression archive for pitching (checkpoints/progression): backfill from git goldens,
+    archive a run, build timeline.html."""
+    from ember.dev import progression as P
+
+    repo = ue.repo_root()
+    if action == "backfill":
+        typer.echo(f"backfill: {P.backfill(repo)} new image(s)")
+    elif action == "archive":
+        if not scenario:
+            typer.secho("archive needs --scenario", fg=typer.colors.RED)
+            raise typer.Exit(2)
+        typer.echo(f"archive {scenario}: {P.archive_run(repo, scenario, _resolve_run(scenario, None), note)} new image(s)")
+    out = P.timeline_html(repo)
+    typer.secho(f"timeline: {out}", fg=typer.colors.GREEN)
 
 
 @app.command("timing")
