@@ -367,11 +367,17 @@ def test_manifest_lists_every_treegen_asset():
     import treegen
 
     m = tomllib.loads((repo / "assets/generators/manifest.toml").read_text(encoding="utf-8"))
+    # veg_materials.py writes the MI_Veg_ instances, veg_species.py the meshes (split 2026-09-30
+    # so a material setting doesn't rebuild every mesh); together exactly treegen.asset_names()
+    names = [f"/Game/Ember/Generated/{n}" for n in treegen.asset_names()]
     veg = next(g for g in m["generator"] if g["script"] == "veg_species.py")
-    assert veg["outputs"] == [f"/Game/Ember/Generated/{n}" for n in treegen.asset_names()]
-    assert veg["depends"] == ["treegen.py"]
+    mats = next(g for g in m["generator"] if g["script"] == "veg_materials.py")
+    assert veg["outputs"] == [n for n in names if "/MI_Veg_" not in n]
+    assert mats["outputs"] == [n for n in names if "/MI_Veg_" in n]
+    assert veg["depends"] == ["treegen.py"] and mats["depends"] == ["treegen.py"]
     order = [g["script"] for g in m["generator"]]
-    assert order.index("m_veg.py") < order.index("veg_species.py")  # instances need their parent
+    # instances need their parent; meshes need their instances
+    assert order.index("m_veg.py") < order.index("veg_materials.py") < order.index("veg_species.py")
 
 
 def test_treegen_lite_keeps_the_tree_and_drops_foliage():
