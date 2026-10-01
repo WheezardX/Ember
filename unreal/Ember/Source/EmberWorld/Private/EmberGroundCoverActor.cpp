@@ -265,6 +265,7 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 			return true;
 		}, Out);
 	Cell.BuiltGeneration = Terrain->GetTileGeneration();
+	Cell.BuiltVegGeneration = VegGeneration();
 	TArray<TArray<FTransform>> PerMesh;
 	TArray<TArray<float>> PerMeshCanopy;   // M_Veg custom data 0: canopy over the instance (sky occlusion)
 	PerMesh.SetNum(Meshes.Num());
@@ -397,12 +398,22 @@ void AEmberGroundCoverActor::UpdateCells(const FVector& CamUE)
 				Cells.Add(K);
 				Queue.AddUnique(K);
 			}
-			else if (C->bPending && C->BuiltGeneration != Terrain->GetTileGeneration())
+			else if (C->bPending && (C->BuiltGeneration != Terrain->GetTileGeneration()
+				|| C->BuiltVegGeneration != VegGeneration()))
 			{
-				Queue.AddUnique(K);  // new tiles since it was built: try again
+				// New terrain or vegetation tiles since it was built: try again. Vegetation counts
+				// too - a hung-up tree waiting for its host only resolves when the trees arrive, and
+				// retrying on terrain alone left it to streaming order (a trunk came and went between
+				// runs of S_ground_tq/trunk_slope).
+				Queue.AddUnique(K);
 			}
 		}
 	}
+}
+
+int32 AEmberGroundCoverActor::VegGeneration() const
+{
+	return Vegetation ? Vegetation->GetTileGeneration() : 0;
 }
 
 void AEmberGroundCoverActor::Tick(float DeltaSeconds)
@@ -414,11 +425,12 @@ void AEmberGroundCoverActor::Tick(float DeltaSeconds)
 		return;
 	}
 	const FVector Cam = PC->PlayerCameraManager->GetCameraLocation();
-	const bool bNewTiles = Terrain->GetTileGeneration() != LastGeneration;
+	const bool bNewTiles = Terrain->GetTileGeneration() != LastGeneration || VegGeneration() != LastVegGeneration;
 	const bool bPending = bNewTiles;
 	if (bNewTiles || FVector::Dist(Cam, LastCamera) > 400.0)  // re-select every 4 m moved
 	{
 		LastGeneration = Terrain->GetTileGeneration();
+		LastVegGeneration = VegGeneration();
 		LastCamera = Cam;
 		const double T0 = FPlatformTime::Seconds();
 		UpdateCells(Cam);

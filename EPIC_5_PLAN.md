@@ -405,6 +405,16 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   lighting - suspect streaming-order dependence in near cover / vegetation (ground-cover cells
   built before the finest LOD, snag placement, tier switches). S_jolly_hcp4/mixed_oblique_460h
   borderline (0.978 / 0.994) as well.
+  PARTLY FIXED (2026-09-30 night, time-boxed for reference material): (1) ground-cover cells
+  waiting on vegetation (hung-up tree hosts) now retry when vegetation tiles arrive, not only
+  terrain tiles; (2) warmup counts consecutive quiet frames (a late stream restarts it - the old
+  count let mixed_oblique_460h shoot unsettled: 0.91-0.997 vs golden, now 0.98-0.99 run to run);
+  (3) stills render with r.Shadow.Virtual.Cache 0 (perf windows switch it back on). Run to run,
+  S_ground_tq: fade_mid/grass/shrub 0.997-0.999, rock 0.993, litter 0.988. Tried and reverted:
+  pinning the view frame index (MRQ's OverrideFrameIndexValue) - worse. STILL OPEN:
+  S_ground_tq/trunk_slope 0.90 run to run - crown SHADOW SHAPES differ (same instances, primitive
+  counts differ): suspect Nanite page streaming of the crowns not being waited on. Thresholds
+  stay loosened; full-tier goldens re-bless at the next `regress --full`.
 - **Fly-around verdicts (Brad, 2026-09-30, S_jolly_play after ground v2):** active fire area
   "pretty good for where we are ... enough to prove out the tech and show a clear path forward"
   (fire look parked until the fundamentals are done); hitching much improved; logs on slopes

@@ -295,8 +295,7 @@ bool AEmberHarness::Start(const FString& PlanPath, AEmberEnvironment* Env)
 		}
 		Environment->SetSkylightLeaking(SkylightLeaking);
 	}
-	ShotHandle = UGameViewportClient::OnScreenshotCaptured().AddUObject(this, &AEmberHarness::OnScreenshot);
-	State = EState::LoadWorld;
+	ShotHandle = UGameViewportClient::OnScreenshotCaptured().AddUObject(this, &AEmberHarness::OnScreenshot);	State = EState::LoadWorld;
 	return true;
 }
 
@@ -579,6 +578,7 @@ void AEmberHarness::NextPhase()
 		{
 			Cover->bSyncStreaming = false;
 		}
+		GEngine->Exec(GetWorld(), TEXT("r.Shadow.Virtual.Cache 1"));  // perf measures the shipping path
 		State = EState::PerfWarmup;
 	}
 	else
@@ -1187,6 +1187,10 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		{
 			Vegetation->SetWindTime(0.0);  // stills: frozen wind clock (pixel-deterministic goldens)
 		}
+		// Stills: no virtual shadow map cache. Its pages keep whatever was drawn while tiles were
+		// still streaming, so canopy shadows differed run to run (S_ground_tq 0.99 -> 0.9995 SSIM
+		// between runs without it). Play and perf windows keep the cache (it is a big GPU saving).
+		GEngine->Exec(GetWorld(), TEXT("r.Shadow.Virtual.Cache 0"));
 		if (Cover)
 		{
 			Cover->SetWindTime(0.0);
@@ -1234,6 +1238,9 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		}
 		if (CompilesPending())
 		{
+			// Warmup counts QUIET frames: frames spent before a late stream / compile do not let
+			// TSR, Lumen and auto exposure settle on the final content (run-to-run differences).
+			FramesLeft = FMath::Max(1, Captures[CaptureIndex].WarmupFrames);
 			return;
 		}
 		if (--FramesLeft <= 0)
@@ -1301,6 +1308,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 	case EState::OrbitWarmup:
 		if (CompilesPending())
 		{
+			FramesLeft = FMath::Max(1, Orbits[OrbitIndex].WarmupFrames);  // quiet frames, as stills
 			return;
 		}
 		if (--FramesLeft <= 0)

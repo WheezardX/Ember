@@ -293,6 +293,7 @@ bool AEmberVegetationActor::InstallTile(FPreparedVeg& P, FString& OutError)
 		return false;
 	}
 	Tiles.Add(P.Key, MoveTemp(P.Tile));
+	++TileGeneration;
 	UngroundedInstances += P.Ungrounded;
 	NoSurfaceInstances += P.NoSurface;
 	ScatterMs += P.Ms;
@@ -581,6 +582,7 @@ void AEmberVegetationActor::UnloadTile(uint64 Key)
 			ClearCell(C);
 		}
 		Tiles.Remove(Key);
+		++TileGeneration;
 	}
 }
 

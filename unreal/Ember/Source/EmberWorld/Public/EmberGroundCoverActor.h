@@ -53,6 +53,7 @@ private:
 		bool bPending = false;  // some ground was not loaded yet: rebuild on a later update
 		int32 Attempts = 0;     // pending rebuilds tried (capped: a cell may never get the finest LOD)
 		int32 BuiltGeneration = -1;  // terrain tile generation this cell was built against
+		int32 BuiltVegGeneration = -1;  // vegetation tile generation (hung-up tree hosts)
 		int64 Count = 0;
 	};
 
@@ -60,6 +61,8 @@ private:
 	void BuildQueued(const FVector& CamUE);
 	TArray<FIntPoint> Queue;
 	int32 LastGeneration = -1;
+	int32 LastVegGeneration = -1;
+	int32 VegGeneration() const;
 	void BuildCell(const FIntPoint& Key, FCoverCell& Cell);
 	void ClearCell(FCoverCell& Cell);
 	/** Conform (logs) / leaner (hung-up stems) placement on the rendered surface; false = skip. */

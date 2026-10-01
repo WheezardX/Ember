@@ -90,6 +90,9 @@ public:
 	/** Trees whose base lies within QueryM of (X, Y) (world m), from loaded tiles. Returns false
 	 *  if the area is not fully covered by loaded tiles (caller retries later). */
 	bool TreesNear(double X, double Y, double QueryM, TArray<FTreeInfo>& Out) const;
+	/** Bumped whenever the set of loaded tiles changes (TreesNear answers may change). */
+	int32 GetTileGeneration() const { return TileGeneration; }
+	int32 TileGeneration = 0;
 	bool bSyncStreaming = false;
 	double BuildBudgetMs = 3.0;
 	int32 MaxInFlight = 4;
