@@ -472,6 +472,24 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   **2026-10-01:** (3) AEmberGroundRelief (hummocks / duff mounds, block-streamed, cover stands on it)
   and (1)+(2) a terrain depth pass (litter height v3, POM to 35 m / 11 cm, cavity AO) - Brad: "much
   improved... we shouldn't waste any more time on it" until the camera decision (overhead vs ground).
+- **Burned-tree ring around the camera, residual (Brad, 2026-10-01, S_jolly_play, after fd13b95):**
+  "persists although it has changed". Suspect (Brad): shadows - the mid tier now collapses burned
+  crowns (WPO), but its virtual-shadow-map pages are cached (ShadowCacheInvalidationBehavior
+  Static) and may still hold the full crowns' shadows until a tree enters the near tier (whose
+  shadows invalidate every frame). Check: invalidate mid-tier shadow pages once after SetFire /
+  per fire tick, or compare with r.Shadow.Virtual.Cache 0. Documented only - moot if the camera
+  ends up fixed overhead (decision pending).
+- **Burn severity is a spectrum, not four colours (Brad, 2026-10-01: "this one will matter"):** today
+  each burned tree is ONE outcome - fully black, fully orange, fully green, bare, consumed - so a
+  totally black tree stands next to a totally orange one next to a green one. Real trees sit
+  between: scorched on one side (toward the front / uphill, the lee side green), mostly green with
+  heat stress (browning lower crown, singed bark), crown partly consumed with some live foliage left
+  (will die), bark char to a height. Direction: a continuous per-tree severity s in [0, 1] (burn
+  class + survival_field + jitter) and, per vertex, a scorch height / side (crown fraction scorched
+  from the base up, biased to the side facing the spread direction or upslope, FireTex A / the
+  arrival gradient), foliage colour lerping green -> heat-stressed olive-yellow -> orange-brown ->
+  black within one tree, needle loss partial (fraction of foliage collapsed, not all-or-nothing).
+  Keep the stand-level proportions; calibrate against the spruce-fir / Three Queens scar stills.
 - **Smoke toggle None / Lite / Full (Brad, 2026-10-01):** smoke v1 stays heavy ("keep the smoke") -
   on the big Jolly days the valley pall makes the overhead views murky, which is realistic. Later a
   player-facing toggle: None (no plumes, no pall), Lite (columns, pall capped), Full (as now).
