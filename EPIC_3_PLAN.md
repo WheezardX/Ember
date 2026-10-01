@@ -145,6 +145,7 @@ API keys: `FIRMS_MAP_KEY`, `SYNOPTIC_TOKEN` via environment / untracked secrets 
 | D4 | HRRR handling | Analysis (F00) series preferred for historic truth; forecast cycles for live; AOI-cropped variable subsets only; which-was-used in provenance | Full gribs are multi-GB each; never store them. |
 | D5 | NIROPS posture | Best-effort adapter; absence never blocks | Source is operationally organized, not API-organized. |
 | D6 ⚑ | Flagship historic fires | **Jolly Mountain 2017** + propose **Schneider Springs 2021**; third optional | Wants Brad's call: local knowledge is the QA instrument for these packages. |
+|  | (2026-10-01) | **Bolt Creek 2022 added** (Brad: yes) - richest PNW InciWeb gallery (~90 photos + video, docs/plans/REFERENCE_FOOTAGE_SOURCING.md); fire data and footage cross-reference. Three Queens 2026 is already built (Epic 5 playback). | |
 | D7 | Sitrep capture | Parse ICS-209 resource/containment/cost series into packages now, even though gameplay (Epic 6) consumes them much later | Cheap at ingest, painful to backfill; also the design doc calls 209s "season-replay gold." |
 
 ---
