@@ -30,6 +30,7 @@
 #include "EmberFireActor.h"
 #include "EmberFlyPawn.h"
 #include "EmberGroundCoverActor.h"
+#include "EmberGroundRelief.h"
 #include "EmberSceneFacts.h"
 #include "EmberTerrainActor.h"
 #include "EmberVegetationActor.h"
@@ -115,6 +116,9 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetBoolField(TEXT("wind_from_replay"), bWindFromReplay);
 	J->TryGetBoolField(TEXT("fire_classes"), bFireClasses);
 	J->TryGetNumberField(TEXT("ground_cover_radius_m"), GroundCoverRadiusM);
+	J->TryGetBoolField(TEXT("ground_relief"), bGroundRelief);
+	J->TryGetNumberField(TEXT("ground_relief_radius_m"), GroundReliefRadiusM);
+	J->TryGetNumberField(TEXT("ground_relief_spacing_m"), GroundReliefSpacingM);
 	J->TryGetNumberField(TEXT("veg_radius_m"), VegRadiusM);
 	J->TryGetNumberField(TEXT("veg_near_radius_m"), VegNearRadiusM);
 	J->TryGetNumberField(TEXT("veg_mid_min_height_m"), VegMidMinHeightM);
@@ -1302,6 +1306,18 @@ void AEmberHarness::Tick(float DeltaSeconds)
 			}
 			Cover->SetWind(WindStrength, WindFromDeg);
 			Cover->SetWindTime(0.0);
+		}
+		if (bGroundRelief && Terrain)
+		{
+			Relief = GetWorld()->SpawnActor<AEmberGroundRelief>(FVector::ZeroVector, FRotator::ZeroRotator, P);
+			Relief->Init(Terrain, GroundReliefRadiusM, GroundReliefSpacingM);
+			if (Cover)
+			{
+				// items stand on the relief (same function, parameters and lift), not under it
+				Cover->bRelief = true;
+				Cover->ReliefParams = Relief->Params;
+				Cover->ReliefLiftM = Relief->LiftM;
+			}
 		}
 		if (!ReplayPath.IsEmpty())
 		{

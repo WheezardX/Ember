@@ -864,6 +864,36 @@ bool AEmberTerrainActor::SurfaceAt(double WorldX, double WorldY, double& OutZ) c
 	return false;
 }
 
+bool AEmberTerrainActor::TileShadingAt(double WorldX, double WorldY, FTileShading& Out) const
+{
+	for (int32 Lod = FinestLod; Lod >= CoarsestLod; --Lod)
+	{
+		uint64 K = 0;
+		if (!KeyAt(Lod, WorldX, WorldY, K))
+		{
+			continue;
+		}
+		const FLoadedTile* T = Loaded.Find(K);
+		if (!T || !T->Comp)
+		{
+			continue;
+		}
+		Out.Material = T->Comp->GetMaterial(0);
+		Out.Key = K;
+		Out.MinX = T->Content.min_x;
+		Out.MaxY = T->Content.max_y;
+		Out.Width = T->Content.width();
+		Out.Height = T->Content.height();
+		const emberworld::Bounds Ext = Region->extent();
+		Out.RMinX = Ext.min_x;
+		Out.RMaxY = Ext.max_y;
+		Out.RWidth = Ext.width();
+		Out.RHeight = Ext.height();
+		return Out.Material != nullptr;
+	}
+	return false;
+}
+
 bool AEmberTerrainActor::GroundHeightAt(double WorldX, double WorldY, double& OutZ) const
 {
 	return Region.IsValid() && emberworld::sample_height(*Region, WorldX, WorldY, OutZ);

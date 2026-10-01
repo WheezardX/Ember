@@ -108,6 +108,16 @@ public:
 
 	/** World-metre bounds of the valid data (tiles can extend past the AOI). */
 	const emberworld::Bounds& GetDataExtent() const { return DataExtent; }
+	/** The finest loaded tile at a world point, as a mesh drawn over it must shade (AEmberGroundRelief):
+	 * the tile's material and the frames of its UVs - uv0 over the tile content, uv1 over the region. */
+	struct FTileShading
+	{
+		UMaterialInterface* Material = nullptr;
+		uint64 Key = 0;
+		double MinX = 0, MaxY = 0, Width = 1, Height = 1;            // tile content (uv0)
+		double RMinX = 0, RMaxY = 0, RWidth = 1, RHeight = 1;        // region extent (uv1)
+	};
+	bool TileShadingAt(double WorldX, double WorldY, FTileShading& Out) const;
 	const emberworld::Frame& GetFrame() const { return Frame; }
 	bool IsStreaming() const { return bStreaming; }
 

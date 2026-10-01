@@ -19,6 +19,7 @@ veg_radius_m = 1500
 veg_near_radius_m = 400
 exposure_bias = -2.0
 ground_cover = true
+ground_relief = true         # ground feel 2026-10-01: hummocks / duff mounds near the camera (AEmberGroundRelief)
 
 [[bookmarks]]
 name = "litter"
@@ -107,3 +108,18 @@ bookmark = "shrub"
 name = "fade_mid"
 bookmark = "fade_mid"
 
+
+[[bookmarks]]
+name = "stand_eye"           # ground feel (2026-10-01): the litter site from eye height, looking across
+target_frac = [0.4951, 0.5018]   # the floor like the Kachess stand photos (debris, green patches, logs)
+distance_m = 9
+yaw_deg = 150
+pitch_deg = -10
+fov_deg = 65
+sun = "afternoon"
+exposure_bias = 1.0
+exposure_ev_min = -1.5
+
+[[captures]]
+name = "stand_eye"
+bookmark = "stand_eye"

@@ -241,4 +241,8 @@ outputs = [
   "/Game/Ember/Generated/Cover/SM_Cover_fallenbare_v0",
   "/Game/Ember/Generated/Cover/SM_Cover_fallenbare_v1",
   "/Game/Ember/Generated/Cover/SM_Cover_fallenbare_v2",
+  "/Game/Ember/Generated/Cover/MI_Cover_branch",
+  "/Game/Ember/Generated/Cover/SM_Cover_branch_v0",
+  "/Game/Ember/Generated/Cover/SM_Cover_branch_v1",
+  "/Game/Ember/Generated/Cover/SM_Cover_branch_v2",
 ]

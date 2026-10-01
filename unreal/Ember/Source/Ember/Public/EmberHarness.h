@@ -136,6 +136,10 @@ private:
 	bool bWindFromReplay = false;
 	bool bFireClasses = true;   // false: draw the stream as if it had no intensity (HCP4 A/B)
 	double GroundCoverRadiusM = 60.0;
+	bool bGroundRelief = false;
+	double GroundReliefRadiusM = 56.0;
+	double GroundReliefSpacingM = 0.3;
+	UPROPERTY(Transient) TObjectPtr<class AEmberGroundRelief> Relief;
 	double VegRadiusM = 1500.0;
 	double VegNearRadiusM = 500.0;
 	double VegMidMinHeightM = 12.0;

@@ -129,14 +129,48 @@ def rock(seed: int) -> Mesh:
 
 
 def log(seed: int) -> Mesh:
+    """Down log (ground feel, Kachess stand photos: grey, furrowed, mossy on top, a pale cut or
+    broken end - not the smooth open pipe of v1): rings with bark furrows and lumps, a capped butt
+    with a pale cut face, a ragged broken tip, moss patches (foliage verts = the moss colour) on
+    the upward-facing bark."""
     rng = random.Random(seed)
     m = Mesh()
     length = rng.uniform(380, 520)
     r = rng.uniform(18, 28)
     sag = rng.uniform(-6, 6)
-    path = [(length * t, 0.0, r * 0.8 + sag * math.sin(math.pi * t))
-            for t in (0, 0.25, 0.5, 0.75, 1.0)]
-    tube(m, path, [r, r * 0.95, r * 0.9, r * 0.82, r * 0.7], 9, 0.55)
+    sides, rings_n = 14, 18
+    furrow = [rng.uniform(0.0, 2 * math.pi) for _ in range(3)]
+    moss_c = [(rng.uniform(0.15, 0.85), rng.uniform(-0.6, 0.6), rng.uniform(0.08, 0.2)) for _ in range(rng.randint(2, 4))]
+    rings = []
+    for i in range(rings_n + 1):
+        t = i / rings_n
+        cx, cz = length * t, r * 0.8 + sag * math.sin(math.pi * t)
+        rr = r * (1.0 - 0.3 * t) * (1.0 + 0.05 * math.sin(t * 9.0 + furrow[0]))
+        ring = []
+        for k in range(sides):
+            a = 2.0 * math.pi * k / sides
+            ca, sa = math.cos(a), math.sin(a)          # sa > 0: the upper side
+            bump = 0.06 * math.sin(a * 7 + furrow[1] + t * 2.0) + 0.03 * math.sin(a * 13 + furrow[2])
+            if i == rings_n:                             # broken tip: splintered, uneven
+                bump -= rng.uniform(0.0, 0.35)
+            rk = rr * (1.0 + bump + rng.uniform(-0.03, 0.03))
+            pos = (cx + (rng.uniform(-6, 10) if i == rings_n else 0.0), ca * rk, cz + sa * rk)
+            moss = sa > 0.35 and any((t - mt) ** 2 + (ca - my) ** 2 * 0.02 < ms ** 2 for mt, my, ms in moss_c)
+            shade = 0.45 + 0.15 * sa + 0.1 * bump * 3.0
+            ring.append(m.vert(pos, shade, moss))
+        rings.append(ring)
+    for i in range(rings_n):
+        for k in range(sides):
+            a, b = rings[i][k], rings[i][(k + 1) % sides]
+            c, d = rings[i + 1][k], rings[i + 1][(k + 1) % sides]
+            m.tri(a, c, b)
+            m.tri(b, c, d)
+    centre = m.vert((0.0, 0.0, r * 0.8), 0.85, False)  # butt: a pale cut face, closed
+    for k in range(sides):
+        m.tri(rings[0][k], rings[0][(k + 1) % sides], centre)
+    tip = m.vert((length + rng.uniform(5, 25), 0.0, r * 0.8 + rng.uniform(-3, 3)), 0.7, False)
+    for k in range(sides):
+        m.tri(rings[-1][k], tip, rings[-1][(k + 1) % sides])
     for _ in range(rng.randint(2, 4)):  # broken branch stubs
         t = rng.uniform(0.2, 0.9)
         p = (length * t, 0.0, r * 0.8)
@@ -222,6 +256,37 @@ def stick(seed: int) -> Mesh:
         d = norm((rng.uniform(0.2, 0.9), rng.choice((-1, 1)) * rng.uniform(0.5, 1.0), rng.uniform(0.0, 0.6)))
         L = rng.uniform(8, 30)
         tube(m, [p, add(p, mul(d, L))], [r * 0.4, r * 0.15], 3, 0.5)
+    return m
+
+
+def branch(seed: int) -> Mesh:
+    """Fallen limb (Kachess stand photos: the floor is criss-crossed with 1-3 m dead limbs): a
+    crooked 150-340 cm stem along +X, sub-branches angled forward off both sides, some forked,
+    a few lifted off the ground so they cast broken shadows."""
+    rng = random.Random(seed)
+    m = Mesh()
+    length = rng.uniform(150, 340)
+    r = rng.uniform(2.0, 4.5)
+    n = 8
+    pts = [(0.0, 0.0, r)]
+    y = 0.0
+    for k in range(1, n + 1):
+        y += rng.uniform(-7, 7)
+        pts.append((length * k / n, y, r + rng.uniform(-0.5, 2.5) * k / n))
+    tube(m, pts, [r * (1.0 - 0.75 * k / n) for k in range(n + 1)], 6, 0.5)
+    for _ in range(rng.randint(5, 10)):
+        k = rng.randint(1, n - 1)
+        p = pts[k]
+        side = rng.choice((-1, 1))
+        d = norm((rng.uniform(0.4, 1.2), side * rng.uniform(0.5, 1.0), rng.uniform(-0.05, 0.5)))
+        L = rng.uniform(20, 75) * (1.0 - 0.5 * k / n)
+        rk = r * (1.0 - 0.75 * k / n) * 0.45
+        tip = add(p, mul(d, L))
+        tube(m, [p, add(p, mul(d, L * 0.5)), tip], [rk, rk * 0.6, rk * 0.2], 4, 0.5)
+        if rng.random() < 0.5:                   # a fork near the tip
+            d2 = norm(add(d, (0.0, side * 0.6, rng.uniform(0.0, 0.3))))
+            mid = add(p, mul(d, L * 0.6))
+            tube(m, [mid, add(mid, mul(d2, L * 0.45))], [rk * 0.4, rk * 0.12], 3, 0.5)
     return m
 
 
@@ -319,7 +384,7 @@ def fallenbare(seed: int) -> Mesh:
 # New items go at the END: each item's mesh seed comes from its index here.
 ITEMS = {"fern": fern, "huckleberry": huckleberry, "shrub": shrub, "rock": rock, "log": log,
          "stump": stump, "snag": snag, "pole": pole, "stick": stick, "bark": bark, "cones": cones,
-         "fallen": fallen, "fallenred": fallen, "fallenbare": fallenbare}
+         "fallen": fallen, "fallenred": fallen, "fallenbare": fallenbare, "branch": branch}
 
 # Material colours (sRGB hex, no '#'): foliage (Color), wood / stone (TrunkColor).
 COLORS = {
@@ -327,7 +392,7 @@ COLORS = {
     "huckleberry": ("A8401E", "4A3526"),   # fall: vine maple / huckleberry reds (field photo)
     "shrub": ("4A5E2C", "4A3A2A"),
     "rock": ("7A766E", "736E66"),
-    "log": ("5A5A40", "5A4834"),           # weathered bark; foliage colour unused
+    "log": ("4E6A2C", "5C544A"),           # moss patches; weathered grey-brown bark (was rust 5A4834)
     "stump": ("5A5A40", "5E4A36"),
     "snag": ("5A5A40", "7A746A"),          # weathered silver-grey dead wood
     "pole": ("5A5A40", "5E4E3C"),
@@ -337,6 +402,7 @@ COLORS = {
     "fallen": ("33482A", "4E3A2C"),       # recently fallen: still-green needles
     "fallenred": ("8A4A22", "4E3A2C"),    # dead a season: red needles (ladder fuel)
     "fallenbare": ("5A5A40", "6A6258"),   # old: no needles, weathered grey
+    "branch": ("5A5A40", "5E5246"),       # dead limb: grey-brown, darker than the bleached sticks
 }
 
 

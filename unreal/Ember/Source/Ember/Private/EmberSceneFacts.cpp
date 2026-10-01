@@ -26,6 +26,7 @@
 #include "EmberFlameActor.h"
 #include "EmberTerrainActor.h"
 #include "EmberGroundCoverActor.h"
+#include "EmberGroundRelief.h"
 #include "EmberVegetationActor.h"
 
 #if PLATFORM_WINDOWS
@@ -230,6 +231,13 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		Inst->SetNumberField(TEXT("leaners_thinned_by_cbh"), static_cast<double>(It->LeanersThinned));
 		Inst->SetArrayField(TEXT("leaner_last_foot_cm"), { MakeShared<FJsonValueNumber>(It->LastLeanerFootUE.X), MakeShared<FJsonValueNumber>(It->LastLeanerFootUE.Y), MakeShared<FJsonValueNumber>(It->LastLeanerFootUE.Z) });
 		Inst->SetArrayField(TEXT("leaner_last_contact_cm"), { MakeShared<FJsonValueNumber>(It->LastLeanerContactUE.X), MakeShared<FJsonValueNumber>(It->LastLeanerContactUE.Y), MakeShared<FJsonValueNumber>(It->LastLeanerContactUE.Z) });
+	}
+	for (TActorIterator<AEmberGroundRelief> It(W); It; ++It)
+	{
+		Inst->SetNumberField(TEXT("ground_relief_verts"), It->NumVerts);
+		Inst->SetNumberField(TEXT("ground_relief_sections"), It->NumSections);
+		Inst->SetNumberField(TEXT("ground_relief_builds"), It->Builds);
+		Inst->SetNumberField(TEXT("ground_relief_build_ms"), It->LastBuildMs);
 	}
 	for (TActorIterator<AEmberVegetationActor> It(W); It; ++It)
 	{

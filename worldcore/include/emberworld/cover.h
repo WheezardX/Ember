@@ -34,6 +34,20 @@ struct CoverItem {
     float consume = 0.0f;    // fire: burned plants collapse to stubble (M_Veg Consume)
     float smoulder = 0.0f;   // fire: wood glows for hours after the front (M_Veg Smoulder)
     CoverPose pose = CoverPose::Upright;   // look key `pose` = "upright" | "conform" | "leaner"
+    // Clumping (EPIC_5_PLAN, Brad: "little tufts evenly dispersed"; GW2 broke it up with Perlin
+    // noise): density x max(0, 1 + 4 clump (n - 0.5)) for a world-space fbm n in [0, 1] (scale
+    // clump_m, two octaves) - patches and bare gaps, about the same average. Items with the same
+    // clump_group share a field (green plants in the same light gaps); clump_anti reads it
+    // inverted (grass thins under fern clumps). clump_size grows plants toward clump centres.
+    float clump = 0.0f;          // 0 = uniform (as before)
+    double clump_m = 8.0;
+    std::string clump_group;     // "" = the item's own field (seeded by its key)
+    bool clump_anti = false;
+    float clump_size = 0.0f;     // height x (1 + clump_size x (density multiplier - 1) / 2), >= 0.5
+    // Conform pose only: >= 0 lays the stem axis this far above the ground (m, x 0.6-1.4 per
+    // instance, x the instance scale) instead of burying a fraction of the mesh height - a whole
+    // downed tree rests on its limbs (its mesh height is the crown, not the stem). -1 = log rule.
+    double rest_m = -1.0;
 };
 
 struct CoverRules {

@@ -72,6 +72,21 @@ bool AEmberGroundCoverActor::Init(AEmberTerrainActor* InTerrain, const FString& 
 	return true;
 }
 
+bool AEmberGroundCoverActor::GroundZ(double WorldX, double WorldY, double& OutZ) const
+{
+	if (!Terrain->SurfaceAt(WorldX, WorldY, OutZ))
+	{
+		return false;
+	}
+	if (bRelief)
+	{
+		float W4[4] = {0, 0, 0, 0};
+		Terrain->GroundMixAt(WorldX, WorldY, W4);
+		OutZ += ReliefLiftM + emberworld::micro_relief(WorldX, WorldY, {W4[0], W4[1], W4[2], W4[3]}, ReliefParams);
+	}
+	return true;
+}
+
 bool AEmberGroundCoverActor::PlaceLying(const emberworld::CoverInstance& In, const FBoxSphereBounds& B, double S,
 	emberworld::CoverPose Pose, FTransform& Out, bool& bOutPending) const
 {
@@ -81,7 +96,7 @@ bool AEmberGroundCoverActor::PlaceLying(const emberworld::CoverInstance& In, con
 	// UE yaw (X east, Y south) -> world direction (x east, y north)
 	const double Dx = FMath::Cos(In.yaw_rad), Dy = -FMath::Sin(In.yaw_rad);
 	double Z0 = 0.0, Z1 = 0.0, Zm = 0.0;
-	if (!Terrain->SurfaceAt(In.x, In.y, Z0))
+	if (!GroundZ(In.x, In.y, Z0))
 	{
 		return false;
 	}
@@ -149,7 +164,7 @@ bool AEmberGroundCoverActor::PlaceLying(const emberworld::CoverInstance& In, con
 		{
 			Fx = Cx + Dir.X * Dist;
 			Fy = Cy + Dir.Y * Dist;
-			if (!Terrain->SurfaceAt(Fx, Fy, Fz))
+			if (!GroundZ(Fx, Fy, Fz))
 			{
 				break;
 			}
@@ -162,7 +177,7 @@ bool AEmberGroundCoverActor::PlaceLying(const emberworld::CoverInstance& In, con
 		}
 		Fx = Cx + Dir.X * Dist;
 		Fy = Cy + Dir.Y * Dist;
-		if (!Terrain->SurfaceAt(Fx, Fy, Fz))
+		if (!GroundZ(Fx, Fy, Fz))
 		{
 			return false;
 		}
@@ -198,25 +213,32 @@ bool AEmberGroundCoverActor::PlaceLying(const emberworld::CoverInstance& In, con
 	else
 	{
 		const double Mx = In.x + Dx * LenM * 0.5, My = In.y + Dy * LenM * 0.5;
-		if (!Terrain->SurfaceAt(In.x + Dx * LenM, In.y + Dy * LenM, Z1) || !Terrain->SurfaceAt(Mx, My, Zm))
+		if (!GroundZ(In.x + Dx * LenM, In.y + Dy * LenM, Z1) || !GroundZ(Mx, My, Zm))
 		{
 			return false;
 		}
 		// Rest on a hump under the middle rather than cut through it; bury 20-35 % of the
 		// diameter (20 %: ~half buried); ~15 % propped, the far end on something 0.3-0.9 m up.
 		const double Lift = FMath::Max(0.0, Zm - 0.5 * (Z0 + Z1));
-		const double Bury = (U1 < 0.2 ? 0.45 + 0.1 * U2 : 0.2 + 0.15 * U2) * DiaM;
-		const double Prop = U1 > 0.85 ? 0.3 + 0.6 * U2 : 0.0;
+		double Bury = (U1 < 0.2 ? 0.45 + 0.1 * U2 : 0.2 + 0.15 * U2) * DiaM;
+		double Prop = U1 > 0.85 ? 0.3 + 0.6 * U2 : 0.0;
+		const double RestM = Rules.items[In.item].rest_m;
+		if (RestM >= 0.0)
+		{
+			// a whole downed tree: the stem rests on its own limbs (the lower ones go into the duff)
+			Bury = -RestM * (0.6 + 0.8 * U2) * FMath::Max(0.5, S);
+			Prop = 0.0;
+		}
 		Zfoot = Z0 + Lift - Bury;
 		const double Zend = Z1 + Lift - Bury + Prop;
 		Fwd = FVector(Dx * LenM, -Dy * LenM, Zend - Zfoot).GetSafeNormal();
 		// Up follows the ground across the log (its normal at the middle), so a log on a side
 		// slope rolls with it instead of hanging one flank in the air.
 		double Ze = Zm, Zw = Zm, Zn = Zm, Zs = Zm;
-		Terrain->SurfaceAt(Mx + 1.0, My, Ze);
-		Terrain->SurfaceAt(Mx - 1.0, My, Zw);
-		Terrain->SurfaceAt(Mx, My + 1.0, Zn);
-		Terrain->SurfaceAt(Mx, My - 1.0, Zs);
+		GroundZ(Mx + 1.0, My, Ze);
+		GroundZ(Mx - 1.0, My, Zw);
+		GroundZ(Mx, My + 1.0, Zn);
+		GroundZ(Mx, My - 1.0, Zs);
 		Up = FVector(-0.5 * (Ze - Zw), 0.5 * (Zn - Zs), 1.0).GetSafeNormal();   // world (-gx, -gy, 1) in UE axes
 	}
 	const FQuat Q = FRotationMatrix::MakeFromXZ(Fwd, Up).ToQuat();
@@ -300,14 +322,14 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 		// came from the nearest DEM corner).
 		const double Rm = FMath::Max(B.BoxExtent.X, B.BoxExtent.Y) * S / 100.0 * 0.7;
 		double Z = 0.0;
-		if (!Terrain->SurfaceAt(In.x, In.y, Z))
+		if (!GroundZ(In.x, In.y, Z))
 		{
 			continue;
 		}
 		for (const FVector2D& O : {FVector2D(Rm, 0), FVector2D(-Rm, 0), FVector2D(0, Rm), FVector2D(0, -Rm)})
 		{
 			double Zo = 0.0;
-			if (Terrain->SurfaceAt(In.x + O.X, In.y + O.Y, Zo))
+			if (GroundZ(In.x + O.X, In.y + O.Y, Zo))
 			{
 				Z = FMath::Min(Z, Zo);
 			}

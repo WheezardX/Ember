@@ -12,4 +12,5 @@ THIRD_PARTY_INCLUDES_START
 #include "src/look.cpp"
 #include "src/firestate.cpp"
 #include "src/cover.cpp"
+#include "src/relief.cpp"
 THIRD_PARTY_INCLUDES_END

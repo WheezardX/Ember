@@ -23,6 +23,9 @@ import random
 from dataclasses import dataclass, field, replace
 
 H = 1000.0  # nominal tree height, cm
+# Bole thickness on top of each species' trunk_radius (ground feel 2026-10-01): 0.6 brings a
+# 30 m Douglas-fir to ~80 cm at the base (was ~1.3 m); second-growth stands at Kachess run 40-70.
+TRUNK_THICKNESS = 0.6
 GOLDEN_ANGLE = math.pi * (3.0 - math.sqrt(5.0))
 
 Vec = tuple[float, float, float]
@@ -229,10 +232,23 @@ def conifer(p: Conifer, detail: float = 1.0) -> Mesh:
             nod = (t - 0.9) / 0.1
             x += p.leader_droop * H * nod * nod
             z -= p.leader_droop * H * 0.5 * nod * nod
-        flare = 1.0 + (p.flare - 1.0 + 0.25) * max(0.0, 1.0 - t / 0.06) ** 2
         pts.append((x, y, z))
-        radii.append(max(0.6, p.trunk_radius * H * (1.0 - 0.97 * t) * flare))
-    tube(m, pts, radii, 9, 0.9)
+
+    # Ground feel (2026-10-01, the Kachess stand photos): stems were ~2x too thick (a 30 m fir
+    # got a 1.3 m bole; the photos show 40-60 cm) and the butt flare spread over the whole first
+    # 7 % segment read as a 2-3 m orange cone. Thinner bole; a root collar that swells only in the
+    # first ~1 % of height, drawn with extra rings there (the branch path `pts` is unchanged).
+    def radius_at(t: float) -> float:
+        flare = 1.0 + (p.flare - 1.0 + 0.18) * math.exp(-t / 0.011)
+        return max(0.6, TRUNK_THICKNESS * p.trunk_radius * H * (1.0 - 0.97 * t) * flare)
+
+    def axis_at(t: float) -> Vec:
+        i = min(segs - 1, int(t * segs))
+        f = t * segs - i
+        return add(pts[i], mul(sub(pts[i + 1], pts[i]), f))
+
+    ts = [0.0, 0.004, 0.01, 0.02, 0.035, 0.055] + [i / segs for i in range(1, segs + 1)]
+    tube(m, [axis_at(t) for t in ts], [radius_at(t) for t in ts], 9, 0.9)
 
     def trunk_at(z: float) -> Vec:
         t = max(0.0, min(1.0, z / top))

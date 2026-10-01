@@ -94,3 +94,58 @@ TEST_CASE("cover: pose per item (logs conform, leaners, bad values rejected)") {
     CHECK(b.error.find("sideways") != std::string::npos);
     std::remove(bad.c_str());
 }
+
+TEST_CASE("cover: clumping makes patches and gaps at about the same average") {
+    CoverRules R = two_items();
+    R.candidates_per_m2 = 8;   // clumps need head-room: up to 3x the mean density per square
+    std::vector<CoverInstance> flat, clumped;
+    scatter_cover(R, 0, 0, 120, 120, all_grass, flat);
+    R.items[0].clump = 1.0f;
+    R.items[0].clump_m = 8.0;
+    scatter_cover(R, 0, 0, 120, 120, all_grass, clumped);
+    const double ratio = static_cast<double>(clumped.size()) / static_cast<double>(flat.size());
+    CHECK(ratio > 0.8);
+    CHECK(ratio < 1.3);
+    // per 4 m square counts: uniform scatter keeps every square near the mean; clumping empties
+    // some and doubles others
+    auto squares = [](const std::vector<CoverInstance>& v) {
+        std::vector<int> n(30 * 30, 0);
+        for (const CoverInstance& c : v) n[static_cast<int>(c.y / 4) * 30 + static_cast<int>(c.x / 4)]++;
+        return n;
+    };
+    const std::vector<int> a = squares(flat), b = squares(clumped);
+    const int empty_flat = static_cast<int>(std::count(a.begin(), a.end(), 0));
+    const int empty_clumped = static_cast<int>(std::count(b.begin(), b.end(), 0));
+    CHECK(empty_flat == 0);
+    CHECK(empty_clumped > 60);
+    CHECK(*std::max_element(b.begin(), b.end()) > 1.4 * *std::max_element(a.begin(), a.end()));
+}
+
+TEST_CASE("cover: clumped placement is still partition-independent; anti reads the field inverted") {
+    CoverRules R = two_items();
+    R.items[0].clump = 1.0f;
+    R.items[0].clump_group = "gap";
+    R.items[0].clump_size = 0.6f;
+    std::vector<CoverInstance> whole, parts;
+    scatter_cover(R, 0, 0, 40, 40, all_grass, whole);
+    for (int y = 0; y < 40; y += 10)
+        for (int x = 0; x < 40; x += 20) scatter_cover(R, x, y, x + 20, y + 10, all_grass, parts);
+    auto key = [](const CoverInstance& c) { return std::make_tuple(c.x, c.y, c.item, c.variant, c.height_m); };
+    std::vector<std::tuple<double, double, int, int, double>> ka, kb;
+    for (const CoverInstance& c : whole) ka.push_back(key(c));
+    for (const CoverInstance& c : parts) kb.push_back(key(c));
+    std::sort(ka.begin(), ka.end());
+    std::sort(kb.begin(), kb.end());
+    CHECK(ka == kb);
+    // an anti item in the same group fills the gaps: few squares hold both
+    CoverRules A = R;
+    A.items[0].clump_anti = true;
+    std::vector<CoverInstance> anti;
+    scatter_cover(A, 0, 0, 40, 40, all_grass, anti);
+    std::vector<int> n1(100, 0), n2(100, 0);
+    for (const CoverInstance& c : whole) n1[static_cast<int>(c.y / 4) * 10 + static_cast<int>(c.x / 4)]++;
+    for (const CoverInstance& c : anti) n2[static_cast<int>(c.y / 4) * 10 + static_cast<int>(c.x / 4)]++;
+    int both_dense = 0;
+    for (int i = 0; i < 100; ++i) both_dense += n1[i] > 40 && n2[i] > 40;
+    CHECK(both_dense < 5);
+}

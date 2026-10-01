@@ -60,37 +60,54 @@ slash_blowdown    = [0.9, 0.0, 0.0, 0.05]
 # ([ground] above) and on plain soil. Placement is a hash on the global 1 m lattice
 # (worldcore/cover.cpp), so it never depends on streaming cells.
 [cover]
-candidates_per_m2 = 3
+candidates_per_m2 = 6         # head-room for clumps (up to ~3x an item's mean density per m2)
 [cover.items.grass]        # the scatter's bunchgrass meshes, as small tufts
 consume = 1.0
+clump = 0.8                # ground feel (Brad: "tufts evenly dispersed"): patches + bare gaps
+clump_m = 6.0
+clump_size = 0.5
 grass = 220.0
 shrub = 25.0
-litter = 6.0
+litter = 1.5                # (was 6) pale cured tufts glowed white in the shade under timber
 soil = 10.0
 height_min_m = 0.25
 height_max_m = 0.55
 variants = 4
 [cover.items.fern]         # sword fern: under canopy on litter
 consume = 1.0
+clump = 1.0                # green understory comes in light-gap patches (Kachess stand photos)
+clump_m = 8.0
+clump_group = "gap"
+clump_size = 0.6
 litter = 14.0
 shrub = 8.0
 height_min_m = 0.45
 height_max_m = 0.9
 [cover.items.huckleberry]  # fall reds (Three Queens field photo)
 consume = 1.0
-litter = 4.0
+clump = 0.9
+clump_m = 11.0
+clump_group = "gap"
+clump_size = 0.5
+litter = 2.0               # (was 4: the timber floor in the summer stand photos is green, not red)
 shrub = 30.0
 grass = 2.0
 height_min_m = 0.4
 height_max_m = 0.9
 [cover.items.shrub]
 consume = 1.0
+clump = 0.9
+clump_m = 9.0
+clump_group = "gap"
+clump_size = 0.5
 shrub = 35.0
-litter = 3.0
+litter = 10.0              # (was 3) low green shrubs (Oregon grape, twinflower, vine maple) in the gaps
 grass = 3.0
 height_min_m = 0.35
 height_max_m = 0.8
 [cover.items.rock]         # cobbles
+clump = 0.5
+clump_m = 12.0
 rock = 45.0
 grass = 1.5
 shrub = 2.0
@@ -109,7 +126,9 @@ height_max_m = 1.1
 [cover.items.log]          # down wood on the forest floor: lies along the slope, partly buried,
 pose = "conform"           # ~15 % propped (8g)
 smoulder = 1.0
-litter = 1.2
+clump = 0.6
+clump_m = 15.0
+litter = 1.8               # (was 1.2; 2.5 read as a log pile) a down log every few metres (stand photos)
 shrub = 0.2
 height_min_m = 0.35
 height_max_m = 0.6
@@ -136,31 +155,77 @@ mesh = "fallen"
 pose = "leaner"
 consume = 1.0
 smoulder = 1.0
-litter = 0.07
+litter = 0.11              # (was 0.07) Brad 2026-10-01: too uniformly orange - more green
 variants = 3
 [cover.items.leaner_red]   # dead a season, red needles - the worst ladder fuel
 mesh = "fallenred"
 pose = "leaner"
 consume = 1.0
 smoulder = 1.0
-litter = 0.09
+litter = 0.06              # (was 0.09)
 variants = 3
 [cover.items.stick]        # down branches and twigs (ground v2 volume: real geometry that casts shadows)
 pose = "conform"
 smoulder = 1.0
 consume = 1.0
-litter = 30.0
+clump = 0.5                # debris piles up under crowns and against logs
+clump_m = 5.0
+clump_group = "debris"
+litter = 180.0             # (was 30) Kachess stands: several sticks per m2, criss-crossed
 shrub = 6.0
 height_min_m = 0.10        # = the mesh's height incl. twigs (scale ~1)
 height_max_m = 0.18
 [cover.items.bark]         # shed bark plates (ponderosa / fir) under the trees
 pose = "conform"
 consume = 1.0
-litter = 8.0
+clump = 0.5
+clump_m = 5.0
+clump_group = "debris"
+litter = 14.0
 height_min_m = 0.04
 height_max_m = 0.07
 [cover.items.cones]        # cone clusters
 consume = 1.0
-litter = 12.0
+clump = 0.6
+clump_m = 5.0
+clump_group = "debris"
+litter = 16.0
 height_min_m = 0.05
 height_max_m = 0.07
+[cover.items.branch]       # fallen limbs 1.8-3 m (Kachess stand photos: the floor is criss-crossed with them)
+pose = "conform"
+smoulder = 1.0
+consume = 1.0
+clump = 0.5
+clump_m = 5.0
+clump_group = "debris"
+litter = 25.0
+shrub = 3.0
+height_min_m = 0.15        # ~ the mesh's own height (scale ~1)
+height_max_m = 0.28
+[cover.items.downed_green] # whole tree lying on the ground, needles still green: recent windthrow
+mesh = "fallen"            # (Brad 2026-10-01: "we should have some green downed ones as well");
+pose = "conform"           # comes in patches (a storm puts down a group)
+rest_m = 0.35              # stem on its limbs, not buried like a log (x scale)
+consume = 1.0
+smoulder = 1.0
+clump = 1.0
+clump_m = 35.0
+clump_group = "windthrow"
+litter = 0.05
+height_min_m = 6.0         # mesh height = the crown (~4 m nominal): ~15-25 m trees
+height_max_m = 10.0
+variants = 3
+[cover.items.downed_red]   # the same, dead a season: red-brown needles
+mesh = "fallenred"
+pose = "conform"
+rest_m = 0.3
+consume = 1.0
+smoulder = 1.0
+clump = 1.0
+clump_m = 35.0
+clump_group = "windthrow"
+litter = 0.025
+height_min_m = 6.0
+height_max_m = 10.0
+variants = 3

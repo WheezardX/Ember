@@ -7,6 +7,7 @@
 #include "GameFramework/Actor.h"
 
 #include "emberworld/cover.h"
+#include "emberworld/relief.h"
 
 #include "EmberGroundCoverActor.generated.h"
 
@@ -34,6 +35,13 @@ public:
 	void SetFireTime(double Seconds);
 
 	double RadiusM = 60.0;
+	/** Ground relief on (AEmberGroundRelief): items stand on the relief surface (terrain + lift +
+	 *  micro_relief, the same function and parameters the patch draws), not under it. */
+	bool bRelief = false;
+	emberworld::ReliefParams ReliefParams;
+	double ReliefLiftM = 0.03;
+	/** The ground items stand on: the rendered terrain, plus the relief when it is on. */
+	bool GroundZ(double WorldX, double WorldY, double& OutZ) const;
 	/** Cells are built from a queue, nearest first, within BuildBudgetMs per frame (8g hitching);
 	 *  bSyncStreaming (captures) builds everything at once. Pending cells (their finest tile not
 	 *  in yet) rebuild only when the terrain's tiles change. */
