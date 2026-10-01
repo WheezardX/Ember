@@ -490,6 +490,17 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   arrival gradient), foliage colour lerping green -> heat-stressed olive-yellow -> orange-brown ->
   black within one tree, needle loss partial (fraction of foliage collapsed, not all-or-nothing).
   Keep the stand-level proportions; calibrate against the spruce-fir / Three Queens scar stills.
+- **Smoke at distance: columns merge into one thick cloud (Brad, 2026-10-01):** "when we zoom out the
+  individual columns should combine into a denser, thicker cloud like the reference images where
+  the smoke is thick and dominates the sky". Today each plume is drawn separately at every
+  distance. Direction: a far-field smoke representation - neighbouring plumes' upper parts merged
+  into one sheet / cloud mass (fewer, bigger, denser cards, or a volumetric layer) that thickens
+  with total smoke load, and the pall darkening the sky above; columns stay distinct near the
+  camera. References: the Three Queens pall shots, the Glass Fire telephoto.
+- **Night sky: stars, the real sky for place and date (Brad, 2026-10-01):** the atmosphere goes black
+  at night. Add a star field - computed for the fire's latitude / longitude and the replay's
+  date / time (a bright-star catalogue, sidereal rotation; moon phase / position as a light
+  source), dimmed by the smoke pall. Pairs with the night fire look (L_night).
 - **Smoke toggle None / Lite / Full (Brad, 2026-10-01):** smoke v1 stays heavy ("keep the smoke") -
   on the big Jolly days the valley pall makes the overhead views murky, which is realistic. Later a
   player-facing toggle: None (no plumes, no pall), Lite (columns, pall capped), Full (as now).
