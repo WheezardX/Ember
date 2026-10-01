@@ -42,6 +42,8 @@ public:
 	// Facts
 	int32 NumSources = 0;
 	int32 NumPlumes = 0;      // sources that got puffs (strongest first, under MaxPuffs)
+	int32 NumMerged = 0;      // of those, far-field plumes pooled from several sources (facts)
+	double MergeNearM = 3000.0;   // sources closer than this draw as their own columns
 	int32 NumPuffs = 0;
 	double MaxTopM = 0.0;     // highest plume injection height
 

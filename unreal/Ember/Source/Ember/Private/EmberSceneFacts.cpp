@@ -314,6 +314,7 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		SmokeJ->SetNumberField(TEXT("sources"), It->NumSources);
 		SmokeJ->SetNumberField(TEXT("plumes"), It->NumPlumes);
 		SmokeJ->SetNumberField(TEXT("puffs"), It->NumPuffs);
+		SmokeJ->SetNumberField(TEXT("merged_plumes"), It->NumMerged);
 		SmokeJ->SetNumberField(TEXT("max_top_m"), It->MaxTopM);
 		break;
 	}

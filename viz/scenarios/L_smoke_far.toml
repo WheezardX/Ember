@@ -1,0 +1,33 @@
+# Look lab (Brad 2026-10-01): smoke from far away - "when we zoom out the individual columns should
+# combine into a denser, thicker cloud ... the smoke is thick and dominates the sky". The Three Queens
+# Aug 21 run (the IR playback) from 14 km: far beyond the 3 km merge distance, so the front's
+# columns draw as merged far-field plumes. Bigger world than the other L_ scenarios (~1 min).
+render_scenario_version = 1
+
+[scenario]
+name = "L_smoke_far"
+description = "Look lab: the Aug 21 2026 Three Queens run from 14 km (merged far-field smoke vs the pall photos)"
+world = "terrain:three_queens_2026"
+replay = "../../runs/tq26/tq26-ir-playback.replay.json"
+resolution = [1600, 900]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 3000
+exposure_bias = -2.0
+wind_from_deg = 225
+smoke_wind_ms = 5.0
+
+[[bookmarks]]
+name = "far_sw"
+target_frac = [0.628, 0.429]
+distance_m = 14000
+yaw_deg = 45
+pitch_deg = -5
+fov_deg = 60
+sun = "afternoon"
+
+[[captures]]
+name = "far_aug21_886h"       # Aug 21 ~17:30 PDT, the run under way
+bookmark = "far_sw"
+t_s = 3189600
+reference = "../../store/reference/facebook-3q/facebook-3q-undated-78f0f1fc.jpg"

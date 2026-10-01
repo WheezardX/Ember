@@ -100,9 +100,83 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 	TArray<FPuff> All;
 	All.Reserve(MaxPuffs);
 	NumPlumes = 0;
+	NumMerged = 0;
 	MaxTopM = 0.0;
+
+	// Distance merging (Brad 2026-10-01: "when we zoom out the individual columns should combine
+	// into a denser, thicker cloud ... the smoke is thick and dominates the sky"). Sources within
+	// MergeNearM of the camera draw as their own columns; farther out they are pooled into square
+	// cells that double in size with distance (600 m from 3 km, 1.2 km from 6 km, 2.4 km from
+	// 12 km, 4.8 km from 24 km): one wide, dense plume per cell whose base spans the burning area
+	// and whose top spreads into a sheet - so a front's columns read as one mass from afar, and the
+	// far field costs fewer puffs. Weak smoulder wisps are dropped past 6 km (invisible there).
+	const emberworld::Frame& Fr = Terrain->GetFrame();
+	const FVector2D Cam(Fr.anchor_x + CameraLoc.X / 100.0, Fr.anchor_y - CameraLoc.Y / 100.0);
+	struct FDraw { FEmberSmokeSource S; double CellM = 0.0; double W = 0.0; };
+	TArray<FDraw> Draw;
+	TMap<uint64, int32> CellIndex;
 	for (const FEmberSmokeSource& S : Sources)
 	{
+		const double Dist = FVector2D::Distance(Cam, FVector2D(S.X, S.Y));
+		if (Dist < MergeNearM)
+		{
+			Draw.Add({S, 0.0, 0.0});
+			continue;
+		}
+		const int32 Level = FMath::Clamp(FMath::FloorToInt32(FMath::Log2(Dist / MergeNearM)), 0, 3);
+		const bool bWeak = S.Strength < 0.5 && S.Heat <= 0.f;
+		if (bWeak && Level >= 1)
+		{
+			continue;
+		}
+		const double Cell = 600.0 * (1 << Level);
+		const int64 Cx = FMath::FloorToInt64(S.X / Cell), Cy = FMath::FloorToInt64(S.Y / Cell);
+		const uint64 K = (static_cast<uint64>(Level) << 60) ^ (static_cast<uint64>(Cx & 0x3FFFFFFF) << 30) ^ static_cast<uint64>(Cy & 0x3FFFFFFF);
+		const double Q = FMath::Max(0.01, static_cast<double>(S.Strength + S.Heat + S.Smoulder));
+		int32* Found = CellIndex.Find(K);
+		if (!Found)
+		{
+			FDraw D;
+			D.S = S;
+			D.S.X = D.S.Y = 0.0;
+			D.S.Strength = D.S.Heat = D.S.Smoulder = D.S.Burning = 0.f;
+			D.S.Cluster = D.S.HeatCluster = 0.f;
+			// stable per cell (seeds the puffs); high bit keeps it clear of the 300 m bin keys
+			D.S.Key = static_cast<int32>(0x40000000u | static_cast<uint32>(HashCombine(GetTypeHash(K), 0x5EED)) & 0x3FFFFFFFu);
+			D.CellM = Cell;
+			Found = &CellIndex.Add(K, Draw.Add(D));
+		}
+		FDraw& D = Draw[*Found];
+		D.S.X += S.X * Q;
+		D.S.Y += S.Y * Q;
+		D.W += Q;
+		D.S.Strength += S.Strength;
+		D.S.Heat += S.Heat;
+		D.S.Smoulder += S.Smoulder;
+		D.S.Burning += S.Burning;
+		D.S.Cluster = FMath::Max(D.S.Cluster, S.Cluster);
+		D.S.HeatCluster = FMath::Max(D.S.HeatCluster, S.HeatCluster);
+	}
+	for (FDraw& D : Draw)
+	{
+		if (D.CellM > 0.0)
+		{
+			D.S.X /= D.W;
+			D.S.Y /= D.W;
+			++NumMerged;
+		}
+	}
+	// strongest first (the puff budget goes to the plumes that matter)
+	Draw.Sort([](const FDraw& A, const FDraw& B)
+	{
+		const double Qa = A.S.Strength + A.S.Heat, Qb = B.S.Strength + B.S.Heat;
+		return Qa != Qb ? Qa > Qb : A.S.Key < B.S.Key;
+	});
+
+	for (const FDraw& Dw : Draw)
+	{
+		const FEmberSmokeSource& S = Dw.S;
+		const double Cell = Dw.CellM;           // > 0: a merged far-field plume
 		// A bin with no flaming front left only smoulders: a low, lazy wisp (v1, reference:
 		// IR scattered heat over most of the scar for weeks).
 		// Interior (observed heat, no front here): pockets burning inside the scar stand up as their
@@ -143,12 +217,25 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 		const double W0 = bSmoulder ? 1.5 : (bInterior ? 4.0 : 6.0) + 3.0 * FMath::Sqrt(H / 100.0);
 		const double Tau = H / W0;
 		const double Life = FMath::Max(L / WindMs, 3.0 * Tau);        // puff lifetime (s)
-		const double R0 = bSmoulder ? 40.0 : bInterior ? 45.0 + 6.0 * SqQ : 60.0 + 7.0 * SqQ;  // ~a bin across at full strength
-		const double Base = bSmoulder ? 0.22 * (1.0 - FMath::Exp(-Q / 3.0))
+		double R0 = bSmoulder ? 40.0 : bInterior ? 45.0 + 6.0 * SqQ : 60.0 + 7.0 * SqQ;  // ~a bin across at full strength
+		double Base = bSmoulder ? 0.22 * (1.0 - FMath::Exp(-Q / 3.0))
 			: (bInterior ? 0.75 : 0.9) * (1.0 - FMath::Exp(-Q / 4.0));  // dense columns, faint wisps
+		if (Cell > 0.0)
+		{
+			// merged: as wide as a good part of its cell, and denser (several columns' worth of smoke)
+			R0 = FMath::Max(R0, 0.3 * Cell);
+			Base = FMath::Min(0.97, Base * 1.15 + 0.05);
+		}
 		// Enough puffs that neighbours always overlap (spacing ~0.4 x the mid-plume radius).
 		const double RMid = R0 + 0.05 * L + 0.06 * H;   // matches the v1 (smaller) puff radius
-		const int32 K = bSmoulder ? 8 : FMath::Clamp(FMath::CeilToInt32((L + H) / (0.25 * RMid)), 8, 192);
+		// The rising column gets its own puffs, evenly spaced in HEIGHT (v2, the lab: spaced evenly in
+		// time over the whole drift, consecutive puffs were ~800 m apart in the fast-rising column, so
+		// the lower column was empty and plumes floated; merged plumes broke into blobs).
+		const double RCol = R0 + 0.06 * H;
+		const int32 Kc = bSmoulder ? 0 : FMath::Clamp(FMath::CeilToInt32(H / (0.45 * RCol)), 6, 64);
+		const int32 K = bSmoulder ? 8 : Kc + FMath::Clamp(FMath::CeilToInt32(L / (0.25 * RMid)), 6, 160);
+		const double Uc = static_cast<double>(Kc) / K;     // life fraction where the column ends
+		const double Tc = 3.0 * Tau;                        // ~95 % of the rise
 		if (All.Num() + K > MaxPuffs)
 		{
 			break;
@@ -171,30 +258,51 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 			// even spacing in life left them apart as a row of discs; still a monotonic, continuous
 			// map, so puffs keep moving smoothly and keep their seeds. Opacity follows the spacing
 			// (u^2 without it doubled the base density into a wall).
+			// Life fraction U -> puff age T, monotonic and continuous (puffs keep moving smoothly and
+			// keep their seeds): U < Uc climbs the column with height uniform in U (z = 0.95 H U / Uc,
+			// T = -Tau ln(1 - z / H)), U >= Uc drifts linearly in time from Tc to Life.
 			const double U = (I + Cycle) / K;
-			const double F = bSmoulder ? U : FMath::Pow(U, 1.5);
-			const double Pack = bSmoulder ? 1.0 : FMath::Clamp(1.5 * FMath::Sqrt(U), 0.5, 1.0);
-			const double T = F * Life;                                 // puff age (s)
+			double T;
+			if (bSmoulder || Kc == 0)
+			{
+				T = U * Life;
+			}
+			else if (U < Uc)
+			{
+				T = -Tau * FMath::Loge(1.0 - 0.95 * U / Uc);
+			}
+			else
+			{
+				T = Tc + (U - Uc) / FMath::Max(1e-6, 1.0 - Uc) * FMath::Max(0.0, Life - Tc);
+			}
+			const double F = T / Life;                                 // life fraction (fade-out)
+			const double Pack = 1.0;
 			const double D = FMath::Min(WindMs * T, L);                // downwind distance (m)
 			const double Z = H * (1.0 - FMath::Exp(-T / Tau));         // buoyant rise to the top
 			// Entrainment widens the column as it climbs; the top spreads (cauliflower / anvil).
 			// (v1: smaller puffs than the column is wide, so billows read instead of one blur)
 			// (interior columns stay narrow - the reference ones are a few hundred m wide - and
 			// spread downwind rather than into a cap)
+			// (merged far-field plumes: the top spreads much wider into a sheet that joins its
+			// neighbours' - the "thick cloud dominating the sky" of the reference pall shots)
 			const double R = bInterior ? R0 + 0.12 * D + 0.06 * Z + 0.05 * H * SmoothStep(0.7, 1.0, Z / H)
+				: Cell > 0.0 ? R0 + 0.1 * D + 0.15 * Z + 0.6 * H * SmoothStep(0.45, 1.0, Z / H)
 				: R0 + 0.1 * D + 0.12 * Z + 0.15 * H * SmoothStep(0.7, 1.0, Z / H);
 			const uint32 Seed = static_cast<uint32>(Wraps - I);
 			const double H1 = Hash01(S.Key, Seed * 4u + 1u);
 			const double H2 = Hash01(S.Key, Seed * 4u + 2u);
 			const double H3 = Hash01(S.Key, Seed * 4u + 3u);
-			const double Lat = (H1 - 0.5) * R * 0.9;
+			// merged: puffs leave from anywhere along the cell's front (a wall of smoke, not one column)
+			const double Lat = (H1 - 0.5) * (R * 0.9 + (Cell > 0.0 ? 0.9 * Cell : 0.0));
 			const double Wx = S.X + Ux * D - Uy * Lat;
 			const double Wy = S.Y + Uy * D + Ux * Lat;
 			const double Wz = Gz + Z + R * 0.5 + (H2 - 0.5) * R * 0.5;
 
 			// Fade in as the column forms (no discs on the ground), thin out downwind.
 			// (and by height: low puffs in a shaded valley read as a row of grey discs at the column base)
-			const double Life01 = SmoothStep(0.0, 7.0 * R0, FMath::Sqrt(D * D + Z * Z)) * SmoothStep(0.0, 3.0 * R0, Z)
+			// (v2, the lab: fading over 7 R0 / 3 R0 left the lower column empty - the plumes floated
+			// as clouds with nothing under them; the reference smoke is thick right off the flames)
+			const double Life01 = SmoothStep(0.0, 2.5 * R0, FMath::Sqrt(D * D + Z * Z)) * SmoothStep(-0.5 * R0, 1.2 * R0, Z)
 				* (1.0 - SmoothStep(0.5, 1.0, F));
 			const double Thin = FMath::Max(0.25, FMath::Sqrt(R0 / R));
 			FPuff P;

@@ -19,10 +19,10 @@ exposure_bias = -2.0
 [[bookmarks]]
 name = "smoke_south"
 target_frac = [0.62, 0.30]   # front / scar from the lab fire arrival field
-distance_m = 800
+distance_m = 1500
 yaw_deg = 20
-pitch_deg = -2
-fov_deg = 60
+pitch_deg = -8
+fov_deg = 70
 sun = "afternoon"
 
 

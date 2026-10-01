@@ -191,7 +191,7 @@ def build_material(tex):
 
     col = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -700, -350)
     col.set_editor_property("parameter_name", "Color")
-    col.set_editor_property("default_value", unreal.LinearColor(0.52, 0.5, 0.46, 1.0))  # v1: the reference columns are cream-white in sun
+    col.set_editor_property("default_value", unreal.LinearColor(0.72, 0.7, 0.66, 1.0))  # v2 (look lab vs the Kachess pyrocumulus): sunlit tops near white; 0.52 read dull grey-brown
     gcol = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -700, 300)
     gcol.set_editor_property("parameter_name", "GlowColor")
     gcol.set_editor_property("default_value", unreal.LinearColor(4.0, 0.9, 0.15, 1.0))

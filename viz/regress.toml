@@ -22,4 +22,4 @@ scenarios = [
 # look: the look-lab scenarios (viz/scenarios/L_*.toml, small teanaway_dev fixture) - ~3 min,
 # for look tweaks (`ember-dev look L_x` for one at a time with the reference sheet).
 [look]
-scenarios = ["L_ground", "L_trees", "L_trees_stand", "L_flames", "L_night", "L_smoke", "L_scar"]
+scenarios = ["L_ground", "L_trees", "L_trees_stand", "L_flames", "L_night", "L_smoke", "L_smoke_far", "L_scar"]
