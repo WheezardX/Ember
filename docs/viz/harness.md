@@ -222,6 +222,17 @@ reviewer — human or model — looks at. The verdict JSON is the agent's feedba
 `bless` copies captures over goldens. Only bless after looking at the contact sheet and
 deciding the change is intended; say why in the commit message. Goldens are committed.
 
+## Progression archive (`checkpoints/progression/`)
+
+Every version of every view, kept for pitch timelines (programmer art -> sim -> arted).
+* `ember-dev progression backfill` pulls every historical golden out of git (idempotent).
+* `ember-dev regress --full` archives each view whose capture changed since its last archived
+  image (mean grey diff >= 1.5, so run-to-run noise is skipped) and rebuilds `timeline.html`.
+* `ember-dev progression archive <scenario> <run_dir> --note "..."` archives one run by hand;
+  `ember-dev progression timeline` rebuilds the page.
+* Before/after comparison sheets worth keeping go in `checkpoints/progression/notes/`
+  (`YYYY-MM-DD_<topic>.jpg`, captioned in its README).
+
 ## Gotchas (learned the hard way)
 
 * **Shaders compile lazily in `-game`:** the first run after a build used to capture grey
