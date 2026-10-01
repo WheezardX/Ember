@@ -472,6 +472,10 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   **2026-10-01:** (3) AEmberGroundRelief (hummocks / duff mounds, block-streamed, cover stands on it)
   and (1)+(2) a terrain depth pass (litter height v3, POM to 35 m / 11 cm, cavity AO) - Brad: "much
   improved... we shouldn't waste any more time on it" until the camera decision (overhead vs ground).
+- **Smoke toggle None / Lite / Full (Brad, 2026-10-01):** smoke v1 stays heavy ("keep the smoke") -
+  on the big Jolly days the valley pall makes the overhead views murky, which is realistic. Later a
+  player-facing toggle: None (no plumes, no pall), Lite (columns, pall capped), Full (as now).
+  Hooks: AEmberSmokeActor puff opacity / budget, AEmberEnvironment::SetSmokePall scale.
 - **Charred area too uniform (Brad, 2026-09-30, S_jolly_play fly-around):** every burned tree
   keeps orange needles. In a big fire most stand-replacing areas are burned clean of needles
   (black bare stems and branches) or the trees are consumed / fallen; orange (scorched, dead but

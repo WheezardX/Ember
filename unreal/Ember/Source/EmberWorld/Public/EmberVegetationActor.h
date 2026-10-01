@@ -116,6 +116,8 @@ public:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> SpeciesMaterial;
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> MidMaterial;   // windless twins for the mid tier over a fire
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> LineupParts;
 
 private:

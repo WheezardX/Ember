@@ -90,6 +90,7 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 	SpeciesKeys.Reset();
 	SpeciesMesh.Reset();
 	SpeciesMaterial.Reset();
+	MidMaterial.Reset();
 	IndexToSlot.Reset();
 	SlotFirstMesh.Reset();
 	SlotNumMeshes.Reset();
@@ -153,6 +154,15 @@ bool AEmberVegetationActor::Init(AEmberTerrainActor* InTerrain, FString& OutErro
 					MID->SetVectorParameterValue(TEXT("Color"), SpeciesColor(Key));
 				}
 				SpeciesMaterial.Add(MID);
+				// Mid tier with a fire bound: the same material without wind, so the burned-tree
+				// collapse (WPO) runs there too but stays static (cached shadows) - see BuildCell.
+				UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(Base, this);
+				if (!bGen)
+				{
+					Mid->SetVectorParameterValue(TEXT("Color"), SpeciesColor(Key));
+				}
+				Mid->SetScalarParameterValue(TEXT("WindStrength"), 0.f);
+				MidMaterial.Add(Mid);
 			}
 			IndexToSlot.Add(Slot);
 		}
@@ -446,7 +456,8 @@ void AEmberVegetationActor::BuildCell(uint64 TileKey, int32 CellIndex, ETier Tie
 		const int32 S = MeshSlot[Mi];
 		UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
 		C->SetStaticMesh(SpeciesMesh[Mi]);
-		C->SetMaterial(0, SpeciesMaterial[S]);
+		// Mid tier with a fire: the windless material (burned-tree collapse only, see below)
+		C->SetMaterial(0, (!bNear && bFire && MidMaterial.IsValidIndex(S)) ? MidMaterial[S] : SpeciesMaterial[S]);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetCastShadow(true);
 		C->SetMobility(EComponentMobility::Movable);
@@ -462,6 +473,15 @@ void AEmberVegetationActor::BuildCell(uint64 TileKey, int32 CellIndex, ETier Tie
 			// must cover the whole near tier, or burned trees past WindRadiusM keep their needles
 			// and lose them as the camera approaches (the ground-cover "ring" bug, for trees).
 			C->SetWorldPositionOffsetDisableDistance(static_cast<int32>((bFire ? FMath::Max(WindRadiusM, NearRadiusM + 50.0) : WindRadiusM) * 100.0));
+		}
+		else if (bFire)
+		{
+			// Mid tier over a fire (Brad: charred trees "do the ring behavior that the ground brush
+			// does" - with WPO off out here, burned trees kept full black crowns and stripped to bare
+			// limbs only when they crossed into the near tier). WPO on with the windless material:
+			// the burned-tree collapse only, static between fire updates, so shadows stay cached.
+			C->SetEvaluateWorldPositionOffset(true);
+			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 		}
 		else
 		{
@@ -522,7 +542,9 @@ void AEmberVegetationActor::SetWindTime(double Seconds)
 
 void AEmberVegetationActor::SetFire(UTexture* FireTex, const FLinearColor& FireRect)
 {
-	for (UMaterialInstanceDynamic* M : SpeciesMaterial)
+	TArray<UMaterialInstanceDynamic*> All(SpeciesMaterial);
+	All.Append(MidMaterial);
+	for (UMaterialInstanceDynamic* M : All)
 	{
 		M->SetTextureParameterValue(TEXT("FireTex"), FireTex);
 		M->SetVectorParameterValue(TEXT("FireRect"), FireRect);
@@ -548,7 +570,9 @@ void AEmberVegetationActor::SetFire(UTexture* FireTex, const FLinearColor& FireR
 
 void AEmberVegetationActor::SetFireTime(double Seconds)
 {
-	for (UMaterialInstanceDynamic* M : SpeciesMaterial)
+	TArray<UMaterialInstanceDynamic*> All(SpeciesMaterial);
+	All.Append(MidMaterial);
+	for (UMaterialInstanceDynamic* M : All)
 	{
 		M->SetScalarParameterValue(TEXT("FireTime"), static_cast<float>(Seconds));
 	}
