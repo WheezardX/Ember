@@ -518,6 +518,31 @@ def ref_pair(name: str, run: str = typer.Option(None, "--run", help="Run dir (de
             typer.secho(f"{e['capture']}: {e['error']}", fg=typer.colors.RED)
 
 
+@app.command("ref-add")
+def ref_add(paths: list[Path] = typer.Argument(..., help="Image files or folders"),
+            source: str = typer.Option(..., "--source", help="Library folder, e.g. brad-field, facebook-3q"),
+            licence: str = typer.Option("reference-only", "--licence", help="shippable | reference-only"),
+            credit: str = typer.Option("", "--credit"),
+            tag: list[str] = typer.Option([], "--tag", help="Subject tag (repeatable)"),
+            notes: str = typer.Option("", "--notes")) -> None:
+    """File images into the reference library (downsized, EXIF kept) + manifest rows."""
+    from ember.dev import reference
+
+    rows = reference.add_files(ue.repo_root(), paths, source=source, credit=credit,
+                               licence=licence, tags=tag, notes=notes)
+    for r in rows:
+        typer.echo(f"{r['id']}  {r['w']}x{r['h']}  {'GPS' if 'lat' in r else 'no GPS'}")
+    typer.echo(f"added {len(rows)} (manifest {reference.MANIFEST})")
+
+
+@app.command("ref-sheet")
+def ref_sheet(tag: str = typer.Option(None, "--tag", help="Only images with this tag")) -> None:
+    """Contact sheet of the reference library (local HTML) for keep / reject / tag passes."""
+    from ember.dev import reference
+
+    typer.echo(reference.sheet_html(ue.repo_root(), tag))
+
+
 @app.command("forest-report")
 def forest_report(region: str = typer.Argument(..., help="Terrain region, e.g. three_queens_2026"),
                   out: str = typer.Option(None, "--out",

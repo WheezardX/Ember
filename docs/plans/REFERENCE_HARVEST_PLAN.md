@@ -47,6 +47,14 @@ Notes:
   admins / posters for originals (which also brings EXIF/GPS and might make some shippable).
 - **5-7:** licence filter at the API, credit recorded per image; nothing without a licence field.
 
+## Status
+
+- 2026-09-30: library tooling in (`ember/dev/reference.py`, `ember-dev ref-add`, `ref-sheet`).
+  Kachess album: 142 items screened from thumbnails -> 54 stills filed (people, vehicles,
+  construction, trail-cam, video left out). InciWeb: 59 screened -> 14 filed (smoke columns,
+  smoky valleys, burnout, fuel break, vistas), reference-only until each credit is checked.
+  68 images, 66 MB on disk, ~330 MB fetched (ledger).
+
 ## Order
 
 1. Tooling + #1 + #2 (tonight / next session), contact sheet for Brad.
