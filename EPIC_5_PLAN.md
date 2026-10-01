@@ -574,6 +574,14 @@ iteration I'd expected between runs." Take that as the bar for a review round.
   (hummocks / hollows 10-40 cm at 0.5-3 m, the same field as M_Terrain's hummock normals) and
   micro relief (litter height map, 2-5 cm); shadow-casting; blended into the terrain at the
   edge; ground cover and logs placed on the displaced surface. ~half a day.
+- **Ground cover reads "video game": little tufts evenly dispersed (Brad, same review; on GW2
+  they broke it up with Perlin noise).** worldcore scatter_cover accepts candidates at a flat
+  per-set probability, so density is uniform within a ground set. Direction: modulate each item's
+  density by world-space fbm noise (octaves ~3-20 m, mean 1, clamped >= 0: clumps and bare
+  gaps, same average), a per-item seed / scale and an item-specific clumping strength (ferns and
+  grass strong, rocks mild), some items anti-correlated (grass thins under fern clumps); scale
+  plants larger toward clump centres. World-position driven, so partition-independent (test).
+  Pairs with the displaced ground patch above.
 - **Hung-up trees: "markedly better" (Brad, same review)** - anchoring on a real host works.
 - **Burn mosaic: survivors should cluster, not salt-and-pepper (Brad, same review):** the mix of
   burned-out / charred / untouched is good, and real burns do vary - but single unaffected trees
