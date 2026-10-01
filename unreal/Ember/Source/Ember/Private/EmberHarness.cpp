@@ -4,6 +4,8 @@
 #include "EmberFirebrandActor.h"
 #include "EmberFlameActor.h"
 
+#include "CanvasItem.h"
+#include "Engine/Canvas.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Dom/JsonObject.h"
@@ -107,6 +109,8 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 		bPlay = Mode == TEXT("play");
 	}
 	J->TryGetStringField(TEXT("play_bookmark"), PlayBookmark);
+	bPlayStart = J->TryGetNumberField(TEXT("play_start_s"), PlayStartS);  // null -> the replay's start
+	J->TryGetNumberField(TEXT("play_rate_h"), PlayRateH);
 	J->TryGetBoolField(TEXT("ground_cover"), bGroundCover);
 	J->TryGetBoolField(TEXT("wind_from_replay"), bWindFromReplay);
 	J->TryGetBoolField(TEXT("fire_classes"), bFireClasses);
@@ -842,7 +846,11 @@ void AEmberHarness::StartPlay()
 	PC->bShowMouseCursor = false;
 	if (Fire)
 	{
-		PlayFireS = Fire->EndS;
+		// Open already playing from the scenario's play_start_s (Brad: it opened paused on the last
+		// hour, so the rate keys seemed dead and P restarted three weeks before anything happens).
+		PlayFireS = FMath::Clamp(bPlayStart ? PlayStartS : static_cast<double>(Fire->StartS),
+			static_cast<double>(Fire->StartS), static_cast<double>(Fire->EndS));
+		bFirePlaying = true;
 		SetFireTime(PlayFireS, 0.0);
 	}
 	State = EState::Play;
@@ -893,8 +901,74 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 				PlayFireS = Fire->StartS;
 			}
 		}
-		if (PC->WasInputKeyJustPressed(EKeys::Period)) { PlayFireS += 3600.0; bChanged = true; }
-		if (PC->WasInputKeyJustPressed(EKeys::Comma)) { PlayFireS -= 3600.0; bChanged = true; }
+		// Step , . by the current rate (Brad: the rate only changed playback, so going back was an
+		// hour at a time): a tap moves max(1 h, rate x 1 s); held past 0.3 s it scrubs continuously
+		// at the rate - backwards too.
+		{
+			const bool bFwd = PC->IsInputKeyDown(EKeys::Period), bBack = PC->IsInputKeyDown(EKeys::Comma);
+			const double StepS = FMath::Max(1.0, PlayRateH) * 3600.0;
+			if (PC->WasInputKeyJustPressed(EKeys::Period)) { PlayFireS += StepS; bChanged = true; StepHeldS = 0.0; }
+			if (PC->WasInputKeyJustPressed(EKeys::Comma)) { PlayFireS -= StepS; bChanged = true; StepHeldS = 0.0; }
+			if (bFwd != bBack)
+			{
+				StepHeldS += DeltaSeconds;
+				if (StepHeldS > 0.3)
+				{
+					PlayFireS += (bFwd ? 1.0 : -1.0) * PlayRateH * 3600.0 * DeltaSeconds;
+					bChanged = true;
+				}
+			}
+			else
+			{
+				StepHeldS = 0.0;
+			}
+		}
+		// Timeline bar: Tab shows the cursor; click / drag on the bar sets the time (playback pauses
+		// while dragging and resumes after).
+		if (PC->WasInputKeyJustPressed(EKeys::Tab))
+		{
+			bTimelineCursor = !bTimelineCursor;
+			PC->bShowMouseCursor = bTimelineCursor;
+			if (bTimelineCursor)
+			{
+				FInputModeGameAndUI M;
+				M.SetHideCursorDuringCapture(false);
+				PC->SetInputMode(M);
+			}
+			else
+			{
+				PC->SetInputMode(FInputModeGameOnly());
+			}
+		}
+		{
+			float Mx = 0.f, My = 0.f;
+			const bool bMouse = bTimelineCursor && PC->GetMousePosition(Mx, My);
+			const FBox2D Hit = TimelineRect.ExpandBy(FVector2D(0.0, 10.0));
+			if (bMouse && PC->WasInputKeyJustPressed(EKeys::LeftMouseButton) && TimelineRect.bIsValid
+				&& Hit.IsInside(FVector2D(Mx, My)))
+			{
+				bScrubbing = true;
+				bPlayingBeforeScrub = bFirePlaying;
+				bFirePlaying = false;
+			}
+			if (bScrubbing)
+			{
+				if (bMouse && PC->IsInputKeyDown(EKeys::LeftMouseButton))
+				{
+					PlayFireS = TimeAtTimelineX(Mx);
+					bChanged = true;
+				}
+				else
+				{
+					bScrubbing = false;
+					bFirePlaying = bPlayingBeforeScrub;
+				}
+			}
+		}
+		// Day jumps: a 1,600 h replay is not walked an hour at a time
+		if (PC->WasInputKeyJustPressed(EKeys::PageUp) || PC->WasInputKeyJustPressed(EKeys::N)) { PlayFireS += 86400.0; bChanged = true; }
+		if (PC->WasInputKeyJustPressed(EKeys::PageDown) || PC->WasInputKeyJustPressed(EKeys::B)) { PlayFireS -= 86400.0; bChanged = true; }
+		if (PC->WasInputKeyJustPressed(EKeys::Home)) { PlayFireS = bPlayStart ? PlayStartS : Fire->StartS; bChanged = true; }
 		// Rate: [ ] (Brad: "the playback speed keys don't work") plus - = and the numpad - +, in
 		// case the bracket keys do not reach the client on a keyboard layout / overlay.
 		const bool bFaster = PC->WasInputKeyJustPressed(EKeys::RightBracket) || PC->WasInputKeyJustPressed(EKeys::Equals)
@@ -948,8 +1022,11 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 			TEXT("  Esc       quit"),
 			TEXT("  H         hide / show this help"),
 			TEXT("  L         lamp on / off (inspect dense foliage)"),
-			TEXT("  [ ]  - =  fire playback rate  /2  x2"),
-			TEXT("  ,  .      fire time  -1 h  +1 h"),
+			TEXT("  [ ]  - =  fire rate  /2  x2  (playback speed and the , . step)"),
+			TEXT("  Tab       cursor: click / drag the timeline bar to set the fire time"),
+			TEXT("  Home      fire time back to the start"),
+			TEXT("  B  N      fire time  -1 day  +1 day   (also PgDn PgUp)"),
+			TEXT("  ,  .      fire time  back / forward one rate step (tap), scrub at the rate (hold)"),
 			TEXT("  P         play / pause the fire"),
 			TEXT("  1 - 5     sun: dawn  morning  noon  afternoon  dusk"),
 			TEXT("  G         walk (eye height, follows the ground) / fly"),
@@ -990,6 +1067,114 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 			FlyPawn->SpeedScale, FlyPawn->IsLampOn() ? TEXT("   LAMP") : TEXT(""),
 			DeltaSeconds > 0.f ? 1.0 / DeltaSeconds : 0.0);
 		GEngine->AddOnScreenDebugMessage(9001, 0.f, FColor::White, Status);
+	}
+}
+
+double AEmberHarness::TimeAtTimelineX(double X) const
+{
+	if (!Fire || !TimelineRect.bIsValid)
+	{
+		return PlayFireS;
+	}
+	const double U = FMath::Clamp((X - TimelineRect.Min.X) / FMath::Max(1.0, TimelineRect.Max.X - TimelineRect.Min.X), 0.0, 1.0);
+	return Fire->StartS + U * (Fire->EndS - Fire->StartS);
+}
+
+void AEmberHarness::DrawTimeline(UCanvas* Canvas)
+{
+	if (State != EState::Play || !Fire || !Canvas || Fire->EndS <= Fire->StartS || !GEngine)
+	{
+		return;
+	}
+	// Bottom bar over the whole replay: burned-area growth as a filled curve, a tick per local
+	// midnight (labelled weekly), the IR night flights above the bar, the playhead with its date.
+	const double W = Canvas->ClipX, H = Canvas->ClipY;
+	const double X0 = 60.0, X1 = W - 60.0, BarH = 28.0, Y1 = H - 46.0, Y0 = Y1 - BarH;
+	TimelineRect = FBox2D(FVector2D(X0, Y0), FVector2D(X1, Y1));
+	const double T0 = Fire->StartS, T1 = Fire->EndS;
+	auto XAt = [&](double T) { return X0 + (T - T0) / (T1 - T0) * (X1 - X0); };
+	UFont* Font = GEngine->GetSmallFont();
+
+	auto Box = [&](double Ax, double Ay, double Bx, double By, const FLinearColor& C)
+	{
+		FCanvasTileItem T(FVector2D(Ax, Ay), FVector2D(Bx - Ax, By - Ay), C);
+		T.BlendMode = SE_BLEND_Translucent;
+		Canvas->DrawItem(T);
+	};
+	auto Line = [&](double Ax, double Ay, double Bx, double By, const FLinearColor& C, float Thick)
+	{
+		FCanvasLineItem L(FVector2D(Ax, Ay), FVector2D(Bx, By));
+		L.SetColor(C);
+		L.LineThickness = Thick;
+		Canvas->DrawItem(L);
+	};
+	auto Text = [&](double X, double Y, const FString& S, const FLinearColor& C, bool bCentre)
+	{
+		FCanvasTextItem T(FVector2D(X, Y), FText::FromString(S), Font, C);
+		T.bCentreX = bCentre;
+		T.EnableShadow(FLinearColor::Black);
+		Canvas->DrawItem(T);
+	};
+
+	Box(X0 - 6, Y0 - 22, X1 + 6, Y1 + 24, FLinearColor(0.f, 0.f, 0.f, 0.45f));
+	Box(X0, Y0, X1, Y1, FLinearColor(0.08f, 0.08f, 0.09f, 0.85f));
+	// Growth: burned area so far, scaled to the final area (a column every 2 px)
+	const TArray<float>& G = Fire->GrowthHa;
+	const float MaxHa = G.Num() ? FMath::Max(1.f, G.Last()) : 1.f;
+	for (double X = X0; X < X1; X += 2.0)
+	{
+		const double T = T0 + (X - X0) / (X1 - X0) * (T1 - T0);
+		const int32 Hr = FMath::Clamp(static_cast<int32>(T / 3600.0), 0, FMath::Max(0, G.Num() - 1));
+		const double F = G.Num() ? G[Hr] / MaxHa : 0.0;
+		if (F > 0.0)
+		{
+			const bool bPast = T <= PlayFireS;
+			Box(X, Y1 - F * BarH, X + 2.0, Y1, bPast ? FLinearColor(0.95f, 0.45f, 0.12f, 0.9f) : FLinearColor(0.55f, 0.3f, 0.15f, 0.45f));
+		}
+	}
+	// Local midnights (UTC-7 in fire season) and weekly date labels
+	static const TCHAR* Months[] = {TEXT("Jan"), TEXT("Feb"), TEXT("Mar"), TEXT("Apr"), TEXT("May"), TEXT("Jun"),
+		TEXT("Jul"), TEXT("Aug"), TEXT("Sep"), TEXT("Oct"), TEXT("Nov"), TEXT("Dec")};
+	const int64 LocalOff = -7 * 3600;
+	const int64 FirstMid = ((Fire->T0Unix + LocalOff) / 86400 + 1) * 86400 - LocalOff;  // unix of the first local midnight
+	for (int64 U = FirstMid, N = 0; U - Fire->T0Unix <= T1; U += 86400, ++N)
+	{
+		const double X = XAt(static_cast<double>(U - Fire->T0Unix));
+		const FDateTime D = FDateTime::FromUnixTimestamp(U + LocalOff);
+		const bool bLabel = D.GetDayOfWeek() == EDayOfWeek::Monday;
+		Line(X, Y1, X, Y1 + (bLabel ? 7.0 : 4.0), FLinearColor(0.7f, 0.7f, 0.7f, 0.8f), 1.f);
+		if (bLabel)
+		{
+			Text(X, Y1 + 8.0, FString::Printf(TEXT("%s %d"), Months[D.GetMonth() - 1], D.GetDay()), FLinearColor(0.8f, 0.8f, 0.8f), true);
+		}
+	}
+	// IR flights (NIROPS): cyan ticks above the bar
+	for (const int64 U : Fire->GetHeatFlightsUnix())
+	{
+		const double X = XAt(static_cast<double>(U - Fire->T0Unix));
+		Line(X, Y0 - 5.0, X, Y0, FLinearColor(0.3f, 0.85f, 1.f, 0.9f), 1.f);
+	}
+	// Playhead + its date / time and the burned area
+	const double Px = XAt(PlayFireS);
+	Line(Px, Y0 - 8.0, Px, Y1 + 3.0, FLinearColor::White, 2.f);
+	const int32 Hr = FMath::Clamp(static_cast<int32>(PlayFireS / 3600.0), 0, FMath::Max(0, G.Num() - 1));
+	const FString Head = FString::Printf(TEXT("%s   %.0f h   %s ac"), *PacificTime(Fire->T0Unix + static_cast<int64>(PlayFireS)),
+		PlayFireS / 3600.0, *FText::AsNumber(FMath::RoundToInt(G.Num() ? G[Hr] * 2.4710538f : 0.f)).ToString());
+	Text(FMath::Clamp(Px, X0 + 120.0, X1 - 120.0), Y0 - 22.0, Head, FLinearColor(1.f, 0.85f, 0.6f), true);
+	Text(X0, Y0 - 22.0, bTimelineCursor ? TEXT("Tab: back to flying") : TEXT("Tab: timeline cursor"), FLinearColor(0.6f, 0.6f, 0.6f), false);
+	// Hover readout while the cursor is out
+	if (bTimelineCursor)
+	{
+		if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+		{
+			float Mx = 0.f, My = 0.f;
+			if (PC->GetMousePosition(Mx, My) && TimelineRect.ExpandBy(FVector2D(0.0, 10.0)).IsInside(FVector2D(Mx, My)))
+			{
+				const double T = TimeAtTimelineX(Mx);
+				Line(Mx, Y0, Mx, Y1, FLinearColor(1.f, 1.f, 1.f, 0.4f), 1.f);
+				Text(Mx, Y0 - 40.0, PacificTime(Fire->T0Unix + static_cast<int64>(T)), FLinearColor(0.85f, 0.85f, 0.85f), true);
+			}
+		}
 	}
 }
 

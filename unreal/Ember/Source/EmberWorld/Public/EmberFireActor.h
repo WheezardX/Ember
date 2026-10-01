@@ -125,6 +125,10 @@ public:
 	FString HeatFlightUtc;        // flight shown (facts); empty = none within HeatMaxAgeH
 	double HeatAgeH = -1.0;
 	int64 HeatCells[4] = {0, 0, 0, 0};  // cells per class shown: 1 isolated, 2 scattered, 3 intense
+	/** IR flight times (unix s, ascending) - the play timeline marks them. */
+	const TArray<int64>& GetHeatFlightsUnix() const { return HeatUnix; }
+	/** Burned area (ha) at each whole hour since t0, from the final arrival field: the timeline's growth curve. */
+	TArray<float> GrowthHa;
 	static constexpr double HeatMaxAgeH = 72.0;
 	static constexpr double HeatDecayH = 48.0;
 

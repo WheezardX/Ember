@@ -8,6 +8,7 @@
 
 #include "EmberEnvironment.h"
 #include "EmberHarness.h"
+#include "EmberHUD.h"
 #include "EmberTerrainActor.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogEmberGame, Log, All);
@@ -15,6 +16,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogEmberGame, Log, All);
 AEmberGameMode::AEmberGameMode()
 {
 	DefaultPawnClass = ASpectatorPawn::StaticClass();  // play mode swaps in AEmberFlyPawn
+	HUDClass = AEmberHUD::StaticClass();               // play mode's fire timeline (draws nothing otherwise)
 }
 
 void AEmberGameMode::StartPlay()

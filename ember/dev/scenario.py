@@ -187,6 +187,10 @@ class ScenarioMeta(_Strict):
     wind_from_deg: float = 270.0
     smoke: bool = True           # replay scenarios: smoke v0 plumes (bend with wind_from_deg)
     smoke_wind_ms: float = 8.0   # plume drift speed (m/s)
+    # Play mode (replay scenarios): the fire time the client opens at, already playing, and the
+    # starting rate (replay hours per real second). None = the replay's start.
+    play_start_s: float | None = None
+    play_rate_h: float = 6.0
     firebrands: bool = True      # replay scenarios: spot-fire ember showers + new spot glows (H4-4)
     flames: bool = True          # replay scenarios: eye-level flame cards near the camera (H4-5)
     veg_lineup: bool = False    # B3 silhouette sheet: one tree per species at the first capture's

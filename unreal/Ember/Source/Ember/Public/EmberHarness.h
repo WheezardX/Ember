@@ -35,6 +35,8 @@ public:
 	bool Start(const FString& PlanPath, AEmberEnvironment* Env);
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
+	/** Play mode: the fire timeline bar (AEmberHUD calls this every frame). */
+	void DrawTimeline(class UCanvas* Canvas);
 
 private:
 	struct FBookmark
@@ -93,7 +95,16 @@ private:
 	bool bFirePlaying = false;
 	bool bShowHelp = true;
 	double PlayFireS = 0.0;       // replay time (s)
-	double PlayRateH = 1.0;       // replay hours per real second while playing
+	double PlayRateH = 6.0;       // replay hours per real second while playing (plan: play_rate_h)
+	double PlayStartS = 0.0;      // plan: play_start_s - where play mode opens (playing)
+	bool bPlayStart = false;
+	// Timeline bar (bottom of the screen): Tab shows the cursor; click / drag on the bar scrubs.
+	bool bTimelineCursor = false;
+	bool bScrubbing = false;
+	bool bPlayingBeforeScrub = false;
+	double StepHeldS = 0.0;       // how long , or . has been held (hold = continuous scrub)
+	FBox2D TimelineRect = FBox2D(ForceInit);  // bar in viewport pixels (last layout)
+	double TimeAtTimelineX(double X) const;
 	double PlayClock = 0.0;       // wind / flicker clock
 	int32 SunIndex = -1;
 	UPROPERTY(Transient) TObjectPtr<class AEmberFlyPawn> FlyPawn;

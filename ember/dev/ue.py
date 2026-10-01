@@ -239,6 +239,8 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "wind_from_deg": s.scenario.wind_from_deg,
         "smoke": s.scenario.smoke,
         "smoke_wind_ms": s.scenario.smoke_wind_ms,
+        "play_start_s": s.scenario.play_start_s,
+        "play_rate_h": s.scenario.play_rate_h,
         "firebrands": s.scenario.firebrands,
         "flames": s.scenario.flames,
         "veg_lineup": s.scenario.veg_lineup,

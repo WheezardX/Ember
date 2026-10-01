@@ -69,7 +69,10 @@ void AEmberFlyPawn::Tick(float DeltaSeconds)
 	}
 	// Look: raw mouse deltas (no input-mapping assets: content-free project).
 	float Mx = 0.f, My = 0.f;
-	PC->GetInputMouseDelta(Mx, My);
+	if (!PC->bShowMouseCursor)  // cursor out (Tab: the timeline) - the mouse points, it does not look
+	{
+		PC->GetInputMouseDelta(Mx, My);
+	}
 	FRotator R = PC->GetControlRotation();
 	R.Yaw += Mx * LookSensitivity * 10.f;
 	R.Pitch = FMath::Clamp(FRotator::NormalizeAxis(R.Pitch + My * LookSensitivity * 10.f), -89.f, 89.f);

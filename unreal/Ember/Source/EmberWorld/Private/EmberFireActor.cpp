@@ -93,6 +93,25 @@ bool AEmberFireActor::Load(const FString& ReplayPath, AEmberTerrainActor* Terrai
 			bIntensityReported = End.phase[I] >= emberworld::fire::Burning && End.intensity[I] >= 2;
 		}
 	}
+	{
+		// Growth curve (play timeline): cells arrived by each whole hour, as hectares.
+		const int32 Hours = FMath::Max(1, EndS / 3600 + 1);
+		GrowthHa.SetNumZeroed(Hours);
+		for (const int32_t A : Stream.final_arrival())
+		{
+			if (A >= 0)
+			{
+				GrowthHa[FMath::Clamp((A + 3599) / 3600, 0, Hours - 1)] += 1.f;
+			}
+		}
+		const float CellHa = static_cast<float>(CellM * CellM / 1e4);
+		float Sum = 0.f;
+		for (float& G : GrowthHa)
+		{
+			Sum += G;
+			G = Sum * CellHa;
+		}
+	}
 	SpotsTotal = static_cast<int32>(Stream.spots().size());
 	SpotsIgnitedTotal = 0;
 	for (const emberworld::fire::Spot& S : Stream.spots())

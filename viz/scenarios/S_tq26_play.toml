@@ -8,7 +8,8 @@
 #   555-600   Aug 8-9 runs to 2,478 ac
 #   879-891   Aug 21 afternoon / night crown run (+2,500 ac; held until noon Aug 21 - see the ingest)
 #   891-1610  Red Mountain, then the long tail to Sep 20
-# Play starts at the first capture (aug6_wake). Constant weather (playback) - no wind in the replay.
+# Play opens at 500 h (Aug 5 PDT afternoon, ~9 h before the fire wakes), already playing at 6 h/s
+# (Aug 9 in ~16 s, the Aug 21 run in ~65 s). Constant weather (playback) - no wind in the replay.
 # Reference: docs/reference/THREE_QUEENS_2026_TIMELINE.md
 render_scenario_version = 1
 
@@ -27,6 +28,8 @@ exposure_bias = -2.0
 # August afternoon SW breeze; the reference columns lean NE off the ridges.
 wind_from_deg = 225
 smoke_wind_ms = 5.0
+play_start_s = 1800000       # 500 h - the holdover is three quiet weeks before this
+play_rate_h = 6.0
 
 [[bookmarks]]
 name = "aug6_wake"            # the summit holdover from the SE, Lake Kachess behind the camera
