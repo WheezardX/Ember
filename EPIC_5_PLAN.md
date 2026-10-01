@@ -474,6 +474,10 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   cell turns near-tier. Other candidates: mid-tier understory cull (MidMinHeightM) or the
   ground-cover radius edge. Fix direction if confirmed: collapse consumed plants on the CPU
   (scale / skip in the cell build) instead of in WPO.
+  CAUSE FOUND (2026-09-30, Brad: "a ring of living ground cover in burned-out areas"): ground
+  cover is drawn to RadiusM + CellM but its WPO (wind + Consume collapse) was disabled beyond
+  RadiusM, so burned cover stood full and green in that band - and collapsed as the camera came
+  within RadiusM. Fix: WPO disable distance = RadiusM + 2 x CellM (EmberGroundCoverActor).
 - **Palette vs NAIP (8i R2 first read, 2026-09-30):** timber renders too dark and ~2x too
   saturated green, grass too yellow-green, rock too dark and grey (NAIP: bright, warm), water
   too dark and not blue. Targets for the ground / look work.

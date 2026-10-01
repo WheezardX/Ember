@@ -236,7 +236,10 @@ void AEmberGroundCoverActor::BuildCell(const FIntPoint& Key, FCoverCell& Cell)
 		C->SetMobility(EComponentMobility::Movable);
 		C->InstancingRandomSeed = static_cast<int32>((uint32(Key.X) * 73856093u) ^ (uint32(Key.Y) * 19349663u) ^ uint32(Mi)) | 1;
 		C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Always;  // wind WPO
-		C->SetWorldPositionOffsetDisableDistance(static_cast<int32>(RadiusM * 100.0));
+		// WPO (wind + the burned-plant collapse, M_Veg Consume) must reach as far as cover is
+		// drawn: with WPO cut at RadiusM but cells drawn to RadiusM + CellM, burned cover stood
+		// full and green in a ring around the camera (Brad, S_jolly_play).
+		C->SetWorldPositionOffsetDisableDistance(static_cast<int32>((RadiusM + 2.0 * CellM) * 100.0));
 		C->SetCullDistances(0, static_cast<int32>((RadiusM + CellM) * 100.0));
 		C->bAffectDistanceFieldLighting = false;
 		C->NumCustomDataFloats = 1;
