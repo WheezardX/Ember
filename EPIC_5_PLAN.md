@@ -565,6 +565,10 @@ In order:
    re-check in wind.
 5. Burned area mosaic (bare black stems / consumed / fallen / scorched fringe / survivors).
 
+**Review 2026-09-30 evening (Brad, S_jolly_play after steps 3-5):** "BIG improvement. More
+litter, more chaos. Non-uniform burn, trees hanging up correctly ... this is the level of
+iteration I'd expected between runs." Take that as the bar for a review round.
+
 Deferred until reference material exists: smoke volume (column, pall, interior smoke) and
 smouldering logs (smoke / ash). Waiting: river / shore edges, fire lines and fuel removal,
 determinism of three close-up views, class legibility from altitude.
