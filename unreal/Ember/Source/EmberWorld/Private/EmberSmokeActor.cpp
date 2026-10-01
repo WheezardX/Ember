@@ -77,7 +77,9 @@ void AEmberSmokeActor::SetSources(const TArray<FEmberSmokeSource>& InSources)
 	// Strongest first: the puff budget goes to the plumes that matter.
 	Sources.Sort([](const FEmberSmokeSource& A, const FEmberSmokeSource& B)
 	{
-		return A.Strength != B.Strength ? A.Strength > B.Strength : A.Key < B.Key;
+		if (A.Strength != B.Strength) return A.Strength > B.Strength;
+		if (A.Smoulder != B.Smoulder) return A.Smoulder > B.Smoulder;
+		return A.Key < B.Key;
 	});
 	NumSources = Sources.Num();
 }
@@ -100,7 +102,10 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 	MaxTopM = 0.0;
 	for (const FEmberSmokeSource& S : Sources)
 	{
-		const double Q = S.Strength;
+		// A bin with no flaming front left only smoulders: a low, lazy wisp (v1, reference:
+		// IR scattered heat over most of the scar for weeks).
+		const bool bSmoulder = S.Strength < 0.5;
+		const double Q = bSmoulder ? S.Smoulder : S.Strength;
 		const double SqQ = FMath::Sqrt(Q);
 		double Gz = 0.0;
 		if (!Terrain->GroundHeightAt(S.X, S.Y, Gz))
@@ -108,15 +113,24 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 			continue;
 		}
 		// Neighbouring bins burn as one convective column: height from the 1.5 km cluster.
-		const double H = FMath::Clamp(90.0 * FMath::Sqrt(static_cast<double>(S.Cluster)), 150.0, 4000.0);
+		// Columns (v1): the reference columns stand 1-3 km+ over every active area; 90 x sqrt
+		// (cluster) gave ~500 m tops on the real Three Queens record.
+		const double H = bSmoulder ? FMath::Clamp(60.0 + 40.0 * SqQ, 60.0, 300.0)
+			: FMath::Clamp(250.0 * FMath::Sqrt(static_cast<double>(S.Cluster)), 300.0, 5000.0);
 		MaxTopM = FMath::Max(MaxTopM, H);
-		const double L = FMath::Clamp(6.0 * H, 1500.0, 18000.0);     // plume length before it thins out
-		const double Life = L / WindMs;                              // puff lifetime (s)
-		const double R0 = 60.0 + 7.0 * SqQ;                        // ~a bin across at full strength
-		const double Base = 0.5 * (1.0 - FMath::Exp(-Q / 25.0));    // weak sources: faint wisps
+		const double L = bSmoulder ? FMath::Clamp(10.0 * H, 600.0, 3000.0)
+			: FMath::Clamp(6.0 * H, 1500.0, 18000.0);                // plume length before it thins out
+		// Buoyant rise (v1, reference: the columns over Kachess stand near-vertical for a km or
+		// more before they lean): rise speed W0 against the wind, e-folding time Tau to the top.
+		const double W0 = bSmoulder ? 1.5 : 6.0 + 3.0 * FMath::Sqrt(H / 100.0);
+		const double Tau = H / W0;
+		const double Life = FMath::Max(L / WindMs, 3.0 * Tau);        // puff lifetime (s)
+		const double R0 = bSmoulder ? 40.0 : 60.0 + 7.0 * SqQ;      // ~a bin across at full strength
+		const double Base = bSmoulder ? 0.22 * (1.0 - FMath::Exp(-Q / 3.0))
+			: 0.9 * (1.0 - FMath::Exp(-Q / 4.0));                    // dense columns, faint wisps
 		// Enough puffs that neighbours always overlap (spacing ~0.4 x the mid-plume radius).
-		const double RMid = R0 + 0.06 * L + 0.125 * H;
-		const int32 K = FMath::Clamp(FMath::CeilToInt32(L / (0.25 * RMid)), 8, 96);
+		const double RMid = R0 + 0.05 * L + 0.06 * H;   // matches the v1 (smaller) puff radius
+		const int32 K = bSmoulder ? 8 : FMath::Clamp(FMath::CeilToInt32((L + H) / (0.25 * RMid)), 8, 192);
 		if (All.Num() + K > MaxPuffs)
 		{
 			break;
@@ -132,9 +146,12 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 		for (int32 I = 0; I < K; ++I)
 		{
 			const double F = (I + Cycle) / K;                          // life fraction 0..1
-			const double D = F * L;                                    // downwind distance (m)
-			const double Z = H * (1.0 - FMath::Exp(-D / (0.8 * H)));   // bent-over rise
-			const double R = R0 + 0.12 * D + 0.25 * Z;
+			const double T = F * Life;                                 // puff age (s)
+			const double D = FMath::Min(WindMs * T, L);                // downwind distance (m)
+			const double Z = H * (1.0 - FMath::Exp(-T / Tau));         // buoyant rise to the top
+			// Entrainment widens the column as it climbs; the top spreads (cauliflower / anvil).
+			// (v1: smaller puffs than the column is wide, so billows read instead of one blur)
+			const double R = R0 + 0.1 * D + 0.12 * Z + 0.15 * H * SmoothStep(0.7, 1.0, Z / H);
 			const uint32 Seed = static_cast<uint32>(Wraps - I);
 			const double H1 = Hash01(S.Key, Seed * 4u + 1u);
 			const double H2 = Hash01(S.Key, Seed * 4u + 2u);
@@ -145,7 +162,7 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 			const double Wz = Gz + Z + R * 0.5 + (H2 - 0.5) * R * 0.5;
 
 			// Fade in as the column forms (no discs on the ground), thin out downwind.
-			const double Life01 = SmoothStep(0.0, 3.0 * R0, D) * (1.0 - SmoothStep(0.5, 1.0, F));
+			const double Life01 = SmoothStep(0.0, 7.0 * R0, FMath::Sqrt(D * D + Z * Z)) * (1.0 - SmoothStep(0.5, 1.0, F));
 			const double Thin = FMath::Max(0.25, FMath::Sqrt(R0 / R));
 			FPuff P;
 			P.Loc = Terrain->WorldToUE(Wx, Wy, Wz);
@@ -159,7 +176,9 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 			P.Dist2 = FVector::DistSquared(P.Loc, CameraLoc);
 			// A card around the camera would fill the screen: fade puffs we are inside.
 			const double DistM = FMath::Sqrt(P.Dist2) / 100.0;
-			P.Data[0] *= static_cast<float>(SmoothStep(0.6 * R, 1.6 * R, DistM));
+			// v1: and thin big puffs as the camera nears them - inside a heavy plume the stacked cards
+			// made a solid wall; the reference pall still shows the terrain through it.
+			P.Data[0] *= static_cast<float>(SmoothStep(0.6 * R, 1.6 * R, DistM) * (0.35 + 0.65 * SmoothStep(0.0, 4.0 * R, DistM)));
 			All.Add(P);
 		}
 	}

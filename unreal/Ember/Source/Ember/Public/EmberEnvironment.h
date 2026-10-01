@@ -49,6 +49,10 @@ public:
 	/** Haze (exponential height fog): density, height falloff, start distance (m), and the UE
 	 *  height the fog is densest at (the valley floor). Density 0 turns the fog off. */
 	void SetHaze(float Density, float Falloff, float StartM, double BaseUEZ);
+	/** Fire smoke over the region (smoke v1), 0 = none .. 1 = the heaviest pall: a smoke layer
+	 *  filling the valleys (the fog's second layer), browner haze, a dimmer, redder sun. */
+	void SetSmokePall(float Pall01);
+	float SmokePall = 0.f;
 
 	UPROPERTY(Transient) TObjectPtr<ADirectionalLight> Sun;
 	UPROPERTY(Transient) TObjectPtr<ASkyLight> Sky;

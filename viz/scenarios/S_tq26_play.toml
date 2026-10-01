@@ -34,11 +34,11 @@ fov_deg = 55
 sun = "morning"
 
 [[bookmarks]]
-name = "aug21_run"            # the Aug 21 run (burning centroid at 890 h) from the SW, 3.5 km out
+name = "aug21_run"            # the Aug 21 run (burning centroid at 890 h) from the SW, 9 km out (3.5 km sat inside the column)
 target_frac = [0.628, 0.429]
-distance_m = 3500
+distance_m = 9000
 yaw_deg = 45
-pitch_deg = -28
+pitch_deg = -12
 fov_deg = 55
 sun = "afternoon"
 
@@ -60,6 +60,24 @@ pitch_deg = -40
 fov_deg = 55
 sun = "afternoon"
 
+[[bookmarks]]
+name = "shore_aug9"           # ref: inciweb-3q 2026-08-09 "from Lake Kachess Road just south of the campground"
+camera_xy = [633450.0, 5246170.0]   # on the lake (2 km up the hero aerial's line), looking NNW (approximate: no GPS)
+camera_agl_m = 2.0
+yaw_deg = 340
+pitch_deg = 12
+fov_deg = 62
+sun = "afternoon"
+
+[[bookmarks]]
+name = "hero_up_lake"         # ref: the incident's aerial up Lake Kachess, columns off both shores
+camera_xy = [633800.0, 5244200.0]
+camera_alt_m = 2200
+yaw_deg = 350
+pitch_deg = -18
+fov_deg = 60
+sun = "afternoon"
+
 [[captures]]
 name = "aug6_wake_506h"       # Aug 5 23:28 PDT - the night before the first Aug 6 detections
 bookmark = "aug6_wake"
@@ -74,6 +92,32 @@ t_s = 3204000
 name = "kachess_aug9_594h"
 bookmark = "kachess_hero"
 t_s = 2138400
+
+[[captures]]
+name = "shore_aug9_594h"      # Aug 9 ~15:30 PDT
+bookmark = "shore_aug9"
+t_s = 2138400
+reference = "../../store/reference/inciweb-3q/inciweb-3q-2026-08-09-f00a39f8.jpg"
+
+[[captures]]
+name = "hero_aug11_642h"      # Aug 11 ~15:30 PDT
+bookmark = "hero_up_lake"
+t_s = 2311200
+reference = "../../store/reference/facebook-3q/facebook-3q-undated-bf7d3f75.jpg"
+
+[[bookmarks]]
+name = "column_diag"          # the strongest Aug 11 15:30 bin, 4 km out, sun behind the camera
+target_frac = [0.46, 0.585]
+distance_m = 4000
+yaw_deg = 60
+pitch_deg = -8
+fov_deg = 55
+sun = "afternoon"
+
+[[captures]]
+name = "column_aug11_642h"
+bookmark = "column_diag"
+t_s = 2311200
 
 [[captures]]
 name = "overview_end"

@@ -13,7 +13,7 @@ AEmberSmokeActor:
     2  variant       (atlas cell 0..3)
     3  depth fade    (cm; scales with the puff so big puffs do not slice into terrain)
 Parameters:
-    Color      vector  smoke albedo                 default sRGB ~#8A847D (grey-brown)
+    Color      vector  smoke albedo                 default sRGB ~#BDB9B3 (v1: lighter, per the Three Queens columns)
     GlowColor  vector  fire light on the smoke      default (4.0, 0.9, 0.15) linear
 Runs headless via `ember-dev regen-assets`.
 """
@@ -69,8 +69,9 @@ def _puff(seed):
             u = (i + 0.5) / n * 2.0 - 1.0
             r = math.sqrt(u * u + v * v)
             f = _fbm(u * 2.2 + 11.0, v * 2.2 + 7.0, seed)
-            edge = r + 0.6 * (f - 0.5)                       # ragged silhouette
-            base = max(0.0, min(1.0, (0.95 - edge) / 0.85))  # wide falloff: overlaps blend
+            edge = r + 0.7 * (f - 0.5)                       # ragged, lobed silhouette
+            # v1: a defined billow edge (reference: crisp cauliflower silhouettes), not the v0 haze
+            base = max(0.0, min(1.0, (0.82 - edge) / 0.32))
             base = base * base * (3 - 2 * base) * base
             detail = _fbm(u * 6.0 + 3.0, v * 6.0 + 5.0, seed + 101)
             dens[j * n + i] = base * (0.6 + 0.4 * detail)
@@ -94,7 +95,7 @@ def puff_texture():
                 # Normal: the rounded puff (outward in u, v) plus density bumps.
                 gx = dens[j * n + min(i + 1, n - 1)] - dens[j * n + max(i - 1, 0)]
                 gy = dens[min(j + 1, n - 1) * n + i] - dens[max(j - 1, 0) * n + i]
-                nx, ny = 0.8 * u - 6.0 * gx, 0.8 * v - 6.0 * gy
+                nx, ny = 1.0 * u - 10.0 * gx, 1.0 * v - 10.0 * gy   # v1: rounder, deeper billows
                 nz = 1.0
                 ln = math.sqrt(nx * nx + ny * ny + nz * nz)
                 nx, ny = nx / ln, ny / ln
@@ -190,7 +191,7 @@ def build_material(tex):
 
     col = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -700, -350)
     col.set_editor_property("parameter_name", "Color")
-    col.set_editor_property("default_value", unreal.LinearColor(0.25, 0.23, 0.21, 1.0))
+    col.set_editor_property("default_value", unreal.LinearColor(0.52, 0.5, 0.46, 1.0))  # v1: the reference columns are cream-white in sun
     gcol = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -700, 300)
     gcol.set_editor_property("parameter_name", "GlowColor")
     gcol.set_editor_property("default_value", unreal.LinearColor(4.0, 0.9, 0.15, 1.0))
@@ -217,11 +218,24 @@ def build_material(tex):
     link(fade_cm, "", fade, next(n for n in names if "Fade" in n))
     to_property(fade, "", unreal.MaterialProperty.MP_OPACITY)
 
-    emi = custom("EmberSmokeGlow", -400, 250, ["P", "G", "GC"], (
-        "return GC.rgb * G * P.r * P.r;\n"))
+    # Smoke v1: multiple scattering. Per-pixel surface lighting left the shaded side of every
+    # puff near black; real smoke is lit through its volume by the sky (the reference columns
+    # are bright grey even in shade). Add the skylight's diffuse colour x albedo as emissive.
+    sky = mel.create_material_expression(mat, unreal.MaterialExpressionSkyLightEnvMapSample, -700, 450)
+    up = mel.create_material_expression(mat, unreal.MaterialExpressionConstant3Vector, -900, 430)
+    up.set_editor_property("constant", unreal.LinearColor(0.0, 0.0, 1.0, 0.0))
+    rough = mel.create_material_expression(mat, unreal.MaterialExpressionConstant, -900, 500)
+    rough.set_editor_property("r", 1.0)
+    sky_in = mel.get_material_expression_input_names(sky)
+    link(up, "", sky, next(n for n in sky_in if "Direction" in n))
+    link(rough, "", sky, next(n for n in sky_in if "Roughness" in n))
+    emi = custom("EmberSmokeGlow", -400, 250, ["P", "G", "GC", "C", "S"], (
+        "return GC.rgb * G * P.r * P.r + C.rgb * S * 0.9;\n"))
     link(ptex, "RGBA", emi, "P")
     link(glow, "", emi, "G")
     link(gcol, "RGBA", emi, "GC")
+    link(col, "RGBA", emi, "C")
+    link(sky, "", emi, "S")
     to_property(emi, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
     for name, value, y in (("Roughness", 1.0, 600), ("Specular", 0.0, 700)):

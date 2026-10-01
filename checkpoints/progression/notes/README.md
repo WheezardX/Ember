@@ -13,3 +13,4 @@
 | 2026-09-30_debris_zoom.jpg | ground debris: sticks, bark, cones |
 | 2026-09-30_mosaic_ab.jpg | burned-area mosaic: uniform orange vs per-tree outcomes |
 | 2026-09-30_trunk_ab.jpg | tree grounding on a 32 deg slope |
+- `2026-10-01_smoke_v1_vs_reference.jpg` — Three Queens 2026 playback, smoke v0 vs v1 vs the incident's own photos: buoyant near-vertical columns, defined billows lit by the sky, columns merging into a sheet on the Aug 21 run (camera 9 km out).

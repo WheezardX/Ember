@@ -21,6 +21,7 @@ struct FEmberSmokeSource
 	float Burning = 0.f;     // burning cells only (flame light on the plume base)
 	int32 Key = 0;           // bin index: stable across times (per-puff seeds)
 	float Cluster = 0.f;     // Strength summed over the 5 x 5 bins around (1.5 km): plume height
+	float Smoulder = 0.f;    // slow-decaying weight of the scar behind the front (days): low wisps
 };
 
 /** One firebrand from the stream (HCP4 H4-4), launched within the last RecentBrandS of sim time. */
@@ -108,6 +109,12 @@ public:
 	TArray<FEmberSmokeSource> SmokeSources;
 	static constexpr int32 SmokeBinCells = 10;       // 300 m bins on the 30 m grid
 	static constexpr double SmokeDecayH = 1.5;       // cells smoke e^-(h since arrival)/1.5
+	// Smoulder (reference: Three Queens 2026 NIROPS IR - scattered heat over 50-90 % of the scar
+	// for weeks, isolated heat points climbing to 1,200 as the fire died): a weak, slow tail.
+	static constexpr double SmoulderDecayH = 120.0;  // e-folding 5 days
+	static constexpr double SmoulderK = 0.03;        // per cell, vs 1.0 at the flaming front
+	/** Recent smoke (cell-equivalents, e^-h/24 since arrival): the valley smoke layer / pall. */
+	double SmokeLoad = 0.0;
 
 	/** Burning cells (as rendered) whose centres lie within RadiusM of (X, Y), metres. */
 	void BurningNear(double X, double Y, double RadiusM, TArray<FEmberBurningCell>& Out) const;

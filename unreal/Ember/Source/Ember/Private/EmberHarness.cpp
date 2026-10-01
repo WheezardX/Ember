@@ -696,6 +696,12 @@ void AEmberHarness::SetFireTime(double SimS, double ClockS)
 		if (Cover) Cover->SetWind(WindStrength * Speed / 5.0, From);
 		if (Smoke) Smoke->SetWind(From, Speed);
 	}
+	if (Environment && Smoke)
+	{
+		// Smoke v1 pall: cells burned in the last ~day (e^-h/24). ~4,000 cell-equivalents (a
+		// 900-acre day) is a heavy valley layer; the Aug 21 2026 run (~2,500 ac) saturates it.
+		Environment->SetSmokePall(static_cast<float>(1.0 - FMath::Exp(-Fire->SmokeLoad / 9000.0)));
+	}
 	if (Smoke)
 	{
 		Smoke->SetSources(Fire->SmokeSources);

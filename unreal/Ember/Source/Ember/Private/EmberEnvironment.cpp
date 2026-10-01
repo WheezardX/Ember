@@ -138,6 +138,39 @@ void AEmberEnvironment::SetHaze(float Density, float Falloff, float StartM, doub
 	}
 }
 
+void AEmberEnvironment::SetSmokePall(float Pall01)
+{
+	// Reference (Three Queens 2026): a smoke layer filling the valleys with the peaks standing
+	// above it (high aerial); on the heaviest days a brown-orange sky, terrain gone within a few
+	// km, a dim red sun (the pall over Kachess, the orange-sky road shots).
+	const float P = FMath::Clamp(Pall01, 0.f, 1.f);
+	SmokePall = P;
+	if (Fog)
+	{
+		if (UExponentialHeightFogComponent* F = Fog->GetComponent())
+		{
+			// Second layer: hugs the valleys (~400 m scale height above the fog base). Thin: the
+			// reference keeps the near ground crisp and puts the smoke in the distance / the valleys
+			// (v1 first pass at 0.03 turned whole frames murky).
+			F->SecondFogData.FogDensity = 0.004f * P;
+			F->SecondFogData.FogHeightFalloff = 0.025f;
+			F->SecondFogData.FogHeightOffset = 0.f;
+			// Smoke scatters a lot of light: the reference pall is a PALE tan sky, not dark brown.
+			F->SetDirectionalInscatteringColor(FMath::Lerp(FLinearColor(0.3f, 0.28f, 0.25f), FLinearColor(0.9f, 0.62f, 0.34f), P));
+			F->SkyAtmosphereAmbientContributionColorScale = FMath::Lerp(FLinearColor(1.8f, 1.8f, 1.8f), FLinearColor(2.6f, 2.25f, 1.75f), P);
+			F->MarkRenderStateDirty();
+		}
+	}
+	if (Sun)
+	{
+		if (UDirectionalLightComponent* L = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
+		{
+			L->SetIntensity(10.f * (1.f - 0.3f * P));
+			L->SetLightColor(FMath::Lerp(FLinearColor::White, FLinearColor(1.f, 0.8f, 0.58f), P));
+		}
+	}
+}
+
 void AEmberEnvironment::SetSkylightLeaking(float Leak)
 {
 	if (Post && Leak > 0.f)

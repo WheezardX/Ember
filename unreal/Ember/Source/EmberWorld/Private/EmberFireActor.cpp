@@ -107,7 +107,8 @@ void AEmberFireActor::SetTime(double TSeconds)
 	const int32 N = Nx * Ny;
 	const int32 Bx = (Nx + SmokeBinCells - 1) / SmokeBinCells;
 	const int32 By = (Ny + SmokeBinCells - 1) / SmokeBinCells;
-	struct FBin { double Sx = 0, Sy = 0, W = 0, Burning = 0; };
+	struct FBin { double Sx = 0, Sy = 0, W = 0, Burning = 0, Sm = 0; };
+	SmokeLoad = 0.0;
 	TArray<FBin> Bins;
 	Bins.SetNum(Bx * By);
 	for (int32 I = 0; I < N; ++I)
@@ -126,16 +127,20 @@ void AEmberFireActor::SetTime(double TSeconds)
 		{
 			const double AgeH = FMath::Max(0.0, (TSeconds - Arrival[I]) / 3600.0);
 			Age = static_cast<uint8>(FMath::Clamp(FMath::Sqrt(AgeH / 200.0) * 255.0, 0.0, 255.0));
-			// Smoke comes off the front: weight by time since arrival, burning or not.
+			// Smoke comes off the front: weight by time since arrival, burning or not. Behind it the
+			// scar smoulders for days (low wisps), and everything recent feeds the valley pall.
 			const double W = FMath::Exp(-AgeH / SmokeDecayH);
-			if (W > 0.01)
+			const double Ws = SmoulderK * FMath::Exp(-AgeH / SmoulderDecayH);
+			SmokeLoad += FMath::Exp(-AgeH / 24.0);
+			if (W > 0.01 || Ws > 0.001)
 			{
 				const int32 Cx = I % Nx;
 				const int32 Cy = I / Nx;
 				FBin& B = Bins[(Cy / SmokeBinCells) * Bx + Cx / SmokeBinCells];
-				B.Sx += W * Cx;
-				B.Sy += W * Cy;
+				B.Sx += (W + Ws) * Cx;
+				B.Sy += (W + Ws) * Cy;
 				B.W += W;
+				B.Sm += Ws;
 				B.Burning += bBurning;
 			}
 		}
@@ -177,14 +182,15 @@ void AEmberFireActor::SetTime(double TSeconds)
 	for (int32 K = 0; K < Bins.Num(); ++K)
 	{
 		const FBin& B = Bins[K];
-		if (B.W < 0.5)
+		if (B.W < 0.5 && B.Sm < 0.5)
 		{
 			continue;
 		}
 		FEmberSmokeSource S;
-		S.X = Grid.origin_x + (B.Sx / B.W + 0.5) * CellM;
-		S.Y = Grid.origin_y - (B.Sy / B.W + 0.5) * CellM;
-		S.Strength = static_cast<float>(B.W);
+		S.X = Grid.origin_x + (B.Sx / (B.W + B.Sm) + 0.5) * CellM;
+		S.Y = Grid.origin_y - (B.Sy / (B.W + B.Sm) + 0.5) * CellM;
+		S.Strength = static_cast<float>(B.W < 0.5 ? 0.0 : B.W);
+		S.Smoulder = static_cast<float>(B.Sm);
 		S.Burning = static_cast<float>(B.Burning);
 		S.Key = K;
 		const int32 Kx = K % Bx;
