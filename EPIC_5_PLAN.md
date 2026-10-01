@@ -568,6 +568,13 @@ In order:
 **Review 2026-09-30 evening (Brad, S_jolly_play after steps 3-5):** "BIG improvement. More
 litter, more chaos. Non-uniform burn, trees hanging up correctly ... this is the level of
 iteration I'd expected between runs." Take that as the bar for a review round.
+- **Ground plane still really flat (Brad, same review):** debris + litter parallax helped close
+  up but the ground has no shape between DEM samples. Next ground item: a camera-following,
+  finely subdivided ground patch (~40 m) on the rendered terrain, displaced by real meso relief
+  (hummocks / hollows 10-40 cm at 0.5-3 m, the same field as M_Terrain's hummock normals) and
+  micro relief (litter height map, 2-5 cm); shadow-casting; blended into the terrain at the
+  edge; ground cover and logs placed on the displaced surface. ~half a day.
+- **Hung-up trees: "markedly better" (Brad, same review)** - anchoring on a real host works.
 - **Burn mosaic: survivors should cluster, not salt-and-pepper (Brad, same review):** the mix of
   burned-out / charred / untouched is good, and real burns do vary - but single unaffected trees
   inside large scars are not realistic. Survivors come in POCKETS protected by terrain: draws,
