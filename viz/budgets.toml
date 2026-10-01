@@ -9,3 +9,17 @@ render__vram_mb_max = 4096
 [batch]
 description = "Offline renders: no frame-time cap; VRAM still bounded so the runner can multitask"
 render__vram_mb_max = 12288
+
+# Iteration-time budgets (seconds) for ember-dev steps (Brad, 2026-09-30): over budget prints a
+# TIME BUDGET warning and lands in `ember-dev timing`. Keys: command names, "gen:<script>" or
+# "gen:*" for asset generators, "regress:quick" / "regress:full". Tight on purpose: an overrun
+# is a prompt to fix the step or say why it is worth it.
+[steps]
+"build" = 60
+"run-scenario" = 150
+"evaluate" = 30
+"bless" = 30
+"regen-assets" = 120
+"gen:*" = 60
+"regress:quick" = 300
+"regress:full" = 1200

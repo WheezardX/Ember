@@ -8,6 +8,8 @@
     ember-dev bless S [--run DIR]          accept a run's captures as the new goldens
     ember-dev bundle HCPn --run L=DIR ...  copy labelled runs into checkpoints/HCPn/ for review
     ember-dev regen-assets [--check]       run asset generators headless / check the lock
+    ember-dev regress [--full]             quick tier (~3 min) after a change; --full before a commit
+    ember-dev timing [--since D]           where the iteration time went (budgets: viz/budgets.toml [steps])
     ember-dev scenarios                    list render scenarios
 """
 
@@ -169,6 +171,81 @@ def _print_verdict(v: dict) -> None:
         typer.echo(f"  run error: {v['run']['error']}")
     typer.echo(f"  verdict: {Path(v['run_dir']) / 'verdict.json'}")
     typer.echo(f"  sheet  : {Path(v['run_dir']) / 'contact_sheet.png'}")
+
+
+@app.command()
+def regress(full: bool = typer.Option(False, "--full", help="Every scenario (before commits)."),
+            only: list[str] = typer.Option(None, "--only", help="These scenarios (repeatable)."),
+            ) -> None:
+    """Run + evaluate a regression tier (viz/regress.toml): quick by default, --full before a
+    commit. Stops at the first material compile failure (renders would be meaningless). Prints a
+    time table; the tier is checked against its time budget."""
+    import tomllib
+
+    from ember.dev import timing
+    from ember.dev.evaluate import evaluate_run
+
+    repo = ue.repo_root()
+    tiers = tomllib.loads((repo / "viz" / "regress.toml").read_text(encoding="utf-8"))
+    tier = "full" if full else "quick"
+    names = list(only) if only else tiers[tier]["scenarios"]
+    eng = ue.load_engine()
+    t_all = time.time()
+    rows, failed = [], []
+    for n in names:
+        sc = _sc(n)
+        t0 = time.time()
+        run_dir = ue.run_scenario(eng, sc, timeout_s=900, exposure_bias=sc.spec.scenario.exposure_bias)
+        t_run = time.time() - t0
+        meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+        timing.record("run-scenario", n, t_run, meta["exit_code"] == 0, repo=repo, nested=True)
+        if "failed to compile" in (meta.get("error") or ""):
+            typer.secho(f"{n}: STOP - {meta['error']}", fg=typer.colors.RED, bold=True)
+            failed.append(n)
+            rows.append((n, t_run, 0.0, "COMPILE FAIL", ""))
+            break
+        t1 = time.time()
+        v = evaluate_run(repo, sc, run_dir)
+        t_eval = time.time() - t1
+        s = v["summary"]
+        checks_ok = s["checks_failed"] == 0 and s["run_exit_code"] == 0
+        imgs = f"{s['match']}/{s['captures']} match" + (f", {s['mismatch']} changed" if s["mismatch"] else "")
+        status = ("PASS" if v["pass"] else ("IMAGES" if checks_ok else "FAIL"))
+        if status == "FAIL":
+            failed.append(n)
+        rows.append((n, t_run, t_eval, status, imgs))
+        typer.secho(f"{n:22s} {status:7s} {imgs:28s} run {t_run:5.0f}s eval {t_eval:4.0f}s",
+                    fg={"PASS": typer.colors.GREEN, "IMAGES": typer.colors.YELLOW}.get(status, typer.colors.RED))
+    total = time.time() - t_all
+    timing.record(f"regress:{tier if not only else 'only'}", ",".join(names)[:80], total,
+                  not failed, repo=repo)
+    typer.echo(f"\n{tier if not only else 'selected'}: {len(rows)} scenario(s) in {total / 60:.1f} min "
+               f"(runs {sum(r[1] for r in rows) / 60:.1f}, evaluate {sum(r[2] for r in rows) / 60:.1f}); "
+               f"IMAGES = checks pass, captures changed (bless if intended)")
+    if failed:
+        typer.secho(f"failed: {', '.join(failed)}", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+
+@app.command("timing")
+def timing_cmd(since: str = typer.Option(None, "--since", help="ISO date/time (UTC), e.g. 2026-09-30"),
+               ) -> None:
+    """Where the iteration time went (runs/dev/timing.jsonl): per step kind, slowest, overruns."""
+    from ember.dev import timing
+
+    rows = timing.load(since=since)
+    if not rows:
+        typer.echo("no timing entries")
+        return
+    s = timing.summary(rows)
+    typer.echo(f"{len(rows)} entries, {s['total_s'] / 60:.1f} min of ember-dev time")
+    typer.echo(f"{'step':24s} {'n':>4s} {'total min':>9s} {'max s':>7s} {'over':>5s}")
+    for k, e in s["by_kind"].items():
+        typer.echo(f"{k:24s} {e['n']:4d} {e['seconds'] / 60:9.1f} {e['max']:7.0f} {e['over']:5d}")
+    if s["overruns"]:
+        typer.secho("\nover budget:", fg=typer.colors.YELLOW)
+        for r in s["overruns"][-15:]:
+            typer.echo(f"  {r['utc']}  {r['kind']} {r['label']}: {r['seconds']:.0f}s (budget {r['budget']:.0f}s)")
 
 
 @app.command()
@@ -482,4 +559,36 @@ def scenarios() -> None:
 
 
 def main() -> None:  # pragma: no cover
-    sys.exit(app())
+    # Every command is timed into runs/dev/timing.jsonl (budgets: viz/budgets.toml [steps]).
+    from ember.dev import timing
+
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    label = " ".join(a for a in sys.argv[2:] if not a.startswith("-"))[:80]
+    known = set(typer.main.get_command(app).commands)
+    # play: interactive (ends when Brad quits); timing / scenarios: instant
+    # regress records its own tier entry (regress:quick / :full)
+    untimed = {"timing", "scenarios", "play", "regress"} | ({cmd} if cmd not in known else set())
+    t0 = time.time()
+    code = 0
+    import click
+
+    try:
+        rv = app(standalone_mode=False)
+        code = rv if isinstance(rv, int) else 0
+    except SystemExit as e:
+        code = e.code if isinstance(e.code, int) else 1
+    except click.exceptions.Exit as e:
+        code = e.exit_code
+    except click.ClickException as e:        # usage errors: print as typer would
+        e.show()
+        code = e.exit_code
+    except click.exceptions.Abort:
+        code = 1
+    except Exception:
+        code = 1
+        if cmd not in untimed:
+            timing.record(cmd, label, time.time() - t0, ok=False)
+        raise
+    if cmd not in untimed:
+        timing.record(cmd, label, time.time() - t0, ok=code == 0)
+    sys.exit(code)

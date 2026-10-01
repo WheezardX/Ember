@@ -1,0 +1,20 @@
+# Regression tiers for `ember-dev regress` (Brad, 2026-09-30: keep iteration time tight).
+# quick: after a change (~3 min) - one scenario per subsystem, the cheap ones.
+# full: before a commit (~16 min). Budgets: viz/budgets.toml [steps] regress:quick / regress:full.
+
+[quick]
+scenarios = [
+  "S_terrain_look",     # terrain look / palette (20 s)
+  "S_forest_teanaway",  # trees, wind, eye-level forest (16 s)
+  "S_ground_tq",        # ground shader, cover, debris, hung-up trees (35 s)
+  "S_stream_tq",        # streaming + perf window (33 s)
+  "S_jolly_hcp4",       # fire: classes, flames, firebrands, burned mosaic (55 s)
+]
+
+[full]
+scenarios = [
+  "S_terrain_gray", "S_terrain_look", "S_tq_hillshade", "S_tq_terrain", "S_tq_water",
+  "S_water_close_tq", "S_veg_lineup", "S_terrain_stream", "S_tq_fire_synth", "S_refcam_tq",
+  "S_forest_teanaway", "S_tq_forest", "S_ground_fire_tq", "S_stream_tq", "S_jolly_fire",
+  "S_jolly_hcp4", "S_jolly_hcp4_ab", "S_ground_tq", "S_jolly_hcp4_perf",
+]

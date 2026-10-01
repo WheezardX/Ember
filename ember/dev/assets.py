@@ -104,6 +104,9 @@ def regen(eng: Engine, repo: Path | None = None, force: bool = False) -> dict:
                             "outputs": entry["outputs"]})
             continue
         ok, why, secs = run_generator(eng, g, repo / "runs" / "dev" / "assets")
+        from ember.dev import timing
+
+        timing.record(f"gen:{g.script.name}", "", secs, ok, repo=repo)
         present = all(f.exists() for f in files)
         ok = ok and present
         all_ok &= ok

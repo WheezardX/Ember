@@ -32,6 +32,22 @@ tiles arriving over many frames leave Lumen in a slightly different state); play
 windows stream asynchronously. For a breakdown of a hitch add
 `perf_exec_cmds = ["t.HitchFrameTimeThreshold 30", "stat dumphitches"]`.
 
+## Iteration time (Brad, 2026-09-30: keep iteration tight)
+
+```
+ember-dev regress            # quick tier (viz/regress.toml, ~3 min): one scenario per subsystem
+ember-dev regress --full     # every scenario (~16 min): before a commit, not after every change
+ember-dev timing             # where the time went: per step, slowest, over budget
+```
+
+Every `ember-dev` command appends its duration to `runs/dev/timing.jsonl` (asset generators one
+entry each). `viz/budgets.toml [steps]` holds per-step budgets; an overrun prints a `TIME BUDGET`
+warning - fix the step or say why it is worth it. `regress` stops at the first material compile
+failure (renders after it would be meaningless) and reports `IMAGES` for runs whose checks pass but
+captures changed (bless if intended). Asset generators are split so cheap changes stay cheap:
+tree material settings (`veg_materials.py`, ~12 s) no longer rebuild every tree mesh
+(`veg_species.py`, ~20 min).
+
 ## Flying around a scenario (`ember-dev play`)
 
 ```
