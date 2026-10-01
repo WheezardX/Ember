@@ -6,14 +6,14 @@ maps (`store/reference/facebook-3q/`, tag `incident-report`), and the field phot
 the incident's (IR-flight acreage where stated). Data: `three_queens_2026_growth.csv`;
 chart: `three_queens_2026_growth.png`.
 
-Gaps: no acreage between ignition (Jul 15) and Aug 7 — the July/early-August maps are among the
-43 Facebook images not yet downloaded (browser session dropped; see the harvest plan status).
+Early acreage from the July maps: 79 ac (Jul 22), 80 (Jul 25), 88 (Jul 29, still the latest IR
+on the Aug 6 map), then 883 (Aug 7), 1,200 (Aug 8), 2,478 (Aug 9), 3,305 (Aug 11), 3,533 (Aug 12).
 
 ## The fire in five phases
 
 | phase | dates (day) | acres | what the fire did | weather / suppression |
 |---|---|---|---|---|
-| 1. Holdover | Jul 15 – Aug 6 (0–22) | small (<~800) | Lightning start high on Three Queens peak; a small plume at the peak for three weeks, burning in subalpine fir and rock (photos: single column off the summit). | Monitoring; Type 3. |
+| 1. Holdover | Jul 15 – Aug 6 (0–22) | 79 → 88 | Lightning start high on Three Queens peak; a small plume at the peak for three weeks, burning in subalpine fir and rock (photos: single column off the summit). | Monitoring; Type 3. |
 | 2. Wind runs | Aug 7 – Aug 12 (23–28) | 883 → 1,200 → 3,533 | High winds two days running; **spot fire established across Lake Kachess** (east side, north end). "Wind-driven fire behaviour... subalpine fir stringers... extreme slopes, unstable terrain and **rolling material**." Runs SE to No Name Ridge, along the east side of Kachess toward Thorp Creek. | Level 3 evacuations (Cooper Lake); Type 2 team Aug 10; heavy helicopters + scoopers (54,000 gal one ship one day); Thorp Mtn repeater **wrapped**; Cooper Lake **sprinklers**. |
 | 3. Wet lull | Aug 13 – Aug 20 (29–36) | 3,533 → 3,848 | Thunderstorms, **wetting rain Aug 14**. North flank creeps to Chikamin Ridge / Cooper Pass with **spotting in aligned drainages**; south flank **backs slowly downhill into Thorp Creek**; fire crosses Mineral Creek "at a slow rate", "primarily burning in timber where heavier fuels are drier". | Line everywhere: Kachess Ridge handline, FSR 4308 dozer line, **tethered dozers on steep slopes**, masticators, shaded fuel breaks, **boats ferrying hotshots**, mobile retardant base, IR drone. |
 | 4. Blow-up and Red Mountain | Aug 21 – Aug 27 (37–43) | 3,849 → **6,379** → 7,758 → 8,240 | **Aug 21**: hot (>85 °F), unstable, poor RH recovery: "fuels, topography and weather aligned to produce rapid rates of spread. **Sustained torching and intermittent crown runs**, generating spotting... pushed north towards Cooper Lake **under strengthened night-time winds**" — **+2,530 acres in a day**. Pyrocumulus over the ridges (photos). Then east across **Red Mountain** (Aug 25): "ongoing torching, uphill runs and intermittent spotting". King (Aug 19) and Goat (Aug 22–23) fires start nearby. | Red Flag Warning; UAS dropping ignition spheres for **firing operations** along the SW flank into the lake shore; Skycranes with retardant; containment *fell* 13 % → 5 %. |

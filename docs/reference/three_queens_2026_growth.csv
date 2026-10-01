@@ -1,7 +1,12 @@
 date,day_since_ignition,acres,contained_pct,personnel,source,note
 2026-07-15,0,,0,,InciWeb,lightning start; high-elevation subalpine fir near Three Queens peak
+2026-07-22,7,79,,,map 07-24,holdover near the summit
+2026-07-25,10,80,,,map 07-27 / 07-29,
+2026-07-29,14,88,,,map 08-06 (88 ac at 07-29 1000; no newer IR),
 2026-08-07,23,883,0,157,InciWeb 08-08,high winds; spot fire established across Lake Kachess (east side of north end)
 2026-08-08,24,1200,0,160,InciWeb 08-09,high winds; Level 3 evacuations Cooper Lake
+2026-08-09,25,2478,,,map 08-10 (2122 PDT),
+2026-08-11,27,3305,,,map 08-12 (2247 PDT),
 2026-08-12,28,3533,,,map 08-13 (2148 PDT),wind-driven runs in subalpine fir stringers; SE to No Name Ridge / Kachess Ridge
 2026-08-14,30,3600,0,415,FB update 08-14,thunderstorms; widespread wetting rain
 2026-08-15,31,3603,2,439,FB update 08-15,north flank toward Chikamin Ridge / Cooper Pass; spotting in drainages; backing into Thorp Creek
