@@ -37,12 +37,16 @@ public:
 	/** Lay out the puffs for this camera (after the camera moves / the state changes). */
 	void Rebuild(const FVector& CameraLoc, const FRotator& CameraRot);
 
-	static constexpr int32 MaxPuffs = 20000;
+	static constexpr int32 MaxPuffs = 32000;   // fixed per-plume counts (no pops) cost a few more puffs
 
 	// Facts
 	int32 NumSources = 0;
 	int32 NumPlumes = 0;      // sources that got puffs (strongest first, under MaxPuffs)
 	int32 NumMerged = 0;      // of those, far-field plumes pooled from several sources (facts)
+	/** Per plume (source key): the accumulated puff-slot position, advanced by elapsed clock x K /
+	 *  Life, so a changing Life alters speed but never jumps the puffs. */
+	struct FPlumePhase { double Slots = 0.0; double Clock = 0.0; bool bInit = false; };
+	TMap<int32, FPlumePhase> PlumePhase;
 	double MergeNearM = 3000.0;   // sources closer than this draw as their own columns
 	int32 NumPuffs = 0;
 	double MaxTopM = 0.0;     // highest plume injection height

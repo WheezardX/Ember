@@ -1,0 +1,42 @@
+# Look lab (Brad 2026-10-01): one view, small world, fast. Fire = a 24 h synthetic fire with intensity
+# classes on teanaway_dev (head 3 / flank 2 / backing 1), regenerate with:
+#   ember-dev synth-fire teanaway_dev --hours 24 --ignition 0.25,0.5 --classes --name lab
+render_scenario_version = 1
+
+[scenario]
+name = "L_smoke_motion"
+description = "Look lab: 4 s of the lab fire columns while fire time sweeps 6 -> 7 h (pops show as frame-to-frame spikes)"
+world = "terrain:teanaway_dev"
+replay = "../../store/render/teanaway_dev/fire/lab.replay.json"
+resolution = [1600, 900]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 1500
+veg_near_radius_m = 400
+ground_cover = true
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "smoke_south"
+target_frac = [0.62, 0.30]   # front / scar from the lab fire arrival field
+distance_m = 1500
+yaw_deg = 20
+pitch_deg = -8
+fov_deg = 70
+sun = "afternoon"
+
+
+[[captures]]
+name = "smoke_south"
+bookmark = "smoke_south"
+t_s = 28800
+reference = "../../store/reference/video-dodrill/video-dodrill-undated-cb0e87c7.jpg"
+
+[[orbits]]
+name = "sweep"               # fixed camera, fire time 6 -> 7 h over 4 s: plume heights / strengths change
+bookmark = "smoke_south"
+degrees = 0
+frames = 120
+fps = 30
+t_from_s = 21600
+t_to_s = 25200

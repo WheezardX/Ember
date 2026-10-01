@@ -354,7 +354,7 @@ void AEmberFireActor::SetTime(double TSeconds)
 	for (int32 K = 0; K < Bins.Num(); ++K)
 	{
 		const FBin& B = Bins[K];
-		if (B.W < 0.5 && B.Sm < 0.5 && B.Heat < 3.0)
+		if (B.W < 0.3 && B.Sm < 0.5 && B.Heat < 3.0)
 		{
 			continue;
 		}
@@ -362,7 +362,7 @@ void AEmberFireActor::SetTime(double TSeconds)
 		FEmberSmokeSource S;
 		S.X = Grid.origin_x + (B.Sx / Wt + 0.5) * CellM;
 		S.Y = Grid.origin_y - (B.Sy / Wt + 0.5) * CellM;
-		S.Strength = static_cast<float>(B.W < 0.5 ? 0.0 : B.W);
+		S.Strength = static_cast<float>(B.W < 0.3 ? 0.0 : B.W);   // the smoke actor fades the column over 0.8 -> 0.3
 		S.Smoulder = static_cast<float>(B.Sm);
 		S.Heat = static_cast<float>(B.Heat < 3.0 ? 0.0 : B.Heat);  // a column needs a real pocket (~3 cell-eq)
 		S.Burning = static_cast<float>(B.Burning);

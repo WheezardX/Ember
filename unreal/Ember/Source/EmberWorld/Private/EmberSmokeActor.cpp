@@ -112,27 +112,20 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 	// far field costs fewer puffs. Weak smoulder wisps are dropped past 6 km (invisible there).
 	const emberworld::Frame& Fr = Terrain->GetFrame();
 	const FVector2D Cam(Fr.anchor_x + CameraLoc.X / 100.0, Fr.anchor_y - CameraLoc.Y / 100.0);
-	struct FDraw { FEmberSmokeSource S; double CellM = 0.0; double W = 0.0; };
+	// Cross-faded, not switched (Brad: columns "pop" - a hard 3 km line and hard cell-size steps
+	// swapped a plume between its own column and a merged one in one frame): a source fades out of
+	// its own column over 0.8-1.2 x MergeNearM while fading into its cell, and near the top of each
+	// distance octave it shares itself between this cell size and the next. Its smoke counts into
+	// each cell by the weight it gives it, so merged plumes thicken / thin smoothly.
+	struct FDraw { FEmberSmokeSource S; double CellM = 0.0; double W = 0.0; float Alpha = 1.f; };
 	TArray<FDraw> Draw;
 	TMap<uint64, int32> CellIndex;
-	for (const FEmberSmokeSource& S : Sources)
+	auto AddToCell = [&](const FEmberSmokeSource& S, int32 Level, double Wt)
 	{
-		const double Dist = FVector2D::Distance(Cam, FVector2D(S.X, S.Y));
-		if (Dist < MergeNearM)
-		{
-			Draw.Add({S, 0.0, 0.0});
-			continue;
-		}
-		const int32 Level = FMath::Clamp(FMath::FloorToInt32(FMath::Log2(Dist / MergeNearM)), 0, 3);
-		const bool bWeak = S.Strength < 0.5 && S.Heat <= 0.f;
-		if (bWeak && Level >= 1)
-		{
-			continue;
-		}
 		const double Cell = 600.0 * (1 << Level);
 		const int64 Cx = FMath::FloorToInt64(S.X / Cell), Cy = FMath::FloorToInt64(S.Y / Cell);
 		const uint64 K = (static_cast<uint64>(Level) << 60) ^ (static_cast<uint64>(Cx & 0x3FFFFFFF) << 30) ^ static_cast<uint64>(Cy & 0x3FFFFFFF);
-		const double Q = FMath::Max(0.01, static_cast<double>(S.Strength + S.Heat + S.Smoulder));
+		const double Q = FMath::Max(0.01, static_cast<double>(S.Strength + S.Heat + S.Smoulder)) * Wt;
 		int32* Found = CellIndex.Find(K);
 		if (!Found)
 		{
@@ -150,19 +143,45 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 		D.S.X += S.X * Q;
 		D.S.Y += S.Y * Q;
 		D.W += Q;
-		D.S.Strength += S.Strength;
-		D.S.Heat += S.Heat;
-		D.S.Smoulder += S.Smoulder;
-		D.S.Burning += S.Burning;
+		D.S.Strength += S.Strength * Wt;
+		D.S.Heat += S.Heat * Wt;
+		D.S.Smoulder += S.Smoulder * Wt;
+		D.S.Burning += S.Burning * Wt;
 		D.S.Cluster = FMath::Max(D.S.Cluster, S.Cluster);
 		D.S.HeatCluster = FMath::Max(D.S.HeatCluster, S.HeatCluster);
+	};
+	for (const FEmberSmokeSource& S : Sources)
+	{
+		const double Dist = FVector2D::Distance(Cam, FVector2D(S.X, S.Y));
+		const double Own = 1.0 - SmoothStep(0.8 * MergeNearM, 1.2 * MergeNearM, Dist);
+		if (Own > 0.02)
+		{
+			Draw.Add({S, 0.0, 0.0, static_cast<float>(Own)});
+		}
+		if (Own > 0.98)
+		{
+			continue;
+		}
+		const double Lf = FMath::Max(0.0, FMath::Log2(FMath::Max(Dist, 1.0) / MergeNearM));
+		const int32 Level = FMath::Clamp(FMath::FloorToInt32(Lf), 0, 3);
+		const bool bWeak = S.Strength < 0.3 && S.Heat <= 0.f;
+		if (bWeak && Level >= 1)
+		{
+			continue;
+		}
+		const double Up = Level < 3 ? SmoothStep(0.75, 1.0, Lf - Level) : 0.0;   // share with the next size
+		AddToCell(S, Level, (1.0 - Own) * (1.0 - Up));
+		if (Up > 0.02)
+		{
+			AddToCell(S, Level + 1, (1.0 - Own) * Up);
+		}
 	}
 	for (FDraw& D : Draw)
 	{
 		if (D.CellM > 0.0)
 		{
-			D.S.X /= D.W;
-			D.S.Y /= D.W;
+			D.S.X /= FMath::Max(1e-6, D.W);
+			D.S.Y /= FMath::Max(1e-6, D.W);
 			++NumMerged;
 		}
 	}
@@ -182,26 +201,34 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 		// Interior (observed heat, no front here): pockets burning inside the scar stand up as their
 		// own columns, lower than a running front's (reference: the Kachess aerials, several columns
 		// of a few hundred m to ~1.5 km off both shores days after the front passed).
-		const bool bInterior = S.Strength < 0.5 && S.Heat > 0.f;
-		const bool bSmoulder = S.Strength < 0.5 && !bInterior;
+		// (the flaming column fades out over strength 0.8 -> 0.3 instead of vanishing at 0.5 - that
+		// switch popped a tall column into a wisp in one frame)
+		const bool bInterior = S.Strength < 0.3 && S.Heat > 0.f;
+		const bool bSmoulder = S.Strength < 0.3 && !bInterior;
+		const double Flaming = (bInterior || bSmoulder) ? 1.0 : SmoothStep(0.3, 0.8, S.Strength);
 		const double Q = bInterior ? S.Heat : bSmoulder ? S.Smoulder : S.Strength;
 		const double SqQ = FMath::Sqrt(Q);
 		// Ground under the source, cached per bin (the region DEM read was 40-70 ms per frame with a
 		// few hundred interior-heat sources - most of the play-mode frame). Re-read if the bin's
 		// centroid moved more than ~20 m.
+		// (in-memory tile surface every frame - cheap; the cache only backs the slow DEM fallback.
+		// Refreshing the cache only after the centroid moved 20 m made columns hop on slopes.)
 		double Gz = 0.0;
-		FGroundHit* Hit = GroundCache.Find(S.Key);
-		if (Hit && FMath::Abs(Hit->X - S.X) < 20.0 && FMath::Abs(Hit->Y - S.Y) < 20.0)
+		if (!Terrain->SurfaceAt(S.X, S.Y, Gz))
 		{
-			Gz = Hit->Z;
-		}
-		else
-		{
-			if (!Terrain->SurfaceAt(S.X, S.Y, Gz) && !Terrain->GroundHeightAt(S.X, S.Y, Gz))
+			FGroundHit* Hit = GroundCache.Find(S.Key);
+			if (Hit && FMath::Abs(Hit->X - S.X) < 20.0 && FMath::Abs(Hit->Y - S.Y) < 20.0)
 			{
-				continue;
+				Gz = Hit->Z;
 			}
-			GroundCache.Add(S.Key, FGroundHit{S.X, S.Y, Gz});
+			else
+			{
+				if (!Terrain->GroundHeightAt(S.X, S.Y, Gz))
+				{
+					continue;
+				}
+				GroundCache.Add(S.Key, FGroundHit{S.X, S.Y, Gz});
+			}
 		}
 		// Neighbouring bins burn as one convective column: height from the 1.5 km cluster.
 		// Columns (v1): the reference columns stand 1-3 km+ over every active area; 90 x sqrt
@@ -226,14 +253,18 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 			R0 = FMath::Max(R0, 0.3 * Cell);
 			Base = FMath::Min(0.97, Base * 1.15 + 0.05);
 		}
-		// Enough puffs that neighbours always overlap (spacing ~0.4 x the mid-plume radius).
-		const double RMid = R0 + 0.05 * L + 0.06 * H;   // matches the v1 (smaller) puff radius
 		// The rising column gets its own puffs, evenly spaced in HEIGHT (v2, the lab: spaced evenly in
 		// time over the whole drift, consecutive puffs were ~800 m apart in the fast-rising column, so
 		// the lower column was empty and plumes floated; merged plumes broke into blobs).
-		const double RCol = R0 + 0.06 * H;
-		const int32 Kc = bSmoulder ? 0 : FMath::Clamp(FMath::CeilToInt32(H / (0.45 * RCol)), 6, 64);
-		const int32 K = bSmoulder ? 8 : Kc + FMath::Clamp(FMath::CeilToInt32(L / (0.25 * RMid)), 6, 160);
+		// FIXED counts per plume type (Brad: "a rising card snaps back lower" - counts recomputed from
+		// the plume's height each frame jumped by one as the fire evolved and re-slotted every puff);
+		// radii grow with the plume instead, so neighbours still overlap.
+		const int32 Kc = bSmoulder ? 0 : Cell > 0.0 ? 24 : bInterior ? 16 : 28;
+		const int32 K = bSmoulder ? 8 : Kc + (Cell > 0.0 ? 40 : bInterior ? 28 : 64);
+		if (Kc > 0)
+		{
+			R0 = FMath::Max(R0, 0.6 * H / Kc);           // column puffs at least overlap their spacing
+		}
 		const double Uc = static_cast<double>(Kc) / K;     // life fraction where the column ends
 		const double Tc = 3.0 * Tau;                        // ~95 % of the rise
 		if (All.Num() + K > MaxPuffs)
@@ -246,10 +277,23 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 		const double Hot = bInterior ? 0.6 * FMath::Min(1.0, Q / 8.0)
 			: FMath::Min(1.0, S.Burning / FMath::Max(1.0, Q)) * FMath::Min(1.0, S.Burning / 5.0);
 		const double HotZ = bInterior ? 0.4 * H : R0 + 80.0;   // how far up the glow reaches
-		const double Phase = Hash01(S.Key, 0x51u);
 		// A puff advances one slot (L / K) every Life / K seconds, so it crosses the plume in Life.
 		// Index I after W wraps is the same physical puff as index I + 1 after W + 1: seed on W - I.
-		const double Slots = ClockS * K / Life + Phase * K;
+		// The slot position is ACCUMULATED per plume (Clock x K / Life jumped whenever Life changed a
+		// little - with a clock of minutes, a 1 % change moved every puff by several slots).
+		FPlumePhase& Ph = PlumePhase.FindOrAdd(S.Key);
+		const double Dt = ClockS - Ph.Clock;
+		if (!Ph.bInit || Dt < 0.0 || Dt > 30.0)
+		{
+			Ph.Slots = ClockS * K / Life + Hash01(S.Key, 0x51u) * K;
+			Ph.bInit = true;
+		}
+		else
+		{
+			Ph.Slots += Dt * K / Life;
+		}
+		Ph.Clock = ClockS;
+		const double Slots = Ph.Slots;
 		const double Cycle = FMath::Frac(Slots);
 		const int64 Wraps = FMath::FloorToInt64(Slots);
 		for (int32 I = 0; I < K; ++I)
@@ -310,7 +354,7 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 			P.RadiusM = R;
 			P.Stretch = 1.0 + 0.6 * H1;  // elongated, so no card reads as a disc
 			P.Roll = H3 * 2.0 * PI;
-			P.Data[0] = static_cast<float>(Base * Life01 * Thin * Pack);
+			P.Data[0] = static_cast<float>(Base * Life01 * Thin * Pack * Dw.Alpha * Flaming);   // Alpha: the merge cross-fade
 			P.Data[1] = static_cast<float>(0.5 * Hot * FMath::Exp(-Z / HotZ));
 			P.Data[2] = static_cast<float>(FMath::FloorToInt32(H2 * 4.0) & 3);
 			P.Data[3] = static_cast<float>(R * 40.0);  // depth fade (cm): 0.4 x radius
