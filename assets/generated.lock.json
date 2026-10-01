@@ -47,7 +47,7 @@
       }
     },
     "m_veg.py": {
-      "script_sha256": "9d4ffc326e3166ed5a9ce6e3d68219bbeab05bbebe4745a0f5dac0757773c37e",
+      "script_sha256": "40ef573338197a972eafcf7dc51ee6e33d395ff71895d4ac656fc626bc069ce4",
       "outputs": {
         "/Game/Ember/Generated/M_Veg": "unreal/Ember/Content/Ember/Generated/M_Veg.uasset"
       }

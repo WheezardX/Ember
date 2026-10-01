@@ -530,6 +530,12 @@ void AEmberVegetationActor::SetWind(double StrengthCm, double FromDeg)
 		M->SetScalarParameterValue(TEXT("WindStrength"), static_cast<float>(StrengthCm));
 		M->SetVectorParameterValue(TEXT("WindDir"), Dir);
 	}
+	// the windless mid-tier twins still need the direction: burn severity scorches the side that
+	// faced the fire (into the wind) - without it trees would flip sides at the tier boundary
+	for (UMaterialInstanceDynamic* M : MidMaterial)
+	{
+		M->SetVectorParameterValue(TEXT("WindDir"), Dir);
+	}
 }
 
 void AEmberVegetationActor::SetWindTime(double Seconds)

@@ -31,14 +31,25 @@ tools = unreal.AssetToolsHelpers.get_asset_tools()
 # rr (high = milder) comes from the vegetation actor's survival field when it is there (custom data
 # 2 = 1 + u; Brad: "survivors come in pockets" - coherent patches biased to draws and north slopes,
 # worldcore survival_field) with 15 % per-tree jitter; without it, a per-tree draw as before.
-OUTCOME_HLSL = (
+#
+# Severity v2 (Brad 2026-10-01: "totally blackened trees next to totally orange trees next to
+# totally green trees. In reality most of the trees will be somewhere in the spectrum - scorched on
+# one side, or still mostly green with obvious heat stress, burned up but some foliage remaining").
+# One continuous severity per tree, sev 0..1, from the class and rr:
+#   class 1: 0 - 0.3      class 2: 0.12 - 0.9      class 3: 0.55 - 1
+# and per vertex a scorch line - the crown fraction scorched from the base up - higher on the side
+# that faced the fire's approach (into the wind). Inputs: L (pivot -> vertex, world cm), TH (tree
+# height cm), D (wind direction, UE xy).
+SEVERITY_HLSL = (
     "float ocls = 1.0 + 2.0 * saturate((F.g - 0.5) * 2.0);\n"
     "float rr = frac(Rnd * 13.37 + 0.31);\n"
     "if (Sv > 0.5) { rr = lerp(saturate(Sv - 1.0), rr, 0.15); }\n"
-    "int oc = 0;\n"
-    "if (ocls > 2.5)      { oc = rr < 0.12 ? 4 : (rr < 0.75 ? 3 : (rr < 0.93 ? 2 : 1)); }\n"
-    "else if (ocls > 1.5) { oc = rr < 0.22 ? 3 : (rr < 0.62 ? 1 : 0); }\n"
-    "else                { oc = rr < 0.12 ? 1 : 0; }\n")
+    "float c2 = saturate(ocls - 1.0), c3 = saturate(ocls - 2.0);\n"
+    "float sev = lerp(lerp(0.3 * (1.0 - rr), 0.12 + 0.78 * (1.0 - rr), c2), 0.55 + 0.45 * (1.0 - rr), c3);\n"
+    "float hf = TH > 1.0 ? saturate(L.z / TH) : 0.5;\n"
+    "float2 sd = L.xy / max(length(L.xy), 1.0);\n"
+    "float facing = -dot(sd, normalize(D.xy + float2(1e-4, 0.0)));\n"
+    "float sline = sev * 1.3 - 0.15 + 0.22 * facing * (1.0 - sev);\n")
 
 FOLIAGE_SATURATION = 0.65
 FOLIAGE_BRIGHTNESS = 1.5
@@ -334,17 +345,27 @@ def build_material():
     link(fuv, "", ftex, "UVs")
     surv = mel.create_material_expression(mat, unreal.MaterialExpressionPerInstanceCustomData, -600, 860)
     surv.set_editor_property("data_index", 2)          # trees with a fire: 1 + survival field; else 0
-    burnt = custom("EmberFireChar", -100, 150, ["Base", "F", "A", "On", "Rnd", "Local", "Out", "Sv"], (
+    burnt = custom("EmberFireChar", -100, 150,
+                   ["Base", "F", "A", "On", "Rnd", "Local", "Out", "Sv", "TH", "D"], (
         "float burned = saturate(F.g * 2.0) * On;\n"
-        + OUTCOME_HLSL +
         "if (Out > 0.5 && burned > 0.01) {\n"
-        # 8g burned-area mosaic (Brad: every tree had orange needles): one outcome per tree
-        "    float3 black = float3(0.012, 0.011, 0.010);\n"
-        "    float3 orange = float3(0.22, 0.075, 0.022) * (0.8 + 0.4 * frac(Rnd * 3.1));\n"
-        "    float3 charFol2 = float3(0.016, 0.012, 0.009);\n"
-        "    float3 crown = oc == 0 ? Base : (oc == 1 ? orange : charFol2);\n"
-        "    float charH = oc >= 2 ? 1e7 : lerp(150.0, 1200.0, saturate((ocls - 1.0) * 0.5));\n"
-        "    float barkChar = 1.0 - smoothstep(charH * 0.85, charH, Local.z);\n"
+        "    float3 L = Local;\n"
+        + SEVERITY_HLSL +
+        # below the scorch line: orange (light burns) to brown (heavier); well below it on severe
+        # trees: black. Just above it: a heat-stressed, yellowed band. Bark char height ~ sev^2.
+        "    float scorch = saturate((sline - hf) * 7.0);\n"
+        "    float deep = saturate((sline - 0.4 - hf) * 4.0) * smoothstep(0.45, 0.85, sev);\n"
+        "    float stress = saturate(1.0 - abs(hf - sline - 0.07) * 9.0) * (1.0 - scorch) * step(0.03, sev);\n"
+        "    float j = frac(Rnd * 3.1);\n"
+        "    float3 olive = Base * float3(1.25, 1.1, 0.55) * 0.9;\n"
+        "    float3 orange = float3(0.22, 0.075, 0.022) * (0.8 + 0.4 * j);\n"
+        "    float3 brown = float3(0.07, 0.035, 0.015);\n"
+        "    float3 black = float3(0.014, 0.012, 0.010);\n"
+        "    float3 crown = lerp(Base, olive, stress * 0.8);\n"
+        "    crown = lerp(crown, lerp(orange, brown, saturate(sev * 1.4 - 0.5)), scorch);\n"
+        "    crown = lerp(crown, black, deep);\n"
+        "    float charH = lerp(120.0, TH > 1.0 ? TH : 3000.0, sev * sev);\n"
+        "    float barkChar = 1.0 - smoothstep(charH * 0.8, charH, Local.z);\n"
         "    float3 bark = lerp(Base, black, saturate(barkChar * 1.2));\n"
         "    return lerp(Base, lerp(bark, crown, A), saturate(burned * 1.2));\n"
         "}\n"
@@ -370,6 +391,8 @@ def build_material():
     link(local, "", burnt, "Local")
     link(fire_params["FireOutcomes"], "", burnt, "Out")
     link(surv, "", burnt, "Sv")
+    link(tree_h, "", burnt, "TH")
+    link(wdir, "", burnt, "D")
     if not mel.connect_material_property(burnt, "", unreal.MaterialProperty.MP_BASE_COLOR):
         raise RuntimeError("base colour")
     glow = custom("EmberFireCrown", -100, 300,
@@ -419,19 +442,24 @@ def build_material():
     link(fuv, "", ftex_v, "UVs")
     tree_h2 = mel.create_material_expression(mat, unreal.MaterialExpressionPerInstanceCustomData, -600, 700)
     tree_h2.set_editor_property("data_index", 1)      # trees: height (cm)
-    consume = custom("EmberConsume", -300, 600, ["O", "L", "F", "On", "C", "Out", "Rnd", "A", "H", "Sv"], (
+    consume = custom("EmberConsume", -300, 600,
+                     ["O", "L", "F", "On", "C", "Out", "Rnd", "A", "H", "Sv", "D"], (
         "float burned = saturate(F.g * 2.0) * On;\n"
         "float k = saturate(burned * C) * 0.85;\n"   # burned cover: ~15 % stubble
         "float3 o = O * (1.0 - k) - L * k;\n"
         "if (Out > 0.5 && burned > 0.5) {\n"
-        + OUTCOME_HLSL.replace("    ", "") +
-        # bare skeleton: needles gone; consumed: needles and everything above ~25 % height gone (a
-        # snag). Collapse is HORIZONTAL onto the trunk axis - triangles become zero-width lines,
-        # invisible - so the offset stays within a crown radius (Nanite clamps WPO to the
-        # material's max displacement; a collapse to the base would need the tree's height).
+        "    float TH = H;\n"
+        + SEVERITY_HLSL +
+        # Partial needle loss (severity v2): past sev 0.6 the needles go from the base of the crown
+        # up, all of them only near sev 1 ("burned up but some foliage remaining"); the rarest,
+        # hottest trees also break off above ~25 % (a snag). Collapse is HORIZONTAL onto the trunk
+        # axis - triangles become zero-width lines - so the offset stays within a crown radius
+        # (Nanite clamps WPO to the material's max displacement).
         "    float3 axis = float3(-L.x, -L.y, 0.0);\n"
-        "    if (oc >= 3) { o = A > 0.5 ? axis : float3(0, 0, 0); }\n"   # no wind on a dead stem
-        "    if (oc == 4 && H > 1.0 && L.z > 0.25 * H) { o = axis; }\n"
+        "    float lost = (sev - 0.6) / 0.4 * 1.15;\n"
+        "    if (sev > 0.8) { o = float3(0, 0, 0); }\n"            # a dead tree no longer sways
+        "    if (A > 0.5 && hf < lost) { o = axis; }\n"
+        "    if (sev > 0.97 && TH > 1.0 && L.z > 0.25 * TH) { o = axis; }\n"
         "}\n"
         "return o;\n"))
     link(wind, "", consume, "O")
@@ -444,6 +472,7 @@ def build_material():
     link(vc, "A", consume, "A")
     link(tree_h2, "", consume, "H")
     link(surv, "", consume, "Sv")
+    link(wdir, "", consume, "D")
     if not mel.connect_material_property(consume, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET):
         raise RuntimeError("world position offset")
     mat.set_editor_property("two_sided", True)                  # foliage is single-layer sprays
