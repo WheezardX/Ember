@@ -1,0 +1,28 @@
+# Three Queens 2026 replayed from the NIROPS IR perimeter series (31 night flights, Aug 7 -> Sep 20),
+# the 2026 counterpart of cp2-jolly-playback. Arrival from ember/incidents/tq_nirops_2026.py;
+# world pack from `ember sim export --bundle .../package/scenario.bundle.nirops.json
+# --name hist-three-queens-2026-ir`. t0 = first IR flight (2026-08-07 23:11 PDT); the Jul 15 -
+# Aug 6 holdover (79-88 ac) has no geometry and is not in the replay.
+scenario_version = 1
+
+[scenario]
+name = "tq26-ir-playback"
+world = "../../store/sim/hist-three-queens-2026-ir.ewp"
+t_start_s = 0
+duration_s = 3801600        # 1,056 h - Aug 8 06Z -> Sep 21 06Z
+dt_s = 3600                 # hourly ticks
+seed = 1
+
+[model]
+id = "arrival-playback"
+
+[model.overrides]
+"playback.residence_s" = 21600   # same 6 h glow as the Jolly playback (the IR says real heat lingered for weeks)
+
+[weather]
+mode = "constant"
+
+[output]
+dir = "../../runs/tq26"
+keyframe_every = 24
+stream = true

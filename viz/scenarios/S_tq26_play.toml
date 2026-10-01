@@ -1,0 +1,63 @@
+# Three Queens 2026 replayed from the real NIROPS IR perimeters (31 night flights, Aug 7 -> Sep 20):
+# sim/scenarios/tq26-ir-playback.scenario.toml (arrival playback, hourly, 6 h glow). t = 0 is the
+# first IR flight, 2026-08-07 23:11 PDT. Moments (h since t0):
+#   0-40     the Aug 7-9 wind runs (883 -> 2,478 ac), N end of Lake Kachess
+#   287-335  the Aug 21 night crown run (+2,530 ac) - no IR flight on Aug 20 / 21, so the
+#            perimeter interpolation spreads it across the gap
+#   335-460  Red Mountain, then the long tail to Sep 20 (1,056 h)
+# Constant weather (playback) - no wind in the replay; reference: docs/reference/THREE_QUEENS_2026_TIMELINE.md
+render_scenario_version = 1
+
+[scenario]
+name = "S_tq26_play"
+description = "Fly-around: Three Queens 2026 replayed from the real IR perimeters - ember-dev play"
+world = "terrain:three_queens_2026"
+replay = "../../runs/tq26/tq26-ir-playback.replay.json"
+resolution = [2560, 1440]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 4000
+ground_cover = true
+exposure_bias = -2.0
+
+[[bookmarks]]
+name = "aug21_run"            # the Aug 21 run (burning centroid at 320 h) from the SW, 3.5 km out
+target_frac = [0.63, 0.424]
+distance_m = 3500
+yaw_deg = 45
+pitch_deg = -28
+fov_deg = 55
+sun = "afternoon"
+
+[[bookmarks]]
+name = "kachess_hero"         # the Aug 9 front on the east shore (burning centroid at 40 h), looking north up the lake
+target_frac = [0.603, 0.623]
+distance_m = 3000
+yaw_deg = 345
+pitch_deg = -25
+fov_deg = 60
+sun = "afternoon"
+
+[[bookmarks]]
+name = "overview"             # the whole scar from the south
+camera_xy = [635200.0, 5244200.0]
+camera_alt_m = 4800
+yaw_deg = 0
+pitch_deg = -40
+fov_deg = 55
+sun = "afternoon"
+
+[[captures]]
+name = "aug21_run_320h"
+bookmark = "aug21_run"
+t_s = 1152000
+
+[[captures]]
+name = "kachess_aug9"
+bookmark = "kachess_hero"
+t_s = 144000
+
+[[captures]]
+name = "overview_end"
+bookmark = "overview"
+t_s = 3801600

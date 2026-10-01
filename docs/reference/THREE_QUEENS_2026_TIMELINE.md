@@ -48,6 +48,14 @@ How it lines up:
 - **Isolated heat points keep climbing as the fire dies**: ~20 on Aug 7, 500–600 mid-August,
   **1,227 on Sep 14** — hundreds of smouldering logs and stumps scattered across the scar.
 
+**Playback in the client** (same chain as Jolly CP2): bundle variant
+`package/scenario.bundle.nirops.json` → world pack `store/sim/hist-three-queens-2026-ir.ewp`
+→ `sim/scenarios/tq26-ir-playback.scenario.toml` (arrival playback, hourly, 1,056 h, 6 h glow)
+→ `runs/tq26/` → client scenario `S_tq26_play` (`ember-dev play S_tq26_play`; bookmarks
+`aug21_run`, `kachess_hero`, `overview`). Limits: constant weather (no wind — smoke rises
+straight up), every burning cell reports the top intensity class, the Jul 15 – Aug 6 holdover
+has no geometry, and the Aug 21 run is spread across the Aug 19 → 21 gap between flights.
+
 What that means for us: our playback treats a cell as burning for ~6 h after arrival, then cold.
 The real fire, every night from Aug 24 on, had a thin rim of intense heat (or none), a scattered
 glow over most of the scar, and hundreds of point sources. The IR classes map directly onto what
