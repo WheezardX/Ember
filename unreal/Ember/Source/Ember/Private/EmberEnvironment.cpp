@@ -165,8 +165,10 @@ void AEmberEnvironment::SetSmokePall(float Pall01)
 	{
 		if (UDirectionalLightComponent* L = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
 		{
-			L->SetIntensity(10.f * (1.f - 0.3f * P));
-			L->SetLightColor(FMath::Lerp(FLinearColor::White, FLinearColor(1.f, 0.8f, 0.58f), P));
+			L->SetIntensity(10.f * (1.f - 0.15f * P));  // 0.3 read as a dark brown frame; the reference pall is bright
+			// mildly warm: (1, 0.8, 0.58) turned every sunlit column brown; the reference columns stay
+			// white in the sun under a moderate pall
+			L->SetLightColor(FMath::Lerp(FLinearColor::White, FLinearColor(1.f, 0.88f, 0.74f), P));
 		}
 	}
 }

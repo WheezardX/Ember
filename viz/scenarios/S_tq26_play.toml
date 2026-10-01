@@ -23,6 +23,10 @@ vegetation = true
 veg_radius_m = 4000
 ground_cover = true
 exposure_bias = -2.0
+# Stand-in plume wind until HRRR reaches this playback (the replay carries none): a typical
+# August afternoon SW breeze; the reference columns lean NE off the ridges.
+wind_from_deg = 225
+smoke_wind_ms = 5.0
 
 [[bookmarks]]
 name = "aug6_wake"            # the summit holdover from the SE, Lake Kachess behind the camera
@@ -62,19 +66,19 @@ sun = "afternoon"
 
 [[bookmarks]]
 name = "shore_aug9"           # ref: inciweb-3q 2026-08-09 "from Lake Kachess Road just south of the campground"
-camera_xy = [633450.0, 5246170.0]   # on the lake (2 km up the hero aerial's line), looking NNW (approximate: no GPS)
-camera_agl_m = 2.0
-yaw_deg = 340
-pitch_deg = 12
+camera_xy = [632200.0, 5245000.0]   # west-shore water's edge (fbfm40 98 in the pack), looking NE at the Aug 9 front (approximate: no GPS)
+camera_alt_m = 693
+yaw_deg = 45
+pitch_deg = 10
 fov_deg = 62
 sun = "afternoon"
 
 [[bookmarks]]
 name = "hero_up_lake"         # ref: the incident's aerial up Lake Kachess, columns off both shores
-camera_xy = [633800.0, 5244200.0]
-camera_alt_m = 2200
-yaw_deg = 350
-pitch_deg = -18
+camera_xy = [632700.0, 5246200.0]   # over the lake's west shore ~3 km short of the Aug 11 heat (the photo is that close)
+camera_alt_m = 1600
+yaw_deg = 5
+pitch_deg = -10
 fov_deg = 60
 sun = "afternoon"
 
@@ -123,3 +127,18 @@ t_s = 2311200
 name = "overview_end"
 bookmark = "overview"
 t_s = 5796000
+
+[[bookmarks]]
+name = "kachess_night"        # kachess_hero after dark: the night look (front + IR heat glow, column lit from below)
+target_frac = [0.603, 0.623]
+distance_m = 3000
+yaw_deg = 345
+pitch_deg = -25
+fov_deg = 60
+sun = "315,-14"               # ~22:30 PDT in mid August: sun well below the horizon, last light NW
+exposure_ev_min = 2.0         # night: do not meter the dark slope up to day (the reference keeps it black; the fire carries the frame)
+
+[[captures]]
+name = "night_aug9_600h"      # Aug 9 21:28 PDT
+bookmark = "kachess_night"
+t_s = 2160000

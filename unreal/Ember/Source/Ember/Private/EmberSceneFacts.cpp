@@ -279,6 +279,13 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		FireJ->SetNumberField(TEXT("spots_total"), It->SpotsTotal);
 		FireJ->SetNumberField(TEXT("spots_ignited_total"), It->SpotsIgnitedTotal);
 		FireJ->SetNumberField(TEXT("spots_recent"), It->Firebrands.Num());
+		// Observed heat (NIROPS IR classes, if the pack has them): the flight shown and its cells
+		FireJ->SetBoolField(TEXT("observed_heat"), It->bObservedHeat);
+		FireJ->SetStringField(TEXT("heat_flight_utc"), It->HeatFlightUtc);
+		FireJ->SetNumberField(TEXT("heat_age_h"), It->HeatAgeH);
+		FireJ->SetNumberField(TEXT("heat_isolated"), static_cast<double>(It->HeatCells[1]));
+		FireJ->SetNumberField(TEXT("heat_scattered"), static_cast<double>(It->HeatCells[2]));
+		FireJ->SetNumberField(TEXT("heat_intense"), static_cast<double>(It->HeatCells[3]));
 		FireJ->SetNumberField(TEXT("wind_ms"), It->WindSpeedMs());
 		FireJ->SetNumberField(TEXT("wind_from_deg"), It->WindFromDeg());
 		TSharedRef<FJsonObject> ProbesJ = MakeShared<FJsonObject>();

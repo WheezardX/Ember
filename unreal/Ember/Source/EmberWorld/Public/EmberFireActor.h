@@ -22,6 +22,8 @@ struct FEmberSmokeSource
 	int32 Key = 0;           // bin index: stable across times (per-puff seeds)
 	float Cluster = 0.f;     // Strength summed over the 5 x 5 bins around (1.5 km): plume height
 	float Smoulder = 0.f;    // slow-decaying weight of the scar behind the front (days): low wisps
+	float Heat = 0.f;        // observed interior heat (NIROPS) x today's activity: interior columns
+	float HeatCluster = 0.f; // Heat summed over the 5 x 5 bins around: interior column height
 };
 
 /** One firebrand from the stream (HCP4 H4-4), launched within the last RecentBrandS of sim time. */
@@ -116,6 +118,16 @@ public:
 	/** Recent smoke (cell-equivalents, e^-h/24 since arrival): the valley smoke layer / pall. */
 	double SmokeLoad = 0.0;
 
+	/** Observed heat (ember.incidents.ir_heat, `<pack>.heat.json` beside the world pack): the NIROPS
+	 * heat classes of the last IR flight at or before the shown time. A perimeter playback only knows
+	 * when each cell burned; the IR says where it was still hot, often for weeks (Three Queens 2026). */
+	bool bObservedHeat = false;
+	FString HeatFlightUtc;        // flight shown (facts); empty = none within HeatMaxAgeH
+	double HeatAgeH = -1.0;
+	int64 HeatCells[4] = {0, 0, 0, 0};  // cells per class shown: 1 isolated, 2 scattered, 3 intense
+	static constexpr double HeatMaxAgeH = 72.0;
+	static constexpr double HeatDecayH = 48.0;
+
 	/** Burning cells (as rendered) whose centres lie within RadiusM of (X, Y), metres. */
 	void BurningNear(double X, double Y, double RadiusM, TArray<FEmberBurningCell>& Out) const;
 
@@ -137,6 +149,10 @@ private:
 	emberworld::fire::State State;
 	TArray<uint8> Pixels;
 	TArray<uint8> Spread;          // FireTex A per cell (see above)
+	TArray<uint8> HeatGrids;       // flights x Nx x Ny classes (row 0 north)
+	TArray<int64> HeatUnix;        // per flight, ascending
+	TArray<FString> HeatUtc;
+	void LoadObservedHeat(const FString& ReplayPath);
 	FLinearColor Rect = FLinearColor(0, 0, 1, 1);
 
 	UPROPERTY(Transient)

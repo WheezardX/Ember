@@ -1,12 +1,33 @@
 #include "EmberFireActor.h"
 
 #include "Engine/Texture2D.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "RenderingThread.h"
 #include "TextureResource.h"
 
 #include "EmberTerrainActor.h"
 
+THIRD_PARTY_INCLUDES_START
+#include "json.hpp"
+THIRD_PARTY_INCLUDES_END
+
 DEFINE_LOG_CATEGORY_STATIC(LogEmberFire, Log, All);
+
+namespace
+{
+	/** Integer hash -> [0, 1): per-cell / per-bin draws that do not depend on evaluation order. */
+	double FireHash01(uint32 A, uint32 B)
+	{
+		uint32 H = A * 0x9E3779B1u ^ (B + 0x7F4A7C15u) * 0x85EBCA77u;
+		H ^= H >> 15;
+		H *= 0x2C1B3C6Du;
+		H ^= H >> 12;
+		H *= 0x297A2D39u;
+		H ^= H >> 15;
+		return (H & 0xFFFFFF) / 16777216.0;
+	}
+}
 
 AEmberFireActor::AEmberFireActor()
 {
@@ -80,8 +101,67 @@ bool AEmberFireActor::Load(const FString& ReplayPath, AEmberTerrainActor* Terrai
 	}
 	UE_LOG(LogEmberFire, Log, TEXT("fire replay %s: model %s, %dx%d cells of %.0f m, t %d..%d s, %u ticks"),
 		*ReplayPath, *ModelId, Nx, Ny, CellM, StartS, EndS, Stream.ticks());
+	LoadObservedHeat(ReplayPath);
 	SetTime(StartS);
 	return true;
+}
+
+void AEmberFireActor::LoadObservedHeat(const FString& ReplayPath)
+{
+	bObservedHeat = false;
+	HeatGrids.Reset();
+	HeatUnix.Reset();
+	HeatUtc.Reset();
+	FString Text;
+	if (!FFileHelper::LoadFileToString(Text, *ReplayPath))
+	{
+		return;
+	}
+	try
+	{
+		const nlohmann::json R = nlohmann::json::parse(TCHAR_TO_UTF8(*Text));
+		if (!R.contains("world") || !R["world"].contains("pack_relative"))
+		{
+			return;
+		}
+		const FString Pack = FPaths::ConvertRelativePathToFull(FPaths::GetPath(ReplayPath),
+			UTF8_TO_TCHAR(R["world"]["pack_relative"].get<std::string>().c_str()));
+		const FString MetaPath = FPaths::ChangeExtension(Pack, TEXT("heat.json"));
+		FString MetaText;
+		if (!FFileHelper::LoadFileToString(MetaText, *MetaPath))
+		{
+			return;  // no observed heat for this pack: the playback's own decay only
+		}
+		const nlohmann::json M = nlohmann::json::parse(TCHAR_TO_UTF8(*MetaText));
+		if (M.value("nx", 0) != Nx || M.value("ny", 0) != Ny)
+		{
+			UE_LOG(LogEmberFire, Warning, TEXT("observed heat %s: grid differs from the replay's, ignored"), *MetaPath);
+			return;
+		}
+		const FString BinPath = FPaths::Combine(FPaths::GetPath(MetaPath), UTF8_TO_TCHAR(M["bin"].get<std::string>().c_str()));
+		if (!FFileHelper::LoadFileToArray(HeatGrids, *BinPath))
+		{
+			return;
+		}
+		for (const nlohmann::json& F : M["flights"])
+		{
+			HeatUnix.Add(F["unix"].get<int64>());
+			HeatUtc.Add(UTF8_TO_TCHAR(F["acquired_utc"].get<std::string>().c_str()));
+		}
+		if (HeatGrids.Num() != HeatUnix.Num() * Nx * Ny)
+		{
+			UE_LOG(LogEmberFire, Warning, TEXT("observed heat %s: %d bytes for %d flights, ignored"), *BinPath, HeatGrids.Num(), HeatUnix.Num());
+			HeatGrids.Reset();
+			return;
+		}
+		bObservedHeat = HeatUnix.Num() > 0;
+		UE_LOG(LogEmberFire, Log, TEXT("observed heat %s: %d IR flights"), *MetaPath, HeatUnix.Num());
+	}
+	catch (const std::exception& E)
+	{
+		UE_LOG(LogEmberFire, Warning, TEXT("observed heat: %s"), UTF8_TO_TCHAR(E.what()));
+		HeatGrids.Reset();
+	}
 }
 
 void AEmberFireActor::SetTime(double TSeconds)
@@ -107,8 +187,37 @@ void AEmberFireActor::SetTime(double TSeconds)
 	const int32 N = Nx * Ny;
 	const int32 Bx = (Nx + SmokeBinCells - 1) / SmokeBinCells;
 	const int32 By = (Ny + SmokeBinCells - 1) / SmokeBinCells;
-	struct FBin { double Sx = 0, Sy = 0, W = 0, Burning = 0, Sm = 0; };
+	struct FBin { double Sx = 0, Sy = 0, W = 0, Burning = 0, Sm = 0, HeatI = 0, HeatS = 0, Heat = 0; };
 	SmokeLoad = 0.0;
+	// Observed heat: the last IR flight at or before now (within HeatMaxAgeH), fading with its age.
+	const uint8* Heat = nullptr;
+	double Kh = 0.0;
+	int32 Flight = -1;
+	const int64 NowUnix = T0Unix + static_cast<int64>(FMath::FloorToDouble(TSeconds));
+	HeatFlightUtc.Reset();
+	HeatAgeH = -1.0;
+	for (int64& C : HeatCells)
+	{
+		C = 0;
+	}
+	if (bObservedHeat)
+	{
+		for (int32 F = 0; F < HeatUnix.Num() && HeatUnix[F] <= NowUnix; ++F)
+		{
+			Flight = F;
+		}
+		if (Flight >= 0 && (NowUnix - HeatUnix[Flight]) / 3600.0 <= HeatMaxAgeH)
+		{
+			HeatAgeH = (NowUnix - HeatUnix[Flight]) / 3600.0;
+			HeatFlightUtc = HeatUtc[Flight];
+			Heat = &HeatGrids[static_cast<int64>(Flight) * Nx * Ny];
+			Kh = FMath::Exp(-HeatAgeH / HeatDecayH);
+		}
+	}
+	// Interior burning makes smoke by day: it lies down at night and stands up in the afternoon
+	// (peak ~16:00 local solar; the region sits ~8 h west of UTC).
+	const double SolarH = FMath::Fmod(NowUnix / 3600.0 - 8.0 + 2400.0, 24.0);
+	const double Day = 0.25 + 0.75 * 0.5 * (1.0 + FMath::Cos(2.0 * PI * (SolarH - 16.0) / 24.0));
 	TArray<FBin> Bins;
 	Bins.SetNum(Bx * By);
 	for (int32 I = 0; I < N; ++I)
@@ -144,6 +253,33 @@ void AEmberFireActor::SetTime(double TSeconds)
 				B.Burning += bBurning;
 			}
 		}
+		// Observed heat on a cell the playback already burned (and is not burning now): interior
+		// smoke (scattered heat - most of the scar for weeks - weak per cell; intense heat strong) and
+		// a sparse smouldering glow (a fresh draw per flight, so the hot spots move night to night).
+		uint8 Glow = 0;
+		if (Heat && bBurned && !bBurning && Heat[I] > 0)
+		{
+			const uint8 Hc = Heat[I];
+			++HeatCells[Hc];
+			const int32 Cx = I % Nx;
+			const int32 Cy = I / Nx;
+			FBin& B = Bins[(Cy / SmokeBinCells) * Bx + Cx / SmokeBinCells];
+			const double Wh = Kh * (Hc == 3 ? 0.5 : Hc == 2 ? 0.06 : 0.3);
+			B.Sx += Wh * Cx;
+			B.Sy += Wh * Cy;
+			(Hc == 3 ? B.HeatI : B.HeatS) += Wh;
+			SmokeLoad += Wh;
+			// Reference (the night shots): discrete bright points and short lines across a dark slope,
+			// not a glowing sheet - sparse cells drawn as live fire (a fresh age, so M_Terrain's front
+			// term lights them; intense heat may torch a tree), the rest dark.
+			const double Pg = Hc == 3 ? 0.35 : Hc == 2 ? 0.06 : 1.0;
+			// (by day the pockets are lost against sunlit ground - the day reference shows none)
+			if (FireHash01(static_cast<uint32>(I), static_cast<uint32>(Flight) * 7u + 3u) < Pg * Kh * FMath::Clamp(1.25 - Day, 0.15, 1.0))
+			{
+				Glow = Hc == 3 ? 2 : 1;
+				Age = Hc == 3 ? 10 : 18;  // ~0.3 h / ~1 h since "arrival" (sqrt(h / 200) x 255)
+			}
+		}
 		// Intensity class 1..3 (a stream that does not report it is drawn as 3: the HCP3 look).
 		const int32 Cls = bIntensityReported ? FMath::Clamp(static_cast<int32>(State.intensity[I]), 1, 3) : 3;
 		if (bBurning)
@@ -154,7 +290,7 @@ void AEmberFireActor::SetTime(double TSeconds)
 		uint8* P = &Pixels[I * 4];  // B G R A
 		P[0] = Age;
 		P[1] = bBurned ? static_cast<uint8>(64 + 63 * Cls) : 0;
-		P[2] = bBurning ? static_cast<uint8>(85 * Cls) : 0;
+		P[2] = bBurning ? static_cast<uint8>(85 * Cls) : static_cast<uint8>(85 * Glow);
 		P[3] = Spread[I];
 	}
 	Firebrands.Reset();
@@ -178,24 +314,35 @@ void AEmberFireActor::SetTime(double TSeconds)
 		B.Key = static_cast<uint32>(K);
 		Firebrands.Add(B);
 	}
+	// Interior columns: scattered heat burns in pockets, so each bin draws an activity per flight
+	// (cubed: a few bins carry most of it - several distinct columns, not a uniform smoke field, as
+	// in the reference aerials); intense heat always stands up.
+	for (int32 K = 0; K < Bins.Num(); ++K)
+	{
+		FBin& B = Bins[K];
+		const double Act = FMath::Pow(FireHash01(static_cast<uint32>(K), static_cast<uint32>(Flight) * 7u + 5u), 4.0);
+		B.Heat = Day * (B.HeatI + B.HeatS * 4.0) * Act;
+	}
 	SmokeSources.Reset();
 	for (int32 K = 0; K < Bins.Num(); ++K)
 	{
 		const FBin& B = Bins[K];
-		if (B.W < 0.5 && B.Sm < 0.5)
+		if (B.W < 0.5 && B.Sm < 0.5 && B.Heat < 3.0)
 		{
 			continue;
 		}
+		const double Wt = B.W + B.Sm + B.HeatI + B.HeatS;
 		FEmberSmokeSource S;
-		S.X = Grid.origin_x + (B.Sx / (B.W + B.Sm) + 0.5) * CellM;
-		S.Y = Grid.origin_y - (B.Sy / (B.W + B.Sm) + 0.5) * CellM;
+		S.X = Grid.origin_x + (B.Sx / Wt + 0.5) * CellM;
+		S.Y = Grid.origin_y - (B.Sy / Wt + 0.5) * CellM;
 		S.Strength = static_cast<float>(B.W < 0.5 ? 0.0 : B.W);
 		S.Smoulder = static_cast<float>(B.Sm);
+		S.Heat = static_cast<float>(B.Heat < 3.0 ? 0.0 : B.Heat);  // a column needs a real pocket (~3 cell-eq)
 		S.Burning = static_cast<float>(B.Burning);
 		S.Key = K;
 		const int32 Kx = K % Bx;
 		const int32 Ky = K / Bx;
-		double Cl = 0.0;
+		double Cl = 0.0, Hl = 0.0;
 		for (int32 Dy = -2; Dy <= 2; ++Dy)
 		{
 			for (int32 Dx = -2; Dx <= 2; ++Dx)
@@ -205,10 +352,12 @@ void AEmberFireActor::SetTime(double TSeconds)
 				if (X >= 0 && Y >= 0 && X < Bx && Y < By)
 				{
 					Cl += Bins[Y * Bx + X].W;
+					Hl += Bins[Y * Bx + X].Heat;
 				}
 			}
 		}
 		S.Cluster = static_cast<float>(Cl);
+		S.HeatCluster = static_cast<float>(Hl);
 		SmokeSources.Add(S);
 	}
 	// Upload the whole grid (a few MB); ordered before the next frame's rendering.

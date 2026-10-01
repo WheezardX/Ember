@@ -59,6 +59,46 @@ Facts: `smoke.{sources, plumes, puffs, max_top_m}`.
 Not yet (HCP4): plume/HUD wind-vane agreement from a real wind field, intensity-driven column
 heights from the sim, shadows from the plume, night/glow pass, Niagara embers.
 
+### Smoke v1 + observed heat (2026-10-01, tuned against the Three Queens 2026 photos)
+
+Smoke v1 (df1944b) changes the geometry to buoyant columns. Each column rises near-vertically at
+speed `W0` to `H = 250 √cluster` (300-5000 m), then leans downwind. Puffs are smaller than the
+column is wide, so billows read. A skylight term lights the shaded sides. Puffs are packed toward
+the base (life fraction u^1.5, opacity compensated) and faded in by height, which removes the row
+of grey discs at column bases. Three more pieces:
+
+* **Smoulder.** Each burned cell keeps a weak 5-day tail, which gives low wisps.
+* **Pall.** Recent smoke drives a valley smoke layer (the fog's second layer), a paler warm haze
+  and a slightly dimmer sun.
+* **Observed heat.** A perimeter playback only knows when a cell burned. The NIROPS night flights
+  say where it was still hot, often for weeks.
+  * Built by `python -m ember.incidents.ir_heat --obs <incident>/observations/ir_perimeters
+    --replay <run>.replay.json`.
+  * Output: one class grid per flight on the replay grid (0 none, 1 isolated, 2 scattered,
+    3 intense), written as `<pack>.heat.json` + `.heat.bin` beside the world pack. Three Queens:
+    31 flights, 11 MB.
+  * `AEmberFireActor` loads it when present and shows the last flight at or before now, if it is
+    no older than 72 h, fading `e^-age/48 h`. It is used on cells the playback has already burned.
+
+  Observed heat drives two things:
+
+  * **Interior columns.** Each 300 m bin sums intense heat (0.5 per cell) and scattered heat
+    (0.06 per cell). It then draws an activity per flight (u^4), so a few pockets carry most of the
+    smoke. That gives several distinct columns, not a uniform field. A day cycle peaks at 16:00
+    solar time and falls to 0.25 at night. Columns are `90 √cluster`, 200-1200 m, and narrower
+    than a front's. They also light their own base at night.
+  * **Glow points.** A sparse per-flight draw (intense 35 %, scattered 6 %, isolated points all)
+    becomes live fire in FireTex: a fresh age, class 2 for intense. On a dark slope that reads as
+    the discrete points and short lines of the night photos. By day the draw thins to 15 %, since
+    pockets are lost against sunlit ground.
+
+Facts: `fire.{observed_heat, heat_flight_utc, heat_age_h, heat_isolated, heat_scattered,
+heat_intense}`.
+
+Still open: a night sky (stars, deep blue; the atmosphere goes black), brighter night fire points,
+a pall lit by the fire at night, HRRR wind (S_tq26_play uses a stand-in SW 5 m/s), and the
+reservoir's drawdown beach (the shore photos show a wide dry lakebed).
+
 ## Eye-level flames (`AEmberFlameActor`; HCP4 H4-5)
 
 Near the camera the terrain's flame glow is a flat wash, so the flame actor stands procedural
