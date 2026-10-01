@@ -1,0 +1,54 @@
+# Bark texture sources (2026-10-01, Brad: "go with the CC0 libraries for now" - Fab / Megascans and
+# his own bark photos of the Kachess trees may replace the main species later).
+# Fetched by `ember-dev fetch-textures assets/sources/bark.toml` into store/textures/bark/<key>/
+# (outside git; metered in the download ledger). Every set is CC0: shippable, no attribution needed
+# (credited here anyway). 2K JPG: bark only reads within ~30-50 m of the camera.
+# Species keys are the tree generator's (assets/generators/treegen.py CONIFERS).
+
+[[set]]
+key = "douglas_fir"
+source = "polyhaven"
+id = "bark_brown_01"
+licence = "CC0"
+species = ["pseudotsuga_menziesii"]
+why = "deep furrowed brown ridges"
+
+[[set]]
+key = "pine"
+source = "polyhaven"
+id = "pine_bark"
+licence = "CC0"
+species = ["pinus_ponderosa", "larix_occidentalis"]
+why = "orange-red jigsaw plates with dark fissures (larch: same plates, darker tint)"
+
+[[set]]
+key = "cedar"
+source = "polyhaven"
+id = "metasequoia_bark"
+licence = "CC0"
+species = ["thuja_plicata"]
+why = "stringy fibrous red-brown strips"
+
+[[set]]
+key = "hemlock"
+source = "polyhaven"
+id = "bark_brown_02"
+licence = "CC0"
+species = ["tsuga_heterophylla", "tsuga_mertensiana"]
+why = "darker, moderately furrowed and scaly"
+
+[[set]]
+key = "true_fir"
+source = "ambientcg"
+id = "Bark001"
+licence = "CC0"
+species = ["abies_grandis", "abies_amabilis", "abies_lasiocarpa"]
+why = "grey blocky bark"
+
+[[set]]
+key = "spruce"
+source = "ambientcg"
+id = "Bark014"
+licence = "CC0"
+species = ["picea_engelmannii"]
+why = "thin reddish-brown scales"

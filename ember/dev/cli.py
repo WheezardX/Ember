@@ -570,6 +570,16 @@ def forest_report(region: str = typer.Argument(..., help="Terrain region, e.g. t
                    f"{d['rendered_crown_cover_pct']}% vs LANDFIRE {d['landfire_cc_pct']}%")
 
 
+@app.command("fetch-textures")
+def fetch_textures(manifest: Path = typer.Argument(..., help="assets/sources/<set>.toml"),
+                   res: str = typer.Option("2k", "--res", help="1k / 2k / 4k")) -> None:
+    """Fetch CC0 texture sets (Poly Haven / ambientCG) into store/textures/<manifest>/ (metered)."""
+    from ember.dev import texsource
+
+    for r in texsource.fetch(manifest, ue.repo_root() / "store", res):
+        typer.echo(f"  {r['key']}: " + ("on disk, skipped" if r.get("skipped") else f"{', '.join(r['maps'])}  {r['mb']} MB"))
+
+
 @app.command("regen-assets")
 def regen_assets(check: bool = typer.Option(False, "--check",
                                            help="Engine-free: is the lock current?"),

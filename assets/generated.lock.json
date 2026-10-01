@@ -10,7 +10,7 @@
       }
     },
     "t_ground.py": {
-      "script_sha256": "cba02df85fa4c56c367e1c6bb4ed2625132862f84f524f493e53e60f77ac1ea6",
+      "script_sha256": "550d47b4754a5ecd982763d6317c96fd51bc65c2a6b05770f505d096f7e3e51c",
       "outputs": {
         "/Game/Ember/Generated/Ground/T_Ground_Litter_C": "unreal/Ember/Content/Ember/Generated/Ground/T_Ground_Litter_C.uasset",
         "/Game/Ember/Generated/Ground/T_Ground_Litter_N": "unreal/Ember/Content/Ember/Generated/Ground/T_Ground_Litter_N.uasset",
@@ -23,7 +23,7 @@
       }
     },
     "m_terrain.py": {
-      "script_sha256": "62549d91cb455abb073765e65d4eb9183808168babe61e5b7397f13416755c3f",
+      "script_sha256": "a67119d3633366f890820aff2f8b01c74599e8ed503846621537c98368b39ef0",
       "outputs": {
         "/Game/Ember/Generated/M_Terrain": "unreal/Ember/Content/Ember/Generated/M_Terrain.uasset",
         "/Game/Ember/Generated/T_LinearBlack": "unreal/Ember/Content/Ember/Generated/T_LinearBlack.uasset"
@@ -36,7 +36,7 @@
       }
     },
     "veg_materials.py": {
-      "script_sha256": "2da68c6abd8fee3d66c70c7d71a9577c2f51b967b4b16c368db8a8a8582da024",
+      "script_sha256": "99a542b3dcb358dbb72ed8e121a920f462eaecbcdb163a90e6c768c7259b532c",
       "outputs": {
         "/Game/Ember/Generated/Veg/MI_Veg_pseudotsuga_menziesii": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_pseudotsuga_menziesii.uasset",
         "/Game/Ember/Generated/Veg/MI_Veg_tsuga_heterophylla": "unreal/Ember/Content/Ember/Generated/Veg/MI_Veg_tsuga_heterophylla.uasset",
@@ -56,7 +56,7 @@
       }
     },
     "veg_species.py": {
-      "script_sha256": "f9f9b3a7fa89e279b5d657a1a29ad1112e43d6ab1a2aca1b8a508cdec1f5fdff",
+      "script_sha256": "036111d27ef912209b9255e17bfbdb60c62383028847ada8cf1e6496ea13d55c",
       "outputs": {
         "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v0": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v0.uasset",
         "/Game/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v1": "unreal/Ember/Content/Ember/Generated/Veg/SM_pseudotsuga_menziesii_v1.uasset",
@@ -198,7 +198,7 @@
       }
     },
     "ground_cover.py": {
-      "script_sha256": "91d66c7aff141d30ee21f6c51614645953f7f6d6c21a8b408256bf798b08645d",
+      "script_sha256": "bc41ba5bffafbbdfeca2401b01008852d8c556ca5d8a86a320bf4bfb579304fa",
       "outputs": {
         "/Game/Ember/Generated/Cover/MI_Cover_fern": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_fern.uasset",
         "/Game/Ember/Generated/Cover/SM_Cover_fern_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fern_v0.uasset",
@@ -255,7 +255,11 @@
         "/Game/Ember/Generated/Cover/MI_Cover_fallenbare": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_fallenbare.uasset",
         "/Game/Ember/Generated/Cover/SM_Cover_fallenbare_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallenbare_v0.uasset",
         "/Game/Ember/Generated/Cover/SM_Cover_fallenbare_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallenbare_v1.uasset",
-        "/Game/Ember/Generated/Cover/SM_Cover_fallenbare_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallenbare_v2.uasset"
+        "/Game/Ember/Generated/Cover/SM_Cover_fallenbare_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_fallenbare_v2.uasset",
+        "/Game/Ember/Generated/Cover/MI_Cover_branch": "unreal/Ember/Content/Ember/Generated/Cover/MI_Cover_branch.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_branch_v0": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_branch_v0.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_branch_v1": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_branch_v1.uasset",
+        "/Game/Ember/Generated/Cover/SM_Cover_branch_v2": "unreal/Ember/Content/Ember/Generated/Cover/SM_Cover_branch_v2.uasset"
       }
     }
   }
