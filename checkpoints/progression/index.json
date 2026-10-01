@@ -89,6 +89,14 @@
    "image": "checkpoints/progression/S_forest_teanaway/ground_ridge/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_forest_teanaway/ground_ridge",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_forest_teanaway/ground_ridge/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_forest_teanaway/oblique_nw",
    "date": "2026-09-27T19:37-07:00",
    "commit": "fdab1a9",
@@ -175,6 +183,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_forest_teanaway/oblique_nw/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_forest_teanaway/oblique_nw",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_forest_teanaway/oblique_nw/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_ground_fire_tq/front",
@@ -265,6 +281,14 @@
    "image": "checkpoints/progression/S_ground_fire_tq/front/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_ground_fire_tq/front",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_ground_fire_tq/front/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_ground_fire_tq/old_burn",
    "date": "2026-09-29T14:06-07:00",
    "commit": "98bc578",
@@ -351,6 +375,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_ground_fire_tq/old_burn/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_ground_fire_tq/old_burn",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_ground_fire_tq/old_burn/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_ground_fire_tq/smoulder",
@@ -537,6 +569,14 @@
    "image": "checkpoints/progression/S_ground_tq/fade_mid/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_ground_tq/fade_mid",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_ground_tq/fade_mid/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_ground_tq/grass",
    "date": "2026-09-29T13:40-07:00",
    "commit": "02d0101",
@@ -631,6 +671,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_ground_tq/grass/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_ground_tq/grass",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_ground_tq/grass/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_ground_tq/litter",
@@ -729,6 +777,14 @@
    "image": "checkpoints/progression/S_ground_tq/litter/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_ground_tq/litter",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_ground_tq/litter/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_ground_tq/rock",
    "date": "2026-09-29T13:40-07:00",
    "commit": "02d0101",
@@ -823,6 +879,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_ground_tq/rock/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_ground_tq/rock",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_ground_tq/rock/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_ground_tq/shrub",
@@ -921,6 +985,22 @@
    "image": "checkpoints/progression/S_ground_tq/shrub/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_ground_tq/shrub",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_ground_tq/shrub/2026-10-01_1421_ba85877.jpg"
+  },
+  {
+   "view": "S_ground_tq/stand_eye",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_ground_tq/stand_eye/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_ground_tq/trunk_slope",
    "date": "2026-09-30T13:43-07:00",
    "commit": "474abbc",
@@ -959,6 +1039,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_ground_tq/trunk_slope/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_ground_tq/trunk_slope",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_ground_tq/trunk_slope/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_jolly_fire/d06",
@@ -1033,6 +1121,14 @@
    "image": "checkpoints/progression/S_jolly_fire/d06/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_fire/d06",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/d06/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_fire/d13",
    "date": "2026-09-28T18:03-07:00",
    "commit": "ba86f07",
@@ -1103,6 +1199,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_jolly_fire/d13/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_jolly_fire/d13",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/d13/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_jolly_fire/d19",
@@ -1177,6 +1281,14 @@
    "image": "checkpoints/progression/S_jolly_fire/d19/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_fire/d19",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/d19/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_fire/d25",
    "date": "2026-09-28T18:03-07:00",
    "commit": "ba86f07",
@@ -1249,6 +1361,14 @@
    "image": "checkpoints/progression/S_jolly_fire/d25/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_fire/d25",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/d25/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_fire/d35",
    "date": "2026-09-28T18:03-07:00",
    "commit": "ba86f07",
@@ -1319,6 +1439,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_jolly_fire/d35/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_jolly_fire/d35",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/d35/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_jolly_fire/ground_ahead_d19",
@@ -1401,6 +1529,14 @@
    "image": "checkpoints/progression/S_jolly_fire/ground_ahead_d19/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_fire/ground_ahead_d19",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/ground_ahead_d19/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_fire/ground_behind_d19",
    "date": "2026-09-28T19:52-07:00",
    "commit": "8d3fbc7",
@@ -1481,6 +1617,14 @@
    "image": "checkpoints/progression/S_jolly_fire/ground_behind_d19/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_fire/ground_behind_d19",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/ground_behind_d19/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_fire/map_d35",
    "date": "2026-09-28T18:03-07:00",
    "commit": "ba86f07",
@@ -1551,6 +1695,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_jolly_fire/map_d35/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_jolly_fire/map_d35",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/map_d35/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_jolly_fire/ridge_lookout_d19",
@@ -1631,6 +1783,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_jolly_fire/ridge_lookout_d19/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_jolly_fire/ridge_lookout_d19",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/ridge_lookout_d19/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_jolly_fire/run_close_d19",
@@ -1721,6 +1881,14 @@
    "image": "checkpoints/progression/S_jolly_fire/run_close_d19/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_fire/run_close_d19",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/run_close_d19/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_fire/run_mid_d19",
    "date": "2026-09-28T18:03-07:00",
    "commit": "ba86f07",
@@ -1809,6 +1977,14 @@
    "image": "checkpoints/progression/S_jolly_fire/run_mid_d19/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_fire/run_mid_d19",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/run_mid_d19/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_fire/scar_morning_d20",
    "date": "2026-09-28T19:52-07:00",
    "commit": "8d3fbc7",
@@ -1889,6 +2065,14 @@
    "image": "checkpoints/progression/S_jolly_fire/scar_morning_d20/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_fire/scar_morning_d20",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_fire/scar_morning_d20/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_hcp4/crown_close_503h",
    "date": "2026-09-30T09:13-07:00",
    "commit": "3adc713",
@@ -1959,6 +2143,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_jolly_hcp4/crown_close_503h/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_jolly_hcp4/crown_close_503h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4/crown_close_503h/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_jolly_hcp4/crown_oblique_503h",
@@ -2033,6 +2225,14 @@
    "image": "checkpoints/progression/S_jolly_hcp4/crown_oblique_503h/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_hcp4/crown_oblique_503h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4/crown_oblique_503h/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_hcp4/head_eye_503h",
    "date": "2026-09-30T12:13-07:00",
    "commit": "66ba17a",
@@ -2071,6 +2271,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_jolly_hcp4/head_eye_503h/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_jolly_hcp4/head_eye_503h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4/head_eye_503h/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_jolly_hcp4/mixed_oblique_460h",
@@ -2145,6 +2353,14 @@
    "image": "checkpoints/progression/S_jolly_hcp4/mixed_oblique_460h/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_hcp4/mixed_oblique_460h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4/mixed_oblique_460h/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_hcp4/mixed_side_460h",
    "date": "2026-09-30T09:13-07:00",
    "commit": "3adc713",
@@ -2217,6 +2433,14 @@
    "image": "checkpoints/progression/S_jolly_hcp4/mixed_side_460h/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_hcp4/mixed_side_460h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4/mixed_side_460h/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_hcp4/spot_side_459h",
    "date": "2026-09-30T11:24-07:00",
    "commit": "c08a187",
@@ -2265,6 +2489,14 @@
    "image": "checkpoints/progression/S_jolly_hcp4/spot_side_459h/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_hcp4/spot_side_459h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4/spot_side_459h/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_hcp4_ab/crown_close_503h",
    "date": "2026-09-30T13:43-07:00",
    "commit": "474abbc",
@@ -2295,6 +2527,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_jolly_hcp4_ab/crown_close_503h/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_jolly_hcp4_ab/crown_close_503h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4_ab/crown_close_503h/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_jolly_hcp4_ab/crown_oblique_503h",
@@ -2329,6 +2569,14 @@
    "image": "checkpoints/progression/S_jolly_hcp4_ab/crown_oblique_503h/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_hcp4_ab/crown_oblique_503h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4_ab/crown_oblique_503h/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_hcp4_ab/head_eye_503h",
    "date": "2026-09-30T13:43-07:00",
    "commit": "474abbc",
@@ -2359,6 +2607,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_jolly_hcp4_ab/head_eye_503h/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_jolly_hcp4_ab/head_eye_503h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4_ab/head_eye_503h/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_jolly_hcp4_ab/mixed_oblique_460h",
@@ -2393,6 +2649,14 @@
    "image": "checkpoints/progression/S_jolly_hcp4_ab/mixed_oblique_460h/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_hcp4_ab/mixed_oblique_460h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4_ab/mixed_oblique_460h/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_hcp4_ab/mixed_side_460h",
    "date": "2026-09-30T13:43-07:00",
    "commit": "474abbc",
@@ -2425,6 +2689,14 @@
    "image": "checkpoints/progression/S_jolly_hcp4_ab/mixed_side_460h/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_jolly_hcp4_ab/mixed_side_460h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4_ab/mixed_side_460h/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_jolly_hcp4_ab/spot_side_459h",
    "date": "2026-09-30T13:43-07:00",
    "commit": "474abbc",
@@ -2455,6 +2727,22 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_jolly_hcp4_ab/spot_side_459h/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_jolly_hcp4_ab/spot_side_459h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4_ab/spot_side_459h/2026-10-01_1421_ba85877.jpg"
+  },
+  {
+   "view": "S_jolly_hcp4_perf/head_eye_503h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_jolly_hcp4_perf/head_eye_503h/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_refcam_tq/eye",
@@ -2503,6 +2791,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_refcam_tq/eye/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_refcam_tq/eye",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_refcam_tq/eye/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_refcam_tq/high",
@@ -2599,6 +2895,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_stream_tq/start/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_stream_tq/start",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_stream_tq/start/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_terrain_gray/low_morning",
@@ -2921,6 +3225,14 @@
    "image": "checkpoints/progression/S_tq_fire_synth/t12h/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_tq_fire_synth/t12h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_tq_fire_synth/t12h/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_tq_fire_synth/t24h_front",
    "date": "2026-09-28T16:30-07:00",
    "commit": "28d75e1",
@@ -2999,6 +3311,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_tq_fire_synth/t24h_front/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_tq_fire_synth/t24h_front",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_tq_fire_synth/t24h_front/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_tq_fire_synth/t48h",
@@ -3081,6 +3401,14 @@
    "image": "checkpoints/progression/S_tq_fire_synth/t48h/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_tq_fire_synth/t48h",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_tq_fire_synth/t48h/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_tq_forest/forest_oblique",
    "date": "2026-09-28T09:46-07:00",
    "commit": "e3b3222",
@@ -3159,6 +3487,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_tq_forest/forest_oblique/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_tq_forest/forest_oblique",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_tq_forest/forest_oblique/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_tq_forest/ground_forest",
@@ -3241,6 +3577,14 @@
    "image": "checkpoints/progression/S_tq_forest/ground_forest/2026-09-30_1857_b79d44f.jpg"
   },
   {
+   "view": "S_tq_forest/ground_forest",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_tq_forest/ground_forest/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_tq_forest/ridge",
    "date": "2026-09-28T09:46-07:00",
    "commit": "e3b3222",
@@ -3319,6 +3663,14 @@
    "message": "8h+ steps 3-5: ground volume, hung-up trees anchored on real trees, burned-area mosaic",
    "source": "golden",
    "image": "checkpoints/progression/S_tq_forest/ridge/2026-09-30_1857_b79d44f.jpg"
+  },
+  {
+   "view": "S_tq_forest/ridge",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_tq_forest/ridge/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_tq_hillshade/topdown",
@@ -3905,6 +4257,14 @@
    "image": "checkpoints/progression/S_veg_lineup/lineup_backlit/2026-09-30_1647_28a0b83.jpg"
   },
   {
+   "view": "S_veg_lineup/lineup_backlit",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_veg_lineup/lineup_backlit/2026-10-01_1421_ba85877.jpg"
+  },
+  {
    "view": "S_water_close_tq/kachess_down",
    "date": "2026-09-30T08:14-07:00",
    "commit": "d6a67b1",
@@ -3935,6 +4295,14 @@
    "message": "8g items 4-6: haze, terrain geomorph, far-field canopy impression",
    "source": "golden",
    "image": "checkpoints/progression/S_water_close_tq/kachess_down/2026-09-30_1647_28a0b83.jpg"
+  },
+  {
+   "view": "S_water_close_tq/kachess_down",
+   "date": "2026-10-01T14:21-07:00",
+   "commit": "ba85877",
+   "message": "regress --full",
+   "source": "run",
+   "image": "checkpoints/progression/S_water_close_tq/kachess_down/2026-10-01_1421_ba85877.jpg"
   },
   {
    "view": "S_water_close_tq/kachess_low",
