@@ -228,7 +228,7 @@ Every version of every view, kept for pitch timelines (programmer art -> sim -> 
 * `ember-dev progression backfill` pulls every historical golden out of git (idempotent).
 * `ember-dev regress --full` archives each view whose capture changed since its last archived
   image (mean grey diff >= 1.5, so run-to-run noise is skipped) and rebuilds `timeline.html`.
-* `ember-dev progression archive <scenario> <run_dir> --note "..."` archives one run by hand;
+* `ember-dev progression archive --scenario S --note "..."` archives its latest run by hand;
   `ember-dev progression timeline` rebuilds the page.
 * Before/after comparison sheets worth keeping go in `checkpoints/progression/notes/`
   (`YYYY-MM-DD_<topic>.jpg`, captioned in its README).
