@@ -59,7 +59,8 @@ def points(pm):
 from shapely.geometry import shape
 _final = shape(json.load(open(next((INC / "observations" / "perimeters").glob("*.geojson"))))["features"][0]["geometry"])
 TQ_MASK = _final.buffer(0.012)  # ~1 km around the Sep 8 WFIGS perimeter (King / Goat lie farther out)
-urls = json.load(open(Path(__file__).parent / "kmz_urls.json"))
+urls = [p["url"] for f in (INC / "observations" / "ir").glob("nirops_*.json")
+        for p in json.load(open(f))["products"] if p["kind"] == "kmz"]
 rows, series = [], []
 with NetMeter(r"C:\Projects\Terrain\store", "three_queens_2026", "nirops-ir-kmz"):
     for u in urls:
