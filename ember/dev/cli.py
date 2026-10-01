@@ -536,11 +536,12 @@ def ref_add(paths: list[Path] = typer.Argument(..., help="Image files or folders
 
 
 @app.command("ref-sheet")
-def ref_sheet(tag: str = typer.Option(None, "--tag", help="Only images with this tag")) -> None:
+def ref_sheet(tag: str = typer.Option(None, "--tag", help="Only images with any of these tags (comma-separated)"),
+              name: str = typer.Option("sheet", "--name", help="Output file name (store/reference/<name>.html)")) -> None:
     """Contact sheet of the reference library (local HTML) for keep / reject / tag passes."""
     from ember.dev import reference
 
-    typer.echo(reference.sheet_html(ue.repo_root(), tag))
+    typer.echo(reference.sheet_html(ue.repo_root(), tag, name))
 
 
 @app.command("forest-report")

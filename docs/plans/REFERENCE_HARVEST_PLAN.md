@@ -54,6 +54,14 @@ Notes:
   construction, trail-cam, video left out). InciWeb: 59 screened -> 14 filed (smoke columns,
   smoky valleys, burnout, fuel break, vistas), reference-only until each credit is checked.
   68 images, 66 MB on disk, ~330 MB fetched (ledger).
+- 2026-09-30 night: Facebook "Three Queens Fire Information 2026" (the incident team's page, not
+  a community group) screened photo by photo in Brad's browser with his rules (keep fire, line
+  building, hose/sprinklers, wrapped structures, comms, incident reports; skip team / T-shirt
+  shots): 247 kept (shortlist `viz/reference/facebook_3q_shortlist.txt`); 204 downloaded and
+  filed (reference-only). 43 remain - the browser tool blocked itself on a localhost hand-off
+  page; mostly Aug 6-13 maps/updates, the two Lake Kachess hero aerials and the Thorp repeater
+  shots. InciWeb +10 (Brad's rules) and all 42 daily update texts. Library 282 images, 182 MB.
+  Timeline + comparison: `docs/reference/THREE_QUEENS_2026_TIMELINE.md`.
 
 ## Order
 

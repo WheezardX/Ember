@@ -1,0 +1,42 @@
+date,day_since_ignition,acres,contained_pct,personnel,source,note
+2026-07-15,0,,0,,InciWeb,lightning start; high-elevation subalpine fir near Three Queens peak
+2026-08-07,23,883,0,157,InciWeb 08-08,high winds; spot fire established across Lake Kachess (east side of north end)
+2026-08-08,24,1200,0,160,InciWeb 08-09,high winds; Level 3 evacuations Cooper Lake
+2026-08-12,28,3533,,,map 08-13 (2148 PDT),wind-driven runs in subalpine fir stringers; SE to No Name Ridge / Kachess Ridge
+2026-08-14,30,3600,0,415,FB update 08-14,thunderstorms; widespread wetting rain
+2026-08-15,31,3603,2,439,FB update 08-15,north flank toward Chikamin Ridge / Cooper Pass; spotting in drainages; backing into Thorp Creek
+2026-08-16,32,3603,2,505,FB update 08-16,subdued
+2026-08-17,33,3636,2,609,FB update 08-17,
+2026-08-18,34,3726,2,716,FB update 08-18,
+2026-08-19,35,3793,2,808,FB update 08-19,warming / drying
+2026-08-20,36,3848,2,826,FB update 08-20,hot; low RH
+2026-08-21,37,3849,2,835,FB update 08-21,
+2026-08-22,38,6379,2,878,FB update 08-22,"Aug 21: sustained torching, intermittent crown runs, spotting; night push N to Cooper Lake; +2,530 ac"
+2026-08-23,39,6705,13,902,FB update 08-23,Red Flag Warning; marine air
+2026-08-23,39,6968,,,map 08-24 (2006 PDT),
+2026-08-24,40,7285,,,map 08-25 (1930 PDT),
+2026-08-26,42,7758,,,map 08-26 (0032 PDT),established across Red Mountain; torching / uphill runs / intermittent spotting
+2026-08-27,43,8240,5,,InciWeb 08-27,containment fell (growth); cold front
+2026-08-28,44,8496,5,,InciWeb 08-28,
+2026-08-29,45,8596,5,932,InciWeb 08-29,heavy dead fuels; crown transitions aided by lichen
+2026-08-30,46,8596,5,933,InciWeb 08-30,cool / wet
+2026-08-31,47,8988,5,765,InciWeb 08-31,burnout ops toward Cooper Lake
+2026-09-01,48,9012,5,817,InciWeb 09-01,
+2026-09-02,49,9349,8,794,InciWeb 09-02,"+337 ac NE (north of Pete Lake); obs flight: shin-height flames, single-tree torching, 200-300 ft spots"
+2026-09-03,50,9364,8,638,InciWeb 09-03,showers
+2026-09-04,51,9364,8,638,InciWeb 09-04,
+2026-09-05,52,9441,8,558,InciWeb 09-05,
+2026-09-06,53,9444,11,539,InciWeb 09-06,
+2026-09-07,54,9444,12,547,InciWeb 09-07,
+2026-09-08,55,9501,13,556,InciWeb 09-08,warming
+2026-09-09,56,9518,13,573,InciWeb 09-09,
+2026-09-10,57,9528,14,,InciWeb 09-10,interior activity Box Canyon Creek
+2026-09-11,58,9527,14,463,InciWeb 09-11,
+2026-09-12,59,9527,14,482,InciWeb 09-12,
+2026-09-13,60,9527,20,432,InciWeb 09-13,heavy rain; operations paused
+2026-09-14,61,9527,20,448,InciWeb 09-14,
+2026-09-15,62,9555,20,468,InciWeb 09-15,IR flight re-measure
+2026-09-16,63,9558,23,490,InciWeb 09-16,
+2026-09-18,65,9562,23,458,InciWeb 09-18,
+2026-09-21,68,9572,31,435,InciWeb 09-21,Type 3 team
+2026-09-28,75,,,,InciWeb 09-28,command to district; creeping / smouldering hot spots remain

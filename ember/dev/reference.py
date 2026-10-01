@@ -129,11 +129,13 @@ def add_files(repo: Path, paths: list[Path], **kw) -> list[dict]:
     return out
 
 
-def sheet_html(repo: Path, tag: str | None = None) -> Path:
-    """Contact sheet (local file:// HTML) for Brad's keep / reject / tag pass."""
+def sheet_html(repo: Path, tag: str | None = None, name: str = "sheet") -> Path:
+    """Contact sheet (local file:// HTML) for Brad's keep / reject / tag pass.
+    `tag` may list several tags, comma-separated: an image matches if it has any of them."""
     import html
 
-    rows = [r for r in load(repo) if not tag or tag in r["tags"]]
+    want = {t.strip() for t in tag.split(",")} if tag else set()
+    rows = [r for r in load(repo) if not want or want & set(r["tags"])]
     root = library_root().as_uri()
     cells = []
     for r in rows:
@@ -151,7 +153,7 @@ def sheet_html(repo: Path, tag: str | None = None) -> Path:
             "figcaption{color:#aaa;margin-top:4px;line-height:1.35}b{color:#e6e2da}</style>"
             f"<h1>Reference library</h1><p>{len(rows)} images{' tagged ' + html.escape(tag) if tag else ''}."
             " Keep / reject / retag: tell the agent the ids.</p><div class=grid>" + "".join(cells) + "</div>")
-    out = library_root() / "sheet.html"
+    out = library_root() / f"{name}.html"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
     return out
