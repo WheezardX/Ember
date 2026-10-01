@@ -99,7 +99,7 @@ uses in `S_jolly_hcp4`), the **ember-ca** CP5 shadow run over Jolly's Labor Day 
 
 ## Where the reference lives
 
-All images: `C:\Projects\Terrain\store\reference\` (outside git; manifest
+All images: `C:\Projects\Ember\store\reference\` (outside git; manifest
 `viz/reference/manifest.jsonl`). Contact sheets (open in a browser):
 
 | sheet | contents |

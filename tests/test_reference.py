@@ -24,7 +24,7 @@ def _jpeg(w=3000, h=2000, bearing=147.0) -> bytes:
 
 
 def test_ingest_downsizes_keeps_exif_and_dedupes(tmp_path, monkeypatch):
-    monkeypatch.setenv("EMBER_TERRAIN_STORE", str(tmp_path / "store"))
+    monkeypatch.setenv("EMBER_REFERENCE_DIR", str(tmp_path / "store" / "reference"))
     repo = tmp_path / "repo"
     kw = dict(source="test", origin="x:1", credit="me", licence="shippable", tags=["stand", "stand"])
     r = reference.ingest(repo, _jpeg(), **kw)
@@ -39,7 +39,7 @@ def test_ingest_downsizes_keeps_exif_and_dedupes(tmp_path, monkeypatch):
 
 
 def test_unknown_licence_rejected(tmp_path, monkeypatch):
-    monkeypatch.setenv("EMBER_TERRAIN_STORE", str(tmp_path / "store"))
+    monkeypatch.setenv("EMBER_REFERENCE_DIR", str(tmp_path / "store" / "reference"))
     try:
         reference.ingest(tmp_path, _jpeg(), source="t", origin="o", credit="", licence="cc-by", tags=[])
     except ValueError:

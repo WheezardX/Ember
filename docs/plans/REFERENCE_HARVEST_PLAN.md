@@ -6,7 +6,7 @@ pose so `ember-dev ref-pair` can render the same view (R1) and the A3 reviewer c
 
 ## Library
 
-- Images: `store/reference/<source>/<id>.jpg` (outside git; the Terrain store's disk, bucket later).
+- Images: `store/reference/<source>/<id>.jpg` (outside git; Ember's own store beside incidents / sim, bucket later).
 - Manifest: `viz/reference/manifest.jsonl` in git, one line per image: id, source, source URL,
   author / credit, licence class, date taken, GPS + bearing + 35 mm focal length when known
   (EXIF), subject tags, AOI hit (inside a world's extent -> reference-camera candidate),

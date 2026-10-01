@@ -27,9 +27,16 @@ LICENCES = ("shippable", "reference-only")
 
 
 def library_root() -> Path:
-    from ember.dev.scenario import terrain_store_root
+    """Ember's own store (git-ignored), beside incidents / sim / render: $EMBER_REFERENCE_DIR,
+    else <repo>/store/reference."""
+    import os
 
-    return terrain_store_root() / "reference"
+    env = os.environ.get("EMBER_REFERENCE_DIR")
+    if env:
+        return Path(env)
+    from ember.dev.ue import repo_root
+
+    return repo_root() / "store" / "reference"
 
 
 def load(repo: Path) -> list[dict]:
