@@ -15,6 +15,7 @@
 
 THIRD_PARTY_INCLUDES_START
 #include "emberworld/heightfield.h"
+#include "emberworld/relief.h"
 #include "emberworld/tiff.h"
 THIRD_PARTY_INCLUDES_END
 
@@ -387,7 +388,7 @@ void AEmberVegetationActor::BuildCell(uint64 TileKey, int32 CellIndex, ETier Tie
 	}
 	const bool bNear = Tier == ETier::Near;
 	TArray<TArray<FTransform>> PerMesh;
-	TArray<TArray<float>> PerMeshData;   // M_Veg custom data: [canopy over the tree, tree height cm]
+	TArray<TArray<float>> PerMeshData;   // M_Veg custom data: [canopy over the tree, tree height cm, survival]
 	PerMesh.SetNum(SpeciesMesh.Num());
 	PerMeshData.SetNum(SpeciesMesh.Num());
 	TArray<int32> MeshSlot;
@@ -412,6 +413,29 @@ void AEmberVegetationActor::BuildCell(uint64 TileKey, int32 CellIndex, ETier Tie
 			? FMath::Clamp(Mx[0], 0.f, 1.f) : 0.f;
 		PerMeshData[First + T.Variant].Add(Canopy);
 		PerMeshData[First + T.Variant].Add(static_cast<float>(T.HeightM * 100.0));
+		// Burn mosaic (Brad: survivors come in pockets, not single trees): worldcore's coherent,
+		// shelter-biased survival field, 1 + u (0 = none: the material falls back to a per-tree
+		// draw). Only with a fire bound - 13 height samples per tree.
+		// Cached on a 25 m lattice (the field's patches are 50-150 m; the material adds per-tree
+		// jitter): per tree it was 13 height reads x millions of trees and hung the Jolly stills.
+		float Survival = 0.f;
+		if (bFire)
+		{
+			const double Wx = Fr.anchor_x + L.X / 100.0, Wy = Fr.anchor_y - L.Y / 100.0;
+			const FIntPoint Node(FMath::RoundToInt32(Wx / SurvivalCellM), FMath::RoundToInt32(Wy / SurvivalCellM));
+			if (const float* Hit = SurvivalCache.Find(Node))
+			{
+				Survival = *Hit;
+			}
+			else
+			{
+				// heights from the loaded terrain tiles (in memory), not the region's DEM reader
+				const emberworld::HeightFn H = [this](double X, double Y, double& Z) { return Terrain->SurfaceAt(X, Y, Z); };
+				Survival = 1.f + static_cast<float>(emberworld::survival_field(Node.X * SurvivalCellM, Node.Y * SurvivalCellM, H));
+				SurvivalCache.Add(Node, Survival);
+			}
+		}
+		PerMeshData[First + T.Variant].Add(Survival);
 	}
 	for (int32 Mi = 0; Mi < PerMesh.Num(); ++Mi)
 	{
@@ -449,13 +473,13 @@ void AEmberVegetationActor::BuildCell(uint64 TileKey, int32 CellIndex, ETier Tie
 		// Trees stay out of the distance-field scene: ~1.4 M DF objects cost ~0.9 GB VRAM (4.23 -> 3.32 GB
 		// at the S_tq_forest perf pose, D8 budget 4 GB). Lumen still sees them via screen traces.
 		C->bAffectDistanceFieldLighting = false;
-		C->NumCustomDataFloats = 2;
+		C->NumCustomDataFloats = 3;
 		C->SetupAttachment(RootComponent);
 		C->RegisterComponent();
 		C->AddInstances(PerMesh[Mi], /*bShouldReturnIndices=*/false, /*bWorldSpace=*/true);
 		for (int32 I = 0; I < PerMesh[Mi].Num(); ++I)
 		{
-			C->SetCustomData(I, TArrayView<const float>(&PerMeshData[Mi][I * 2], 2), false);
+			C->SetCustomData(I, TArrayView<const float>(&PerMeshData[Mi][I * 3], 3), false);
 		}
 		Cell.Components.Add(C);
 		Cell.PerSpecies[S] += PerMesh[Mi].Num();
@@ -504,7 +528,22 @@ void AEmberVegetationActor::SetFire(UTexture* FireTex, const FLinearColor& FireR
 		M->SetVectorParameterValue(TEXT("FireRect"), FireRect);
 		M->SetScalarParameterValue(TEXT("FireOn"), FireTex ? 1.f : 0.f);
 	}
+	const bool bWasFire = bFire;
 	bFire = FireTex != nullptr;
+	if (bFire && !bWasFire)
+	{
+		// cells built before the fire carry no survival field (custom data 2): rebuild them once
+		for (auto& KV : Tiles)
+		{
+			for (int32 Ci = 0; Ci < UE_ARRAY_COUNT(KV.Value.Cells); ++Ci)
+			{
+				if (KV.Value.Cells[Ci].Tier != ETier::None)
+				{
+					BuildCell(KV.Key, Ci, KV.Value.Cells[Ci].Tier);
+				}
+			}
+		}
+	}
 }
 
 void AEmberVegetationActor::SetFireTime(double Seconds)

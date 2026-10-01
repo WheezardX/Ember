@@ -28,9 +28,13 @@ tools = unreal.AssetToolsHelpers.get_asset_tools()
 #   crown fire (3): 12 % consumed, 63 % bare, 18 % black crown, 7 % orange
 #   class 2:        22 % bare, 40 % orange, 38 % survive green
 #   class 1:        12 % orange, 88 % survive green
+# rr (high = milder) comes from the vegetation actor's survival field when it is there (custom data
+# 2 = 1 + u; Brad: "survivors come in pockets" - coherent patches biased to draws and north slopes,
+# worldcore survival_field) with 15 % per-tree jitter; without it, a per-tree draw as before.
 OUTCOME_HLSL = (
     "float ocls = 1.0 + 2.0 * saturate((F.g - 0.5) * 2.0);\n"
     "float rr = frac(Rnd * 13.37 + 0.31);\n"
+    "if (Sv > 0.5) { rr = lerp(saturate(Sv - 1.0), rr, 0.15); }\n"
     "int oc = 0;\n"
     "if (ocls > 2.5)      { oc = rr < 0.12 ? 4 : (rr < 0.75 ? 3 : (rr < 0.93 ? 2 : 1)); }\n"
     "else if (ocls > 1.5) { oc = rr < 0.22 ? 3 : (rr < 0.62 ? 1 : 0); }\n"
@@ -328,7 +332,9 @@ def build_material():
     ftex.set_editor_property("texture", black)
     ftex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     link(fuv, "", ftex, "UVs")
-    burnt = custom("EmberFireChar", -100, 150, ["Base", "F", "A", "On", "Rnd", "Local", "Out"], (
+    surv = mel.create_material_expression(mat, unreal.MaterialExpressionPerInstanceCustomData, -600, 860)
+    surv.set_editor_property("data_index", 2)          # trees with a fire: 1 + survival field; else 0
+    burnt = custom("EmberFireChar", -100, 150, ["Base", "F", "A", "On", "Rnd", "Local", "Out", "Sv"], (
         "float burned = saturate(F.g * 2.0) * On;\n"
         + OUTCOME_HLSL +
         "if (Out > 0.5 && burned > 0.01) {\n"
@@ -363,6 +369,7 @@ def build_material():
     link(rnd, "", burnt, "Rnd")
     link(local, "", burnt, "Local")
     link(fire_params["FireOutcomes"], "", burnt, "Out")
+    link(surv, "", burnt, "Sv")
     if not mel.connect_material_property(burnt, "", unreal.MaterialProperty.MP_BASE_COLOR):
         raise RuntimeError("base colour")
     glow = custom("EmberFireCrown", -100, 300,
@@ -412,7 +419,7 @@ def build_material():
     link(fuv, "", ftex_v, "UVs")
     tree_h2 = mel.create_material_expression(mat, unreal.MaterialExpressionPerInstanceCustomData, -600, 700)
     tree_h2.set_editor_property("data_index", 1)      # trees: height (cm)
-    consume = custom("EmberConsume", -300, 600, ["O", "L", "F", "On", "C", "Out", "Rnd", "A", "H"], (
+    consume = custom("EmberConsume", -300, 600, ["O", "L", "F", "On", "C", "Out", "Rnd", "A", "H", "Sv"], (
         "float burned = saturate(F.g * 2.0) * On;\n"
         "float k = saturate(burned * C) * 0.85;\n"   # burned cover: ~15 % stubble
         "float3 o = O * (1.0 - k) - L * k;\n"
@@ -436,6 +443,7 @@ def build_material():
     link(rnd, "", consume, "Rnd")
     link(vc, "A", consume, "A")
     link(tree_h2, "", consume, "H")
+    link(surv, "", consume, "Sv")
     if not mel.connect_material_property(consume, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET):
         raise RuntimeError("world position offset")
     mat.set_editor_property("two_sided", True)                  # foliage is single-layer sprays

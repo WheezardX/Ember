@@ -9,6 +9,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 
 #include "emberworld/api.h"
 
@@ -25,5 +26,15 @@ struct ReliefParams {
 // w = ground mix {litter, grass, rock, shrub} at (x, y) (the rest is soil).
 EMBERWORLD_CORE_API double micro_relief(double x, double y, const std::array<float, 4>& w,
                                         const ReliefParams& p = ReliefParams());
+
+// Burn-mosaic survival field (EPIC_5_PLAN, Brad: "single unaffected trees inside large scars are not
+// realistic - survivors come in pockets"): 0..1 at a world point, high = a tree there is more likely
+// to come through. Spatially coherent (two-octave value noise at ~150 m / 50 m: patches, not single
+// trees) and biased by terrain shelter - lower than its surroundings (draws, valley floors: the
+// ground against a 75 m ring) and north-facing slopes. Spread out to roughly uniform over a
+// landscape, so the renderer's per-class outcome proportions hold. `height(x, y, z)` samples the
+// ground (metres); false = no data (the field falls back to the noise alone).
+using HeightFn = std::function<bool(double x, double y, double& z)>;
+EMBERWORLD_CORE_API double survival_field(double x, double y, const HeightFn& height);
 
 }  // namespace emberworld

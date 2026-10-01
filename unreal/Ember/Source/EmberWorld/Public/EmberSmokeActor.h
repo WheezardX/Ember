@@ -45,6 +45,9 @@ public:
 	int32 NumPuffs = 0;
 	double MaxTopM = 0.0;     // highest plume injection height
 
+	struct FGroundHit { double X = 0.0, Y = 0.0, Z = 0.0; };
+	TMap<int32, FGroundHit> GroundCache;   // per source bin: ground height under its centroid
+
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<AEmberTerrainActor> Terrain;

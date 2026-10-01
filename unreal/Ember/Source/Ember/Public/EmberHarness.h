@@ -98,6 +98,9 @@ private:
 	double PlayRateH = 6.0;       // replay hours per real second while playing (plan: play_rate_h)
 	double PlayStartS = 0.0;      // plan: play_start_s - where play mode opens (playing)
 	bool bPlayStart = false;
+	// play-mode frame cost of the fire, logged every 5 s (ms summed over PlayPerfFrames)
+	int32 PlayPerfFrames = 0;
+	double PerfFrameMs = 0.0, PerfFireMs = 0.0, PerfSmokeMs = 0.0, PerfFlamesMs = 0.0, PerfLastLog = 0.0;
 	// Timeline bar (bottom of the screen): Tab shows the cursor; click / drag on the bar scrubs.
 	bool bTimelineCursor = false;
 	bool bScrubbing = false;

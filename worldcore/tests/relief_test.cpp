@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <array>
 
 #include "doctest.h"
@@ -28,4 +29,43 @@ TEST_CASE("relief: >= 0, bounded by the ground's amplitude, mounds on a flat-ish
     CHECK(high > n / 20);                  // and mounds
     CHECK(micro_relief(12.3, 45.6, litter) == micro_relief(12.3, 45.6, litter));
     CHECK(micro_relief(3, 4, {0, 0, 0, 0}, ReliefParams{4.0, 1.1, {0, 0, 0, 0}, 0.0}) == 0.0);
+}
+
+TEST_CASE("survival field: coherent patches, sheltered draws and north slopes favoured") {
+    // flat ground: the noise alone, spread over 0..1 and smooth (neighbours 5 m apart agree)
+    const HeightFn flat = [](double, double, double& z) { z = 1000.0; return true; };
+    int lo = 0, hi = 0, n = 0;
+    double jump = 0.0;
+    for (double y = 0; y < 2000; y += 25)
+        for (double x = 0; x < 2000; x += 25) {
+            const double u = survival_field(x, y, flat);
+            CHECK(u >= 0.0);
+            CHECK(u <= 1.0);
+            lo += u < 0.3;
+            hi += u > 0.7;
+            ++n;
+            jump = std::max(jump, std::abs(survival_field(x + 5.0, y, flat) - u));
+        }
+    CHECK(lo > n / 10);
+    CHECK(hi > n / 10);
+    CHECK(jump < 0.15);                      // patches, not single trees
+    // a V-shaped draw along y = 0 (walls rising 0.4 m per m): the floor beats the ridge shoulders
+    const HeightFn draw = [](double, double y, double& z) { z = 1000.0 + 0.4 * std::abs(y); return true; };
+    double floor = 0, shoulder = 0;
+    for (double x = 0; x < 3000; x += 50) {
+        floor += survival_field(x, 0.0, draw);
+        shoulder += survival_field(x, 300.0, draw);
+    }
+    CHECK(floor > shoulder + 0.1 * 60);
+    // a north-facing slope (falls toward the north) vs a south-facing one, same steepness
+    const HeightFn north_facing = [](double, double y, double& z) { z = 1000.0 - 0.3 * y; return true; };
+    const HeightFn south_facing = [](double, double y, double& z) { z = 1000.0 + 0.3 * y; return true; };
+    double sn = 0, ss = 0;
+    for (double x = 0; x < 3000; x += 50) {
+        sn += survival_field(x, 0.0, north_facing);
+        ss += survival_field(x, 0.0, south_facing);
+    }
+    CHECK(sn > ss + 0.1 * 60);
+    // no height data: the noise alone, never a crash
+    CHECK(survival_field(10, 10, HeightFn()) == survival_field(10, 10, [](double, double, double&) { return false; }));
 }

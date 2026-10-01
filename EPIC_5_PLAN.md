@@ -457,6 +457,7 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
 - **Springy limbs (8g item 3 follow-up):** "limbs don't look nearly so springy" after the
   flutter change - wind is subtle in S_jolly_play (the stream's 2-5 m/s), so re-check in a
   windy scene before closing.
+  **CLOSED 2026-10-01:** Brad checked in wind - "spring is gone".
 - **Ground still flat - no volume (Brad, 2026-09-30, after ground v2):** better, but the bump
   does not read; it still feels flat. Why (agent): ground v2's relief is normal perturbation
   only - no silhouette, no self-shadowing, no parallax - and under canopy the light is soft
@@ -468,6 +469,9 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   the detail height, so the surface has actual lumps and sticks cast shadows; (4) more small
   3-D debris meshes in the ground cover (sticks, bark slabs, cone clusters, duff mounds).
   (3) + (4) are what give "volume"; (1) + (2) alone will still read flat up close.
+  **2026-10-01:** (3) AEmberGroundRelief (hummocks / duff mounds, block-streamed, cover stands on it)
+  and (1)+(2) a terrain depth pass (litter height v3, POM to 35 m / 11 cm, cavity AO) - Brad: "much
+  improved... we shouldn't waste any more time on it" until the camera decision (overhead vs ground).
 - **Charred area too uniform (Brad, 2026-09-30, S_jolly_play fly-around):** every burned tree
   keeps orange needles. In a big fire most stand-replacing areas are burned clean of needles
   (black bare stems and branches) or the trees are consumed / fallen; orange (scorched, dead but
@@ -592,6 +596,8 @@ iteration I'd expected between runs." Take that as the bar for a review round.
   grass strong, rocks mild), some items anti-correlated (grass thins under fern clumps); scale
   plants larger toward clump centres. World-position driven, so partition-independent (test).
   Pairs with the displaced ground patch above.
+  **DONE 2026-10-01** (541b485): clump / clump_m / clump_group / clump_anti / clump_size - Brad: "the
+  perlin noise helps a lot".
 - **Hung-up trees: "markedly better" (Brad, same review)** - anchoring on a real host works.
 - **Burn mosaic: survivors should cluster, not salt-and-pepper (Brad, same review):** the mix of
   burned-out / charred / untouched is good, and real burns do vary - but single unaffected trees
@@ -603,6 +609,8 @@ iteration I'd expected between runs." Take that as the bar for a review round.
   bottoms from the DEM, north aspect, the fire's own intensity class); within a patch neighbours
   share their outcome, with only a small per-tree jitter. Keep the overall variation; drop
   isolated green trees inside crown-fire areas.
+  **2026-10-01:** worldcore survival_field (150 m / 50 m coherent noise + draw / north-aspect shelter)
+  per tree -> M_Veg custom data 2 replaces the per-tree draw (15 % jitter); proportions per class kept.
 
 Deferred until reference material exists: smoke volume (column, pall, interior smoke) and
 smouldering logs (smoke / ash). Waiting: river / shore edges, fire lines and fuel removal,

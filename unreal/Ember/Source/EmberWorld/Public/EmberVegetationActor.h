@@ -179,6 +179,9 @@ private:
 	TArray<double> SlotHeightLineupM;  // lineup: a mature tree of the species
 	TArray<double> SlotCrownRatio;
 	TMap<uint64, FVegTile> Tiles;
+	// burn-mosaic survival field (worldcore survival_field), cached per SurvivalCellM lattice node
+	TMap<FIntPoint, float> SurvivalCache;
+	static constexpr double SurvivalCellM = 25.0;
 	FVector LastCamera = FVector::ZeroVector;
 	bool bInitialised = false;
 	bool bFirstUpdate = true;

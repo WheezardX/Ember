@@ -190,7 +190,15 @@ void AEmberFireActor::SetTime(double TSeconds)
 		return;
 	}
 	TimeS = TSeconds;
-	State = Stream.at(static_cast<int32>(FMath::FloorToDouble(TSeconds)));
+	// The stream's state changes once per tick (hourly in the playbacks); decoding it (keyframe +
+	// deltas over every cell) every frame was a large part of the play-mode cost. Arrivals between
+	// ticks still come from the arrival field below, so the front keeps moving smoothly.
+	const int32 Ti = static_cast<int32>(FMath::FloorToDouble(TSeconds));
+	const int32 Dt = static_cast<int32>(FMath::Max<uint32>(1, Stream.header().dt_s));
+	if (State.phase.empty() || Ti < State.t_s || Ti >= State.t_s + Dt)
+	{
+		State = Stream.at(Ti);
+	}
 	Tick = State.tick;
 	StreamBurned = State.metrics.burned;
 	WindU = State.metrics.wind_u_cms / 100.0;

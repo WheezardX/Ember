@@ -112,10 +112,22 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 		const bool bSmoulder = S.Strength < 0.5 && !bInterior;
 		const double Q = bInterior ? S.Heat : bSmoulder ? S.Smoulder : S.Strength;
 		const double SqQ = FMath::Sqrt(Q);
+		// Ground under the source, cached per bin (the region DEM read was 40-70 ms per frame with a
+		// few hundred interior-heat sources - most of the play-mode frame). Re-read if the bin's
+		// centroid moved more than ~20 m.
 		double Gz = 0.0;
-		if (!Terrain->GroundHeightAt(S.X, S.Y, Gz))
+		FGroundHit* Hit = GroundCache.Find(S.Key);
+		if (Hit && FMath::Abs(Hit->X - S.X) < 20.0 && FMath::Abs(Hit->Y - S.Y) < 20.0)
 		{
-			continue;
+			Gz = Hit->Z;
+		}
+		else
+		{
+			if (!Terrain->SurfaceAt(S.X, S.Y, Gz) && !Terrain->GroundHeightAt(S.X, S.Y, Gz))
+			{
+				continue;
+			}
+			GroundCache.Add(S.Key, FGroundHit{S.X, S.Y, Gz});
 		}
 		// Neighbouring bins burn as one convective column: height from the 1.5 km cluster.
 		// Columns (v1): the reference columns stand 1-3 km+ over every active area; 90 x sqrt

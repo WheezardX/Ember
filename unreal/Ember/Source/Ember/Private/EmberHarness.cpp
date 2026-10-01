@@ -714,16 +714,18 @@ void AEmberHarness::SetFireTime(double SimS, double ClockS)
 	{
 		Smoke->SetSources(Fire->SmokeSources);
 		Smoke->SetClock(ClockS);
-		if (Camera)
+		if (Camera && State != EState::Play)
 		{
 			// Stills set the time after placing the camera; PlaceCamera re-lays them on moves.
+			// (Play rebuilds for the fly camera every frame: doing it here too cost a second
+			// full smoke rebuild per frame while the fire played.)
 			Smoke->Rebuild(Camera->GetActorLocation(), Camera->GetActorRotation());
 		}
 	}
 	if (Firebrands)
 	{
 		Firebrands->SetBrands(Fire->Firebrands);
-		if (Camera)
+		if (Camera && State != EState::Play)   // play: rebuilt for the fly camera in TickPlay
 		{
 			Firebrands->Rebuild(Camera->GetActorLocation(), Camera->GetActorRotation());
 		}
@@ -731,7 +733,7 @@ void AEmberHarness::SetFireTime(double SimS, double ClockS)
 	if (Flames)
 	{
 		Flames->SetFireTime(ClockS);
-		if (Camera)
+		if (Camera && State != EState::Play)
 		{
 			Flames->Rebuild(Camera->GetActorLocation());
 		}
@@ -994,6 +996,9 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 			}
 		}
 		PlayFireS = FMath::Clamp(PlayFireS, static_cast<double>(Fire->StartS), static_cast<double>(Fire->EndS));
+		// Frame cost of the fire (Brad: ~10 fps while the fire plays): timed per part, logged every 5 s.
+		double T = FPlatformTime::Seconds();
+		auto Lap = [&T](double& Acc) { const double N = FPlatformTime::Seconds(); Acc += (N - T) * 1000.0; T = N; };
 		if (bChanged)
 		{
 			SetFireTime(PlayFireS, PlayClock);
@@ -1005,11 +1010,13 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 			if (Vegetation) Vegetation->SetFireTime(PlayClock);
 			if (Cover) Cover->SetFireTime(PlayClock);
 		}
+		Lap(PerfFireMs);
 		if (Smoke)
 		{
 			Smoke->SetClock(PlayClock);
 			Smoke->Rebuild(FlyPawn->GetActorLocation(), PC->GetControlRotation());
 		}
+		Lap(PerfSmokeMs);
 		if (Firebrands)
 		{
 			Firebrands->Rebuild(FlyPawn->GetActorLocation(), PC->GetControlRotation());
@@ -1017,6 +1024,18 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 		if (Flames)
 		{
 			Flames->Rebuild(FlyPawn->GetActorLocation());
+		}
+		Lap(PerfFlamesMs);
+		++PlayPerfFrames;
+		PerfFrameMs += DeltaSeconds * 1000.0;
+		if (PlayClock - PerfLastLog > 5.0 && PlayPerfFrames > 0)
+		{
+			UE_LOG(LogEmberHarness, Display, TEXT("play perf @%.0f h: frame %.1f ms | fire state %.1f | smoke %.1f (%d puffs) | flames+brands %.1f ms (avg over %d frames)"),
+				PlayFireS / 3600.0, PerfFrameMs / PlayPerfFrames, PerfFireMs / PlayPerfFrames, PerfSmokeMs / PlayPerfFrames,
+				Smoke ? Smoke->NumPuffs : 0, PerfFlamesMs / PlayPerfFrames, PlayPerfFrames);
+			PlayPerfFrames = 0;
+			PerfFrameMs = PerfFireMs = PerfSmokeMs = PerfFlamesMs = 0.0;
+			PerfLastLog = PlayClock;
 		}
 	}
 	if (GEngine)
