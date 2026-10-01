@@ -118,12 +118,54 @@ with open(OUT / "ir_flights.csv", "w", newline="") as f:
 for r in rows:
     print(r["acquired_pdt"], r["perimeter_ac"], r["intense_ac"], r["scattered_ac"], r["isolated_n"])
 
+# Holdover (Jul 15 - Aug 6): no IR flights. The incident maps give the size (79 ac Jul 22,
+# 80 Jul 25, 88 Jul 29, unchanged on the Aug 6 map) and VIIRS puts every detection of those weeks
+# in one tight cluster at the summit. Synthetic perimeters: circles of the mapped area on that
+# cluster - extent approximate, timing from the record. The last one sits just before the first
+# Aug 6 detection (09:15Z): the fire woke up on Aug 6, a day before the first IR flight.
+UTC = timezone.utc
+HOLD_C = Point(-121.2625, 47.4152)            # mean of the 16 July VIIRS detections
+to_ll = Transformer.from_crs("EPSG:32610", "EPSG:4326", always_xy=True)
+def circle_ac(ac):
+    x, y = to_utm.transform(HOLD_C.x, HOLD_C.y)
+    c = Point(x, y).buffer((ac * 4046.856 / 3.14159265) ** 0.5, 32)
+    return shp_transform(lambda a, b, z=None: to_ll.transform(a, b), c)
+P = type(series[0])
+hold = [P(datetime(2026, 7, 16, 4, 28, tzinfo=UTC), circle_ac(5)),     # discovered (IRWIN)
+        P(datetime(2026, 7, 22, 20, 30, tzinfo=UTC), circle_ac(79)),
+        P(datetime(2026, 7, 25, 17, 30, tzinfo=UTC), circle_ac(80)),
+        P(datetime(2026, 7, 29, 17, 0, tzinfo=UTC), circle_ac(88)),
+        P(datetime(2026, 8, 6, 9, 0, tzinfo=UTC), circle_ac(88))]
+# Aug 21 run: no IR on Aug 20 / 21, and the Aug 21 morning update (3,849 ac, an Aug 20 flight
+# we do not have) says the fire had not grown since Aug 19. Hold the Aug 19 22:11 PDT perimeter
+# until noon Aug 21 so the interpolation puts the run in the afternoon and night, as reported
+# ("strengthened night-time winds"), not spread back across the gap.
+aug19 = next(p for p in series if p.observed_at == datetime(2026, 8, 20, 5, 11, tzinfo=timezone.utc))
+series.append(P(datetime(2026, 8, 21, 19, 0, tzinfo=timezone.utc), aug19.geom))
+series = sorted(hold + series, key=lambda p: p.observed_at)
+
+# VIIRS / MODIS detections for the whole season (hotspot-assist: a detection inside the burned
+# extent means the cell was burning by then - pulls interpolated arrival earlier)
+@dataclass
+class HS:
+    lon: float
+    lat: float
+    acq_at: datetime
+hs_path = INC / "observations" / "hotspots" / "firms_season_20260714_20260921.geojson"
+hotspots = []
+if hs_path.exists():
+    for ft in json.load(open(hs_path))["features"]:
+        lon, lat = ft["geometry"]["coordinates"]
+        hotspots.append(HS(lon, lat, datetime.fromisoformat(ft["properties"]["acq_at"])))
+
 # cumulative footprint (IR heat perimeters can shrink where heat died out): union forward
 cum, cum_series = None, []
 for p in series:
     cum = p.geom if cum is None else unary_union([cum, p.geom])
     cum_series.append(type(p)(p.observed_at, cum))
 grid = build_incident_grid(cum_series, buffer_km=2.0, resolution_m=30.0)
-stats = build_arrival_raster(cum_series, grid, OUT, resolution_m=30.0)
+stats = build_arrival_raster(cum_series, grid, OUT, resolution_m=30.0, hotspots=hotspots)
+stats["holdover"] = "synthetic circles 5/79/80/88/88 ac at the July VIIRS cluster (Jul 16 -> Aug 6 09Z)"
+stats["hotspots_used"] = len(hotspots)
 print(json.dumps(stats, indent=1))
 (OUT / "arrival_stats.json").write_text(json.dumps(stats, indent=1))

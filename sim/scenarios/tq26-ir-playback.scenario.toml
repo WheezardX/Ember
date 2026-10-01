@@ -1,15 +1,16 @@
-# Three Queens 2026 replayed from the NIROPS IR perimeter series (31 night flights, Aug 7 -> Sep 20),
-# the 2026 counterpart of cp2-jolly-playback. Arrival from ember/incidents/tq_nirops_2026.py;
-# world pack from `ember sim export --bundle .../package/scenario.bundle.nirops.json
-# --name hist-three-queens-2026-ir`. t0 = first IR flight (2026-08-07 23:11 PDT); the Jul 15 -
-# Aug 6 holdover (79-88 ac) has no geometry and is not in the replay.
+# Three Queens 2026 replayed from the NIROPS IR perimeter series (31 night flights, Aug 7 -> Sep 20)
+# + every VIIRS/MODIS detection of the season (timing) + the Jul 16 - Aug 6 holdover (synthetic
+# circles of the mapped 5-88 ac at the July detections), the 2026 counterpart of
+# cp2-jolly-playback. Arrival from `python -m ember.incidents.tq_nirops_2026`; world pack from
+# `ember sim export --bundle .../package/scenario.bundle.nirops.json --name hist-three-queens-2026-ir`.
+# t0 = discovery, 2026-07-16 04:28Z (Jul 15 21:28 PDT). The fire wakes up Aug 6 (~509 h).
 scenario_version = 1
 
 [scenario]
 name = "tq26-ir-playback"
 world = "../../store/sim/hist-three-queens-2026-ir.ewp"
 t_start_s = 0
-duration_s = 3801600        # 1,056 h - Aug 8 06Z -> Sep 21 06Z
+duration_s = 5796000        # 1,610 h - Jul 16 04Z -> Sep 21 06Z
 dt_s = 3600                 # hourly ticks
 seed = 1
 

@@ -889,8 +889,17 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 		}
 		if (PC->WasInputKeyJustPressed(EKeys::Period)) { PlayFireS += 3600.0; bChanged = true; }
 		if (PC->WasInputKeyJustPressed(EKeys::Comma)) { PlayFireS -= 3600.0; bChanged = true; }
-		if (PC->WasInputKeyJustPressed(EKeys::RightBracket)) PlayRateH = FMath::Min(PlayRateH * 2.0, 48.0);
-		if (PC->WasInputKeyJustPressed(EKeys::LeftBracket)) PlayRateH = FMath::Max(PlayRateH / 2.0, 0.125);
+		// Rate: [ ] (Brad: "the playback speed keys don't work") plus - = and the numpad - +, in
+		// case the bracket keys do not reach the client on a keyboard layout / overlay.
+		const bool bFaster = PC->WasInputKeyJustPressed(EKeys::RightBracket) || PC->WasInputKeyJustPressed(EKeys::Equals)
+			|| PC->WasInputKeyJustPressed(EKeys::Add);
+		const bool bSlower = PC->WasInputKeyJustPressed(EKeys::LeftBracket) || PC->WasInputKeyJustPressed(EKeys::Hyphen)
+			|| PC->WasInputKeyJustPressed(EKeys::Subtract);
+		if (bFaster || bSlower)
+		{
+			PlayRateH = bFaster ? FMath::Min(PlayRateH * 2.0, 96.0) : FMath::Max(PlayRateH / 2.0, 0.125);
+			UE_LOG(LogEmberHarness, Display, TEXT("fire playback rate %.3g h/s"), PlayRateH);
+		}
 		if (bFirePlaying)
 		{
 			PlayFireS += PlayRateH * 3600.0 * DeltaSeconds;
@@ -933,7 +942,7 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 			TEXT("  Esc       quit"),
 			TEXT("  H         hide / show this help"),
 			TEXT("  L         lamp on / off (inspect dense foliage)"),
-			TEXT("  [  ]      fire playback rate  /2  x2"),
+			TEXT("  [ ]  - =  fire playback rate  /2  x2"),
 			TEXT("  ,  .      fire time  -1 h  +1 h"),
 			TEXT("  P         play / pause the fire"),
 			TEXT("  1 - 5     sun: dawn  morning  noon  afternoon  dusk"),
@@ -967,7 +976,7 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 			const int32 Day = FMath::FloorToInt32(SinceH / 24.0) + 1;
 			const FString Clock = FString::Printf(TEXT("FIRE   %s   day %d   (%s%.0f h since the fire started)%s"),
 				*Local, Day, SinceH < 0 ? TEXT("") : TEXT("+"), SinceH,
-				bFirePlaying ? *FString::Printf(TEXT("   PLAYING %.3g h/s"), PlayRateH) : TEXT("   paused"));
+				*FString::Printf(TEXT("   %s  rate %.3g h/s"), bFirePlaying ? TEXT("PLAYING") : TEXT("paused"), PlayRateH));
 			GEngine->AddOnScreenDebugMessage(9002, 0.f, FColor(255, 190, 120), Clock);
 		}
 		const FString Status = FString::Printf(TEXT("%s   %s   %.0f m above ground   %.1f m/s (x%.2f)%s   %.0f fps"),

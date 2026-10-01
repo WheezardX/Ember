@@ -1,16 +1,20 @@
-# Three Queens 2026 replayed from the real NIROPS IR perimeters (31 night flights, Aug 7 -> Sep 20):
-# sim/scenarios/tq26-ir-playback.scenario.toml (arrival playback, hourly, 6 h glow). t = 0 is the
-# first IR flight, 2026-08-07 23:11 PDT. Moments (h since t0):
-#   0-40     the Aug 7-9 wind runs (883 -> 2,478 ac), N end of Lake Kachess
-#   287-335  the Aug 21 night crown run (+2,530 ac) - no IR flight on Aug 20 / 21, so the
-#            perimeter interpolation spreads it across the gap
-#   335-460  Red Mountain, then the long tail to Sep 20 (1,056 h)
-# Constant weather (playback) - no wind in the replay; reference: docs/reference/THREE_QUEENS_2026_TIMELINE.md
+# Three Queens 2026 replayed from the real record: 31 NIROPS IR perimeters (Aug 7 -> Sep 20), every
+# VIIRS / MODIS detection of the season (timing), and the Jul 16 - Aug 6 holdover (synthetic circles
+# of the mapped 5-88 ac at the July detections) - sim/scenarios/tq26-ir-playback.scenario.toml
+# (arrival playback, hourly, 6 h glow). t = 0 is discovery, 2026-07-16 04:28Z (Jul 15 21:28 PDT).
+# Moments (h since t0):
+#   0-508     holdover at the summit, 5 -> 88 ac
+#   508-555   Aug 6 the fire wakes up (satellite), Aug 7 wind runs, spot across Lake Kachess (1,074 ac)
+#   555-600   Aug 8-9 runs to 2,478 ac
+#   879-891   Aug 21 afternoon / night crown run (+2,500 ac; held until noon Aug 21 - see the ingest)
+#   891-1610  Red Mountain, then the long tail to Sep 20
+# Play starts at the first capture (aug6_wake). Constant weather (playback) - no wind in the replay.
+# Reference: docs/reference/THREE_QUEENS_2026_TIMELINE.md
 render_scenario_version = 1
 
 [scenario]
 name = "S_tq26_play"
-description = "Fly-around: Three Queens 2026 replayed from the real IR perimeters - ember-dev play"
+description = "Fly-around: Three Queens 2026 replayed from the real IR perimeters + satellite detections - ember-dev play"
 world = "terrain:three_queens_2026"
 replay = "../../runs/tq26/tq26-ir-playback.replay.json"
 resolution = [2560, 1440]
@@ -21,8 +25,17 @@ ground_cover = true
 exposure_bias = -2.0
 
 [[bookmarks]]
-name = "aug21_run"            # the Aug 21 run (burning centroid at 320 h) from the SW, 3.5 km out
-target_frac = [0.63, 0.424]
+name = "aug6_wake"            # the summit holdover from the SE, Lake Kachess behind the camera
+target_frac = [0.29, 0.44]
+distance_m = 3500
+yaw_deg = 315
+pitch_deg = -25
+fov_deg = 55
+sun = "morning"
+
+[[bookmarks]]
+name = "aug21_run"            # the Aug 21 run (burning centroid at 890 h) from the SW, 3.5 km out
+target_frac = [0.628, 0.429]
 distance_m = 3500
 yaw_deg = 45
 pitch_deg = -28
@@ -30,7 +43,7 @@ fov_deg = 55
 sun = "afternoon"
 
 [[bookmarks]]
-name = "kachess_hero"         # the Aug 9 front on the east shore (burning centroid at 40 h), looking north up the lake
+name = "kachess_hero"         # the Aug 9 front on the east shore, looking north up the lake
 target_frac = [0.603, 0.623]
 distance_m = 3000
 yaw_deg = 345
@@ -48,16 +61,21 @@ fov_deg = 55
 sun = "afternoon"
 
 [[captures]]
-name = "aug21_run_320h"
-bookmark = "aug21_run"
-t_s = 1152000
+name = "aug6_wake_506h"       # Aug 5 23:28 PDT - the night before the first Aug 6 detections
+bookmark = "aug6_wake"
+t_s = 1821600
 
 [[captures]]
-name = "kachess_aug9"
+name = "aug21_run_890h"
+bookmark = "aug21_run"
+t_s = 3204000
+
+[[captures]]
+name = "kachess_aug9_594h"
 bookmark = "kachess_hero"
-t_s = 144000
+t_s = 2138400
 
 [[captures]]
 name = "overview_end"
 bookmark = "overview"
-t_s = 3801600
+t_s = 5796000
