@@ -109,6 +109,16 @@ Goal: the Aug 20 forecast for Three Queens plays in the client beside the observ
 **Gate X1 (Brad):** the forecast plays; the sheet makes the spread between percentiles and the
 observed outcome visible without commentary; fidelity sidecars are clean.
 
+**X1 SIGNED OFF (Brad, 2026-10-02).** Bundle in `store/review/X1/` (internal): the 4-up sheet,
+the p50 | observed timelapse, fidelity sidecars clean for p10 / p50 / p90, memo; first KPI ~6.5
+min their file to flyover. Decisions made on the way: the forecast's starting perimeter is shown
+at the run time (Brad: "when we render off models, we render true to what they predict.
+Contrasting that to what was observed is one of the features we intend to provide"); a smoke-off
+map view for comparison sheets. Added at Brad's request: the forecast drawn as a conventional
+2D map beside our render, frame-synced, with an elapsed-since-run counter
+(`ember external x1-map-video`; Brad on the map-view version: "exactly what I had in mind") -
+the demo format for future sources.
+
 ### X2 — Channels: the renderer draws what the source said
 
 Goal: flame height, crown behaviour and head brightness come from the source's numbers where it
