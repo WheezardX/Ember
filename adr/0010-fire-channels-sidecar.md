@@ -93,6 +93,16 @@ the stream format and its golden hashes do not change.
    their canopy data differs, and the data cannot settle it. Proposal: treat every value as ft,
    as PyreCast's own viewer labels it (render true to what the source says), and note the
    anomaly in the channel's `source.note`.
+   **AMENDED (Brad, 2026-10-02, flames v3 review): active-crown values are taken as METRES.**
+   Once crown flames were drawn from the crown base to ground + flame length, the all-ft reading
+   put active crown fire's flames (median 20 -> 6 m) low in the crowns of ~20 m trees - which
+   contradicts the source's own crown class (active crown fire burns through the crowns). Read as
+   m (ELMFIRE's convention for that class), active crown flames run median 20 m, p90 32 m, and the
+   source agrees with itself; surface (median 0.3 m) and torching (2.1 m) stay ft. Brad: "keep a
+   note we made this assumption and it may require verification before any public demo" - so
+   `ember.external.channels.source_si` carries it, the channel's `source.unit` reads "ft (m where
+   crown class 2 - ASSUMED)", and EXTERNAL_SOURCES_PLAN lists it under "verify before any public
+   demo". Ask PyreCast / SIG.
 2. **Where the sidecar lives**: beside the pack (proposed) vs referenced from `replay.json`
    (the plan's wording, which needs embersim to write the reference).
 3. **Quantisation**: `u16`. As built (X2.2) the scale is 0.01 of the SOURCE unit - flame

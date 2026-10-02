@@ -243,6 +243,19 @@ envelope and suppression-line requirements (§6), HCP7's `ember-render` inherits
   problem.
 - **Paintover / image-model tooling for look iteration**: a separate thread, decision pending.
 
+## 7b. Verify before any public demo (assumptions in use)
+
+Everything here is acceptable for internal work and must be re-checked before anything is shown
+outside (Brad, 2026-10-02):
+
+1. **PyreCast active-crown flame length taken as metres** (all other flame lengths ft) - ADR 0010
+   decided point 1, amended; `ember.external.channels.source_si`. Ask PyreCast / SIG.
+2. **PyreCast data permission** (D7): internal use only until PyreCast / SIG agree.
+3. **ELMFIRE licence** (D8): the free (AGPL + Commons Clause) version, re-evaluated before any
+   grant pitch.
+4. **The forecast's starting perimeter shown at the run time** (X1.3): a flag in the source with
+   no time; our display choice, stated in the fidelity sidecar.
+
 ## 8. Open points for Brad
 
 1. D7: whether and when to approach PyreCast / SIG, after the X1 bundle exists.

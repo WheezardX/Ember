@@ -175,13 +175,13 @@ def channel_fidelity(tl: FireTimeline, pack_dir: Path, grid: dict[str, Any]) -> 
     r0, c0 = np.where(inside, rr, 0), np.where(inside, cc, 0)
     growth = inside & np.isfinite(tl.arrival_s[r0, c0])
     out = {}
-    for layer, (name, _unit, scale, _su, _note) in CH.PYRECAST.items():
+    for layer, (name, _unit, _scale, _su, _note) in CH.PYRECAST.items():
         if name not in got or layer not in tl.layers:
             continue
         val, entry = got[name]
         ly = tl.layers[layer]
         src_speaks = inside & ly.speaks[r0, c0]
-        want = ly.values[r0, c0].astype(np.float64) * CH.SOURCE_SCALE[layer] * scale
+        want = CH.source_si(tl, layer, r0, c0)       # the same conversion rule as the writer
         speaks = np.isfinite(val)
         err = np.abs(np.where(src_speaks & speaks, val - want, 0.0))
         out[name] = {
@@ -192,8 +192,8 @@ def channel_fidelity(tl: FireTimeline, pack_dir: Path, grid: dict[str, Any]) -> 
             "speaks_where_source_speaks": bool(np.array_equal(speaks, src_speaks)),
             "max_abs_error": float(err.max()) if err.size else 0.0,
         }
-        out[name]["ok"] = (out[name]["speaks_where_source_speaks"]
-                           and out[name]["max_abs_error"] < 1e-6)
+        out[name]["ok"] = (out[name]["speaks_where_source_speaks"]  # half a step
+                           and out[name]["max_abs_error"] <= 0.5 * entry["scale"] + 1e-9)
     return out
 
 

@@ -25,10 +25,11 @@ FT = 0.3048
 # PyreCast / ELMFIRE layer -> channel (ADR 0010 §4): name, SI unit, scale (SI per raw step),
 # source unit, conversion note.
 PYRECAST = {
-    "flame_length": ("flame_length_m", "m", FT / 100.0, "ft",
-                     "raw = ft x 100; m = ft x 0.3048. ELMFIRE's source writes active-crown "
-                     "flame length as 2.5 x canopy height in m; PyreCast's values do not follow "
-                     "that on our canopy data - treated as ft, as PyreCast labels them (ADR 0010)"),
+    "flame_length": ("flame_length_m", "m", FT / 100.0, "ft (m where crown class 2 - ASSUMED)",
+                     "m = ft x 0.3048, EXCEPT active crown fire (crown class 2) where the value is "
+                     "taken as m: ELMFIRE's source writes active-crown flame length as 2.5 x "
+                     "canopy height in m into an otherwise-ft raster. ASSUMPTION (Brad "
+                     "2026-10-02): verify with PyreCast / SIG before any public demo (ADR 0010)"),
     "spread_rate": ("spread_rate_mh", "m/h", FT * 60.0 / 100.0, "ft/min",
                     "raw = ft/min x 100; m/h = ft/min x 18.288 (head-fire spread rate)"),
     "crown_fire": ("crown_class", "class", 1.0, "class",
@@ -74,6 +75,26 @@ def write(channels: list[dict[str, Any]], grid: dict[str, Any], pack_dir: str | 
     return mpath
 
 
+def source_si(tl: FireTimeline, layer: str, r0: np.ndarray, c0: np.ndarray) -> np.ndarray:
+    """A PyreCast layer in SI on the pack grid (r0 / c0: the source cell under each pack cell).
+
+    ASSUMPTION (Brad 2026-10-02, ADR 0010 amended - verify with PyreCast / SIG before any public
+    demo): flame length is ft EXCEPT where the cell's crown class is 2 (active crown fire), where
+    it is taken as METRES - ELMFIRE's source writes active-crown flame length as 2.5 x canopy
+    height in m into an otherwise-ft raster, and read as ft PyreCast's active-crown flames
+    (median 20 -> 6 m) would not reach the crowns active crown fire burns through."""
+    v = tl.layers[layer].values[r0, c0].astype(np.float64)
+    if layer == "flame_length":
+        crown = tl.layers.get("crown_fire")
+        active = np.zeros(v.shape, bool)
+        if crown is not None:
+            active = crown.speaks[r0, c0] & (crown.values[r0, c0] == 2)
+        return np.where(active, v, v * FT)
+    if layer == "spread_rate":
+        return v * FT * 60.0
+    return v
+
+
 def from_pyrecast(tl: FireTimeline, pack_dir: str | Path) -> Path:
     """The PyreCast timeline's layers on the pack grid -> the sidecar beside the pack."""
     pack_dir = Path(pack_dir)
@@ -88,9 +109,9 @@ def from_pyrecast(tl: FireTimeline, pack_dir: str | Path) -> Path:
         if ly is None:
             continue
         speaks = inside & ly.speaks[r0, c0]
+        si = source_si(tl, layer, r0, c0)
         raw = np.full((grid["ny"], grid["nx"]), NODATA, np.uint16)
-        raw[speaks] = (ly.values[r0, c0][speaks].astype(np.float64)
-                       * SOURCE_SCALE[layer]).round().astype(np.uint16)
+        raw[speaks] = np.clip((si[speaks] / scale).round(), 0, NODATA - 1).astype(np.uint16)
         chans.append({"name": name, "unit": unit, "scale": scale, "offset": 0.0, "raw": raw,
                       "source": {"name": f"pyrecast {layer}", "unit": src_unit,
                                  "conversion": f"x {scale * SOURCE_SCALE[layer]:.6g}"
