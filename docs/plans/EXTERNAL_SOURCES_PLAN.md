@@ -168,6 +168,18 @@ fire separate below. Also asked: a compass in the play HUD (upper right). Follow
 logs in the scar keep a uniform ember glow for ~a day and never burn down - vary smoulder time,
 let some burn down / away.
 
+**X2 SIGNED OFF (Brad, 2026-10-02):** "Still lots of work on making fire look real but this is a
+good place to call it for this phase." Delivered: ADR 0010 channels (PyreCast flame length,
+spread rate, crown class per cell; fidelity per channel), the class / scorch / torching from the
+source (the burn scar "a huge improvement"), flames v3 (an occluding body, opaque base thinning to
+the tips, torching / crown flames in the canopy with tops at ground + flame length, a varied lean
+toward the spread with the tips bending over), the play-HUD compass. Assumption carried (§7b):
+PyreCast active-crown flame length read as metres.
+**Flame work left for a later look phase** (not X2): flames only draw within 400 m (the terrain
+glow beyond); fronts can still read as rows of cards; no smoke / soot at the tips, no embers in
+the flames, no flame light on the surroundings beyond the terrain glow; motion is per-card noise
+(no puffing / detaching lick shapes); the log smoulder follow-up above.
+
 ### X3 — Our own ELMFIRE run (the clean-licence source)
 
 Goal: a forecast we produced ourselves, from our own store, rendered through the same path. This
