@@ -501,6 +501,17 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   at night. Add a star field - computed for the fire's latitude / longitude and the replay's
   date / time (a bright-star catalogue, sidereal rotation; moon phase / position as a light
   source), dimmed by the smoke pall. Pairs with the night fire look (L_night).
+- **Flames v2 face-on: a row of campfires, not a front (Brad, 2026-10-01, S_jolly_play head_eye,
+  after 7fc8b17):** "Massive improvement. Not our final but for our fixed overhead view this is
+  probably 90% range. Face on the flames are still way too sparse so it looks like a series of
+  campfires, not a continuous flame front" - not tonight. Levers (AEmberFlameActor): fuel-point
+  spacing along the line (SiteM, and MaxSitesPerCell 500 caps a 30 m cell), lick width (0.3 x
+  height) vs spacing, ~2 licks alive per point, the band's brightness share (Stack). Likely
+  direction: spawn along the line, not uniformly in the cell - points packed along the front
+  (arrival gradient gives its direction), so the line is dense while the band behind stays sparse;
+  wider overlapping base licks that merge into a sheet at the foot with tongues on top (the
+  reference: one continuous flame body, ragged only at the top). Torching licks still sit at
+  random points, not on trees.
 - **Fire glow by day may be too strong (Brad, 2026-10-01, S_jolly_play head_eye, after the exposure
   fix b02d0c1):** "the glow from the fire is a bit much during the day but looks great at night.
   Let's not fix it, just note it because I don't trust my own judgement on this one." Documented
