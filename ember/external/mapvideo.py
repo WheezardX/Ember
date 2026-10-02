@@ -132,17 +132,28 @@ class ForecastMap:
         return im
 
 
-def _banner(width: int, left: str, right: str, path: Path) -> Path:
-    b = Image.new("RGB", (width, 64), (14, 14, 18))
+BANNER_H = 96
+
+
+def _banner(width: int, left: str, right: str, t_h: float, run: datetime) -> Image.Image:
+    """The header: the elapsed-since-run counter centred on its own row (Brad 2026-10-02), the
+    panel titles under it, and the INTERNAL / attribution line."""
+    b = Image.new("RGB", (width, BANNER_H), (14, 14, 18))
     d = ImageDraw.Draw(b)
     half = width // 2
-    d.text((12, 6), left, font=_font(18), fill=(255, 220, 120))
-    d.text((half + 12, 6), right, font=_font(18), fill=(255, 220, 120))
-    d.text((12, 38), f"INTERNAL - not for distribution. {ATTRIBUTION}. Left: drawn by Ember "
+    counter = f"+{t_h:04.1f} h since the run"
+    when = (f"run {run:%b %d %H:%M} UTC  ->  now {run + timedelta(hours=t_h):%b %d %H:%M} UTC")
+    f = _font(28)
+    tw = d.textlength(counter, font=f)
+    d.rectangle([half - tw / 2 - 16, 2, half + tw / 2 + 16, 38], fill=(44, 36, 18))
+    d.text((half - tw / 2, 4), counter, font=f, fill=(255, 235, 170))
+    d.text((half + tw / 2 + 28, 14), when, font=_font(14), fill=(190, 190, 190))
+    d.text((12, 46), left, font=_font(18), fill=(255, 220, 120))
+    d.text((half + 12, 46), right, font=_font(18), fill=(255, 220, 120))
+    d.text((12, 74), f"INTERNAL - not for distribution. {ATTRIBUTION}. Left: drawn by Ember "
            "from PyreCast's published forecast files in the conventional 2D style - not "
            "PyreCast's viewer.", font=_font(13), fill=(255, 160, 160))
-    b.save(path)
-    return path
+    return b
 
 
 def side_by_side(fmap: ForecastMap, render_mp4: Path, t_from_h: float, t_to_h: float,
@@ -153,21 +164,24 @@ def side_by_side(fmap: ForecastMap, render_mp4: Path, t_from_h: float, t_to_h: f
     if not ff:
         raise RuntimeError("ffmpeg not found")
     W, H = fmap.size
+    # the left panel with the header above it (the header spans both panels: 2W wide)
     left = out.with_name(out.stem + ".map.mp4")
     p = subprocess.Popen([ff, "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
-                          "-s", f"{W}x{H}", "-r", str(fps), "-i", "-", "-c:v", "libx264",
-                          "-pix_fmt", "yuv420p", "-crf", "18", str(left)], stdin=subprocess.PIPE)
+                          "-s", f"{2 * W}x{H + BANNER_H}", "-r", str(fps), "-i", "-",
+                          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", str(left)],
+                         stdin=subprocess.PIPE)
     for i in range(frames):
         t = t_from_h + i * (t_to_h - t_from_h) / max(1, frames - 1)
-        p.stdin.write(fmap.frame(t, member).convert("RGB").tobytes())
+        f = Image.new("RGB", (2 * W, H + BANNER_H), (0, 0, 0))
+        f.paste(_banner(2 * W, "Forecast map (2D) - the conventional view",
+                        "Ember (3D) - the same forecast data", t, fmap.run), (0, 0))
+        f.paste(fmap.frame(t, member).convert("RGB"), (0, BANNER_H))
+        p.stdin.write(f.tobytes())
     p.stdin.close()
     if p.wait() != 0:
         raise RuntimeError("ffmpeg failed encoding the map")
-    banner = _banner(2 * W, "Forecast map (2D) - the conventional view",
-                     "Ember (3D) - the same forecast data", out.with_suffix(".banner.png"))
-    subprocess.run([ff, "-y", "-v", "error", "-i", str(left), "-i", str(render_mp4), "-i",
-                    str(banner), "-filter_complex",
-                    f"[1:v]scale={W}:{H}[r];[0:v][r]hstack=inputs=2[s];[2:v][s]vstack=inputs=2",
+    subprocess.run([ff, "-y", "-v", "error", "-i", str(left), "-i", str(render_mp4),
+                    "-filter_complex", f"[1:v]scale={W}:{H}[r];[0:v][r]overlay={W}:{BANNER_H}",
                     "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", str(out)], check=True)
-    banner.unlink(missing_ok=True)
+    left.unlink(missing_ok=True)
     return out
