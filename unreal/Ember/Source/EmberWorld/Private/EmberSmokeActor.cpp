@@ -97,8 +97,6 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 	const double Uy = FMath::Cos(To);
 	const FVector CamRight = FRotationMatrix(CameraRot).GetUnitAxis(EAxis::Y);
 
-	TArray<FPuff> All;
-	All.Reserve(MaxPuffs);
 	NumPlumes = 0;
 	NumMerged = 0;
 	MaxTopM = 0.0;
@@ -192,6 +190,26 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 		return Qa != Qb ? Qa > Qb : A.S.Key < B.S.Key;
 	});
 
+	// v3 card pool (Brad 2026-10-01, after v2: "it looks like the smoke is animating back into the
+	// ground at least 50% of the time ... mid and far distances are very bouncy"; "create a card
+	// pool and let cards rise up, fade out and expire and then recycle cards ... cards should only
+	// ever grow, never shrink"). v2 re-derived every puff from the CURRENT plume each frame: with the
+	// fire playing at hours per second the plumes' heights, rise times and (far off) merged-cell
+	// centroids changed every frame, and every puff moved with them - half the time downward.
+	// Now each emitter (a source's own column, or a far-field cell) spawns cards at its base at a
+	// steady rate; a card freezes its plume at birth and from then on moves by its own age only.
+	struct FEmit
+	{
+		int32 Key = 0;
+		double X = 0.0, Y = 0.0, Gz = 0.0;
+		bool bCell = false, bInterior = false, bSmoulder = false;
+		double H = 0.0, Tau = 1.0, L = 0.0, R0 = 0.0, Cell = 0.0, Base = 0.0, Hot = 0.0, HotZ = 1.0;
+		double Life = 1.0, Tcol = 1.0, Ldrift = 1.0;
+		int32 Kc = 0, Kd = 0;
+		double Target = 0.0;     // merge cross-fade x flaming fade
+	};
+	TArray<FEmit> Emit;
+	Emit.Reserve(Draw.Num());
 	for (const FDraw& Dw : Draw)
 	{
 		const FEmberSmokeSource& S = Dw.S;
@@ -208,11 +226,8 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 		const double Flaming = (bInterior || bSmoulder) ? 1.0 : SmoothStep(0.3, 0.8, S.Strength);
 		const double Q = bInterior ? S.Heat : bSmoulder ? S.Smoulder : S.Strength;
 		const double SqQ = FMath::Sqrt(Q);
-		// Ground under the source, cached per bin (the region DEM read was 40-70 ms per frame with a
-		// few hundred interior-heat sources - most of the play-mode frame). Re-read if the bin's
-		// centroid moved more than ~20 m.
-		// (in-memory tile surface every frame - cheap; the cache only backs the slow DEM fallback.
-		// Refreshing the cache only after the centroid moved 20 m made columns hop on slopes.)
+		// Ground under the source: the in-memory tile surface every frame (cheap); the per-bin cache
+		// only backs the slow region-DEM fallback (40-70 ms a frame with a few hundred sources).
 		double Gz = 0.0;
 		if (!Terrain->SurfaceAt(S.X, S.Y, Gz))
 		{
@@ -230,140 +245,259 @@ void AEmberSmokeActor::Rebuild(const FVector& CameraLoc, const FRotator& CameraR
 				GroundCache.Add(S.Key, FGroundHit{S.X, S.Y, Gz});
 			}
 		}
+		FEmit E;
+		E.Key = S.Key;
+		E.X = S.X;
+		E.Y = S.Y;
+		E.Gz = Gz;
+		E.bCell = Cell > 0.0;
+		E.bInterior = bInterior;
+		E.bSmoulder = bSmoulder;
+		E.Cell = Cell;
 		// Neighbouring bins burn as one convective column: height from the 1.5 km cluster.
 		// Columns (v1): the reference columns stand 1-3 km+ over every active area; 90 x sqrt
 		// (cluster) gave ~500 m tops on the real Three Queens record.
-		const double H = bInterior ? FMath::Clamp(90.0 * FMath::Sqrt(static_cast<double>(S.HeatCluster)), 200.0, 1200.0)
+		E.H = bInterior ? FMath::Clamp(90.0 * FMath::Sqrt(static_cast<double>(S.HeatCluster)), 200.0, 1200.0)
 			: bSmoulder ? FMath::Clamp(60.0 + 40.0 * SqQ, 60.0, 300.0)
 			: FMath::Clamp(250.0 * FMath::Sqrt(static_cast<double>(S.Cluster)), 300.0, 5000.0);
-		MaxTopM = FMath::Max(MaxTopM, H);
-		const double L = bSmoulder ? FMath::Clamp(10.0 * H, 600.0, 3000.0)
-			: FMath::Clamp(6.0 * H, bInterior ? 1200.0 : 1500.0, bInterior ? 10000.0 : 18000.0);  // plume length before it thins out
+		MaxTopM = FMath::Max(MaxTopM, E.H);
+		E.L = bSmoulder ? FMath::Clamp(10.0 * E.H, 600.0, 3000.0)
+			: FMath::Clamp(6.0 * E.H, bInterior ? 1200.0 : 1500.0, bInterior ? 10000.0 : 18000.0);  // plume length before it thins out
 		// Buoyant rise (v1, reference: the columns over Kachess stand near-vertical for a km or
 		// more before they lean): rise speed W0 against the wind, e-folding time Tau to the top.
-		const double W0 = bSmoulder ? 1.5 : (bInterior ? 4.0 : 6.0) + 3.0 * FMath::Sqrt(H / 100.0);
-		const double Tau = H / W0;
-		const double Life = FMath::Max(L / WindMs, 3.0 * Tau);        // puff lifetime (s)
-		double R0 = bSmoulder ? 40.0 : bInterior ? 45.0 + 6.0 * SqQ : 60.0 + 7.0 * SqQ;  // ~a bin across at full strength
-		double Base = bSmoulder ? 0.22 * (1.0 - FMath::Exp(-Q / 3.0))
+		const double W0 = bSmoulder ? 1.5 : (bInterior ? 4.0 : 6.0) + 3.0 * FMath::Sqrt(E.H / 100.0);
+		E.Tau = E.H / W0;
+		E.Life = FMath::Max(E.L / WindMs, 3.0 * E.Tau);        // a wisp card's lifetime (s)
+		E.R0 = bSmoulder ? 40.0 : bInterior ? 45.0 + 6.0 * SqQ : 60.0 + 7.0 * SqQ;  // ~a bin across at full strength
+		E.Base = bSmoulder ? 0.22 * (1.0 - FMath::Exp(-Q / 3.0))
 			: (bInterior ? 0.75 : 0.9) * (1.0 - FMath::Exp(-Q / 4.0));  // dense columns, faint wisps
-		if (Cell > 0.0)
+		if (E.bCell)
 		{
 			// merged: as wide as a good part of its cell, and denser (several columns' worth of smoke)
-			R0 = FMath::Max(R0, 0.3 * Cell);
-			Base = FMath::Min(0.97, Base * 1.15 + 0.05);
+			E.R0 = FMath::Max(E.R0, 0.3 * Cell);
+			E.Base = FMath::Min(0.97, E.Base * 1.15 + 0.05);
 		}
-		// The rising column gets its own puffs, evenly spaced in HEIGHT (v2, the lab: spaced evenly in
-		// time over the whole drift, consecutive puffs were ~800 m apart in the fast-rising column, so
-		// the lower column was empty and plumes floated; merged plumes broke into blobs).
-		// FIXED counts per plume type (Brad: "a rising card snaps back lower" - counts recomputed from
-		// the plume's height each frame jumped by one as the fire evolved and re-slotted every puff);
-		// radii grow with the plume instead, so neighbours still overlap.
-		const int32 Kc = bSmoulder ? 0 : Cell > 0.0 ? 24 : bInterior ? 16 : 28;
-		const int32 K = bSmoulder ? 8 : Kc + (Cell > 0.0 ? 40 : bInterior ? 28 : 64);
-		if (Kc > 0)
+		// Two kinds of card per column (v2, the lab: one stream spaced evenly in time left the fast-
+		// rising lower column empty and the plumes floated): COLUMN cards climb the column at a
+		// constant speed (so they are evenly spaced in height) to 0.95 H in Tcol, DRIFT cards leave the
+		// top and travel downwind for the rest of the plume. Fixed counts per plume type.
+		E.Kc = bSmoulder ? 0 : E.bCell ? 24 : bInterior ? 16 : 28;
+		E.Kd = bSmoulder ? 8 : E.bCell ? 40 : bInterior ? 28 : 64;
+		if (E.Kc > 0)
 		{
-			R0 = FMath::Max(R0, 0.6 * H / Kc);           // column puffs at least overlap their spacing
+			E.R0 = FMath::Max(E.R0, 0.6 * E.H / E.Kc);   // column cards at least overlap their spacing
 		}
-		const double Uc = static_cast<double>(Kc) / K;     // life fraction where the column ends
-		const double Tc = 3.0 * Tau;                        // ~95 % of the rise
-		if (All.Num() + K > MaxPuffs)
-		{
-			break;
-		}
-		++NumPlumes;
+		E.Tcol = 1.5 * E.Tau;
+		E.Ldrift = bSmoulder ? E.Life : FMath::Max(E.Life - E.Tcol, E.Tau);
 		// Interior pockets light their own smoke from below too (the night reference: the smoke over
 		// the burning slope glows orange)
-		const double Hot = bInterior ? 0.6 * FMath::Min(1.0, Q / 8.0)
+		E.Hot = bInterior ? 0.6 * FMath::Min(1.0, Q / 8.0)
 			: FMath::Min(1.0, S.Burning / FMath::Max(1.0, Q)) * FMath::Min(1.0, S.Burning / 5.0);
-		const double HotZ = bInterior ? 0.4 * H : R0 + 80.0;   // how far up the glow reaches
-		// A puff advances one slot (L / K) every Life / K seconds, so it crosses the plume in Life.
-		// Index I after W wraps is the same physical puff as index I + 1 after W + 1: seed on W - I.
-		// The slot position is ACCUMULATED per plume (Clock x K / Life jumped whenever Life changed a
-		// little - with a clock of minutes, a 1 % change moved every puff by several slots).
-		FPlumePhase& Ph = PlumePhase.FindOrAdd(S.Key);
-		const double Dt = ClockS - Ph.Clock;
-		if (!Ph.bInit || Dt < 0.0 || Dt > 30.0)
+		E.HotZ = bInterior ? 0.4 * E.H : E.R0 + 80.0;   // how far up the glow reaches
+		E.Target = Dw.Alpha * Flaming;
+		Emit.Add(E);
+	}
+
+	// Advance the pool. A small clock step ages it; anything else (SetClock) re-seeds it below.
+	const bool bReset = bResetPool;
+	const double Dt = bReset ? 0.0 : FMath::Max(0.0, ClockS - PoolClock);
+	if (bReset)
+	{
+		Pool.Reset();
+		Emitters.Reset();
+		++NumResets;
+	}
+	bResetPool = false;
+	PoolClock = ClockS;
+	const double VisK = 1.0 - FMath::Exp(-Dt / 1.0);    // emitter fades: ~1 s
+	for (const FEmit& E : Emit)
+	{
+		if (FEmitterState* St = Emitters.Find(E.Key))
 		{
-			Ph.Slots = ClockS * K / Life + Hash01(S.Key, 0x51u) * K;
-			Ph.bInit = true;
+			St->LastSeen = ClockS;
+			St->Vis += (E.Target - St->Vis) * VisK;
+		}
+	}
+	for (auto It = Emitters.CreateIterator(); It; ++It)
+	{
+		if (It.Value().LastSeen < ClockS)
+		{
+			It.Value().Vis *= 1.0 - VisK;                   // gone this frame: its cards fade
+			if (ClockS - It.Value().LastSeen > 5.0)
+			{
+				It.RemoveCurrent();                         // back after this: a fresh emitter
+			}
+		}
+	}
+	{
+		int32 W = 0;
+		for (int32 I = 0; I < Pool.Num(); ++I)
+		{
+			FPuffCard C = Pool[I];
+			C.Age += static_cast<float>(Dt);
+			const FEmitterState* St = Emitters.Find(C.Emitter);
+			C.Vis = St ? static_cast<float>(St->Vis) : C.Vis * static_cast<float>(1.0 - VisK);
+			if (C.Age >= C.LifeS || (!St && C.Vis < 0.003f))
+			{
+				continue;                                   // expired: the slot is recycled
+			}
+			Pool[W++] = C;
+		}
+		Pool.SetNum(W, EAllowShrinking::No);
+	}
+
+	// Spawn. A new emitter (or every emitter on a re-seed) starts with a full plume: cards at
+	// evenly spread ages (fading in over ~1 s unless this is a still); after that it adds a card
+	// each time its accumulator passes one, aged by the fraction of the step since then.
+	const double WindNow = WindMs;
+	auto Spawn = [&](const FEmit& E, FEmitterState& St, uint8 Kind, double Age, double Vis)
+	{
+		if (Pool.Num() >= MaxPuffs)
+		{
+			return;
+		}
+		FPuffCard C;
+		C.Emitter = E.Key;
+		C.Kind = Kind;
+		C.bCell = E.bCell;
+		C.bInterior = E.bInterior;
+		C.Age = static_cast<float>(Age);
+		C.LifeS = static_cast<float>(Kind == 0 ? E.Tcol : E.Ldrift);
+		C.Ox = E.X;
+		C.Oy = E.Y;
+		C.Gz = E.Gz;
+		C.Ux = static_cast<float>(Ux);
+		C.Uy = static_cast<float>(Uy);
+		C.Wind = static_cast<float>(WindNow);
+		C.H = static_cast<float>(E.H);
+		C.Tau = static_cast<float>(E.Tau);
+		C.L = static_cast<float>(E.L);
+		C.R0 = static_cast<float>(E.R0);
+		C.Cell = static_cast<float>(E.Cell);
+		C.Tcol = static_cast<float>(E.Tcol);
+		C.Ldrift = static_cast<float>(E.Ldrift);
+		C.Base = static_cast<float>(E.Base);
+		C.Hot = static_cast<float>(E.Hot);
+		C.HotZ = static_cast<float>(E.HotZ);
+		const uint32 Seed = St.Born++;
+		C.S1 = static_cast<float>(Hash01(E.Key, Seed * 4u + 1u));
+		C.S2 = static_cast<float>(Hash01(E.Key, Seed * 4u + 2u));
+		C.S3 = static_cast<float>(Hash01(E.Key, Seed * 4u + 3u));
+		C.Vis = static_cast<float>(Vis);
+		Pool.Add(C);
+	};
+	const uint8 DriftKind = 1, WispKind = 2;
+	for (const FEmit& E : Emit)
+	{
+		const uint8 Dk = E.bSmoulder ? WispKind : DriftKind;
+		FEmitterState* St = Emitters.Find(E.Key);
+		if (!St)
+		{
+			if (Pool.Num() + E.Kc + E.Kd > MaxPuffs)
+			{
+				continue;                                   // no room: try again next frame
+			}
+			FEmitterState& N = Emitters.Add(E.Key);
+			N.LastSeen = ClockS;
+			N.Vis = bReset ? E.Target : 0.0;
+			const double Ph = Hash01(E.Key, 0x51u);
+			for (int32 I = 0; I < E.Kc; ++I)
+			{
+				Spawn(E, N, 0, (I + Ph) / E.Kc * E.Tcol, N.Vis);
+			}
+			for (int32 I = 0; I < E.Kd; ++I)
+			{
+				Spawn(E, N, Dk, (I + Ph) / E.Kd * E.Ldrift, N.Vis);
+			}
+			N.AccCol = N.AccDrift = Ph;
+			++NumPlumes;
+			continue;
+		}
+		++NumPlumes;
+		if (E.Kc > 0)
+		{
+			const double Rate = E.Kc / E.Tcol;
+			St->AccCol += Dt * Rate;
+			while (St->AccCol >= 1.0)
+			{
+				St->AccCol -= 1.0;
+				Spawn(E, *St, 0, St->AccCol / Rate, St->Vis);
+			}
+		}
+		const double Rate = E.Kd / E.Ldrift;
+		St->AccDrift += Dt * Rate;
+		while (St->AccDrift >= 1.0)
+		{
+			St->AccDrift -= 1.0;
+			Spawn(E, *St, Dk, St->AccDrift / Rate, St->Vis);
+		}
+	}
+
+	// Lay the cards out: each one's place, size and density from its own age and frozen plume.
+	// Monotonic in age: it only rises, drifts on and grows.
+	TArray<FPuff> All;
+	All.Reserve(Pool.Num());
+	for (const FPuffCard& C : Pool)
+	{
+		const double A = C.Age, H = C.H, Tau = C.Tau, R0 = C.R0;
+		double Z, D, Fade;
+		if (C.Kind == 0)
+		{
+			// column: constant climb to 0.95 H, handing over to the drift cards at the top
+			const double Sf = A / C.Tcol;
+			Z = 0.95 * H * Sf;
+			D = FMath::Min(C.Wind * A, static_cast<double>(C.L));
+			Fade = 1.0 - SmoothStep(0.9, 1.0, Sf);
+		}
+		else if (C.Kind == 1)
+		{
+			// drift: from the column top, the last 5 % of the rise and on downwind
+			Z = H * (0.95 + 0.05 * (1.0 - FMath::Exp(-A / Tau)));
+			D = FMath::Min(C.Wind * (C.Tcol + A), static_cast<double>(C.L));
+			const double F = (C.Tcol + A) / (C.Tcol + C.Ldrift);
+			Fade = SmoothStep(0.0, 0.15 * C.Tcol, A) * (1.0 - SmoothStep(0.5, 1.0, F));
 		}
 		else
 		{
-			Ph.Slots += Dt * K / Life;
+			// smoulder wisp: a lazy rise from the ground
+			Z = H * (1.0 - FMath::Exp(-A / Tau));
+			D = FMath::Min(C.Wind * A, static_cast<double>(C.L));
+			Fade = 1.0 - SmoothStep(0.5, 1.0, A / C.LifeS);
 		}
-		Ph.Clock = ClockS;
-		const double Slots = Ph.Slots;
-		const double Cycle = FMath::Frac(Slots);
-		const int64 Wraps = FMath::FloorToInt64(Slots);
-		for (int32 I = 0; I < K; ++I)
+		if (C.Kind != 1)
 		{
-			// Life fraction 0..1, packed toward the base (u^1.5): low puffs are small and rise fast, so
-			// even spacing in life left them apart as a row of discs; still a monotonic, continuous
-			// map, so puffs keep moving smoothly and keep their seeds. Opacity follows the spacing
-			// (u^2 without it doubled the base density into a wall).
-			// Life fraction U -> puff age T, monotonic and continuous (puffs keep moving smoothly and
-			// keep their seeds): U < Uc climbs the column with height uniform in U (z = 0.95 H U / Uc,
-			// T = -Tau ln(1 - z / H)), U >= Uc drifts linearly in time from Tc to Life.
-			const double U = (I + Cycle) / K;
-			double T;
-			if (bSmoulder || Kc == 0)
-			{
-				T = U * Life;
-			}
-			else if (U < Uc)
-			{
-				T = -Tau * FMath::Loge(1.0 - 0.95 * U / Uc);
-			}
-			else
-			{
-				T = Tc + (U - Uc) / FMath::Max(1e-6, 1.0 - Uc) * FMath::Max(0.0, Life - Tc);
-			}
-			const double F = T / Life;                                 // life fraction (fade-out)
-			const double Pack = 1.0;
-			const double D = FMath::Min(WindMs * T, L);                // downwind distance (m)
-			const double Z = H * (1.0 - FMath::Exp(-T / Tau));         // buoyant rise to the top
-			// Entrainment widens the column as it climbs; the top spreads (cauliflower / anvil).
-			// (v1: smaller puffs than the column is wide, so billows read instead of one blur)
-			// (interior columns stay narrow - the reference ones are a few hundred m wide - and
-			// spread downwind rather than into a cap)
-			// (merged far-field plumes: the top spreads much wider into a sheet that joins its
-			// neighbours' - the "thick cloud dominating the sky" of the reference pall shots)
-			const double R = bInterior ? R0 + 0.12 * D + 0.06 * Z + 0.05 * H * SmoothStep(0.7, 1.0, Z / H)
-				: Cell > 0.0 ? R0 + 0.1 * D + 0.15 * Z + 0.6 * H * SmoothStep(0.45, 1.0, Z / H)
-				: R0 + 0.1 * D + 0.12 * Z + 0.15 * H * SmoothStep(0.7, 1.0, Z / H);
-			const uint32 Seed = static_cast<uint32>(Wraps - I);
-			const double H1 = Hash01(S.Key, Seed * 4u + 1u);
-			const double H2 = Hash01(S.Key, Seed * 4u + 2u);
-			const double H3 = Hash01(S.Key, Seed * 4u + 3u);
-			// merged: puffs leave from anywhere along the cell's front (a wall of smoke, not one column)
-			const double Lat = (H1 - 0.5) * (R * 0.9 + (Cell > 0.0 ? 0.9 * Cell : 0.0));
-			const double Wx = S.X + Ux * D - Uy * Lat;
-			const double Wy = S.Y + Uy * D + Ux * Lat;
-			const double Wz = Gz + Z + R * 0.5 + (H2 - 0.5) * R * 0.5;
-
-			// Fade in as the column forms (no discs on the ground), thin out downwind.
-			// (and by height: low puffs in a shaded valley read as a row of grey discs at the column base)
-			// (v2, the lab: fading over 7 R0 / 3 R0 left the lower column empty - the plumes floated
-			// as clouds with nothing under them; the reference smoke is thick right off the flames)
-			const double Life01 = SmoothStep(0.0, 2.5 * R0, FMath::Sqrt(D * D + Z * Z)) * SmoothStep(-0.5 * R0, 1.2 * R0, Z)
-				* (1.0 - SmoothStep(0.5, 1.0, F));
-			const double Thin = FMath::Max(0.25, FMath::Sqrt(R0 / R));
-			FPuff P;
-			P.Loc = Terrain->WorldToUE(Wx, Wy, Wz);
-			P.RadiusM = R;
-			P.Stretch = 1.0 + 0.6 * H1;  // elongated, so no card reads as a disc
-			P.Roll = H3 * 2.0 * PI;
-			P.Data[0] = static_cast<float>(Base * Life01 * Thin * Pack * Dw.Alpha * Flaming);   // Alpha: the merge cross-fade
-			P.Data[1] = static_cast<float>(0.5 * Hot * FMath::Exp(-Z / HotZ));
-			P.Data[2] = static_cast<float>(FMath::FloorToInt32(H2 * 4.0) & 3);
-			P.Data[3] = static_cast<float>(R * 40.0);  // depth fade (cm): 0.4 x radius
-			P.Dist2 = FVector::DistSquared(P.Loc, CameraLoc);
-			// A card around the camera would fill the screen: fade puffs we are inside.
-			const double DistM = FMath::Sqrt(P.Dist2) / 100.0;
-			// v1: and thin big puffs as the camera nears them - inside a heavy plume the stacked cards
-			// made a solid wall; the reference pall still shows the terrain through it.
-			P.Data[0] *= static_cast<float>(SmoothStep(0.6 * R, 1.6 * R, DistM) * (0.35 + 0.65 * SmoothStep(0.0, 4.0 * R, DistM)));
+			// Fade in as the column forms (no discs on the ground); the reference smoke is thick right
+			// off the flames, so only over a couple of radii.
+			Fade *= SmoothStep(0.0, 2.5 * R0, FMath::Sqrt(D * D + Z * Z)) * SmoothStep(-0.5 * R0, 1.2 * R0, Z);
+		}
+		// Entrainment widens the column as it climbs; the top spreads (cauliflower / anvil).
+		// (interior columns stay narrow and spread downwind; merged far-field plumes spread into a
+		// sheet that joins their neighbours' - the "thick cloud dominating the sky")
+		const double R = C.bInterior ? R0 + 0.12 * D + 0.06 * Z + 0.05 * H * SmoothStep(0.7, 1.0, Z / H)
+			: C.bCell ? R0 + 0.1 * D + 0.15 * Z + 0.6 * H * SmoothStep(0.45, 1.0, Z / H)
+			: R0 + 0.1 * D + 0.12 * Z + 0.15 * H * SmoothStep(0.7, 1.0, Z / H);
+		// merged: cards leave from anywhere along the cell's front (a wall of smoke, not one column)
+		const double Lat = (C.S1 - 0.5) * (R * 0.9 + (C.bCell ? 0.9 * C.Cell : 0.0));
+		const double Wx = C.Ox + C.Ux * D - C.Uy * Lat;
+		const double Wy = C.Oy + C.Uy * D + C.Ux * Lat;
+		const double Wz = C.Gz + Z + R * 0.5 + (C.S2 - 0.5) * R * 0.5;
+		const double Thin = FMath::Max(0.25, FMath::Sqrt(R0 / R));
+		FPuff P;
+		P.Loc = Terrain->WorldToUE(Wx, Wy, Wz);
+		P.RadiusM = R;
+		P.Stretch = 1.0 + 0.6 * C.S1;  // elongated, so no card reads as a disc
+		P.Roll = C.S3 * 2.0 * PI;
+		P.Data[0] = static_cast<float>(C.Base * Fade * Thin * C.Vis);
+		P.Data[1] = static_cast<float>(0.5 * C.Hot * FMath::Exp(-Z / C.HotZ));
+		P.Data[2] = static_cast<float>(FMath::FloorToInt32(C.S2 * 4.0) & 3);
+		P.Data[3] = static_cast<float>(R * 40.0);  // depth fade (cm): 0.4 x radius
+		P.Dist2 = FVector::DistSquared(P.Loc, CameraLoc);
+		// A card around the camera would fill the screen: fade cards we are inside, and thin big
+		// ones as the camera nears them (inside a heavy plume the stack made a solid wall).
+		const double DistM = FMath::Sqrt(P.Dist2) / 100.0;
+		P.Data[0] *= static_cast<float>(SmoothStep(0.6 * R, 1.6 * R, DistM) * (0.35 + 0.65 * SmoothStep(0.0, 4.0 * R, DistM)));
+		if (P.Data[0] > 0.002f)
+		{
 			All.Add(P);
 		}
 	}
