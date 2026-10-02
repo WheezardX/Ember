@@ -16,6 +16,10 @@ from ember.sim.cli import sim_app  # noqa: E402 — sub-app mounted below
 
 app.add_typer(sim_app, name="sim")
 
+from ember.external.cli import external_app  # noqa: E402 — sub-app mounted below
+
+app.add_typer(external_app, name="external")
+
 
 @app.command()
 def version() -> None:

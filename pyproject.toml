@@ -65,6 +65,7 @@ select = ["E", "F", "I", "UP", "B"]
 "ember/cli.py" = ["B008"]
 "ember/sim/cli.py" = ["B008"]
 "ember/dev/cli.py" = ["B008"]
+"ember/external/cli.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
