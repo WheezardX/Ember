@@ -27,6 +27,17 @@ def pyrecast(run_dir: Path = typer.Argument(..., help="A PyreCast run dir (…/{
         typer.echo(f"  p{p}: {json.dumps(tl.summary())} -> {d}")
 
 
+@external_app.command("x1-map-video")
+def x1_map_video() -> None:
+    """The forecast as a conventional 2D map beside our render (map view + cinematic) ->
+    store/review/X1/ (internal only). Needs the X1 bundle."""
+    from ember.dev.ue import repo_root
+    from ember.external import x1
+
+    for v in x1.map_videos(repo_root()):
+        typer.echo(f"  {v}")
+
+
 @external_app.command("x1-bundle")
 def x1_bundle(run_ts: str = typer.Option("20260820_051100", "--run", help="Run timestamp."),
               no_render: bool = typer.Option(False, "--no-render", help="Stop before rendering.")

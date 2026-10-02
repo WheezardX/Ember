@@ -214,6 +214,66 @@ def build(repo: Path, run_dir: Path, pack: Path, observed_replay: Path,
     return summary
 
 
+# The cinematic camera for the map-vs-render demo (Brad 2026-10-02: show our output beside
+# theirs): a low oblique on the p50 growth (the east lobe) from the SSE, smoke on.
+CINE = """
+[[bookmarks]]
+name = "front_cine"
+target_frac = [0.70, 0.52]
+distance_m = 3000
+yaw_deg = 330
+pitch_deg = -15
+fov_deg = 60
+sun = "afternoon"
+
+[[captures]]
+name = "front_cine_36h"
+bookmark = "front_cine"
+t_s = 3156180
+golden = false
+
+[[orbits]]
+name = "timelapse_72h"
+bookmark = "front_cine"
+degrees = 0
+frames = 360
+fps = 30
+t_from_s = 3026580
+t_to_s = 3285780
+"""
+
+
+def map_videos(repo: Path, run_ts: str = "20260820_051100", pct: int = 50) -> list[Path]:
+    """The forecast drawn as a conventional 2D map (left), frame-synced with our render (right):
+    once with the smoke-off map view, once with the cinematic camera. Needs the X1 bundle."""
+    from ember.external.mapvideo import ForecastMap, side_by_side
+    from ember.external.timeline import read_timeline
+
+    tag = run_ts[4:8]
+    out = repo / "store" / "review" / "X1"
+    ext = repo / "store" / "incidents" / "dfa477f2-305c-49ca-b82e-2af072ab55f8" / "external" \
+        / "pyrecast-elmfire"
+    tl = read_timeline(ext / "timelines" / run_ts / f"p{pct}")
+    fm = ForecastMap(tl, repo / "store" / "sim" / "hist-three-queens-2026-ir.ewp")
+    mapped = _finished_render(repo, f"X1_{tag}_p{pct}_map", True)
+    if mapped is None:
+        raise RuntimeError("run `ember external x1-bundle` first (the p50 map render)")
+    name = f"X1_{tag}_p{pct}_cine"
+    main = out / "scenarios" / f"X1_{tag}_p{pct}.toml"
+    toml = out / "scenarios" / f"{name}.toml"
+    text = main.read_text(encoding="utf-8").split("[[bookmarks]]")[0]
+    toml.write_text(_sub(text, "name", f'"{name}"') + CINE, encoding="utf-8")
+    root = repo / "runs" / "viz" / name
+    done = [d for d in sorted(root.glob("*"), reverse=True)
+            if (d / "orbits" / "timelapse_72h.mp4").exists()] if root.exists() else []
+    cine = done[0] if done else _render(repo, toml)
+    vids = []
+    for label, run in (("mapview", mapped), ("cinematic", cine)):
+        vids.append(side_by_side(fm, run / "orbits" / "timelapse_72h.mp4", 0.0, 72.0, 360, 30,
+                                 f"p{pct}", out / f"X1_{tag}_map_vs_ember_{label}_p{pct}.mp4"))
+    return vids
+
+
 def _observed_growth(observed_replay: Path, pack: Path, R: int) -> dict[str, float]:
     """Observed acres burned between the run and run + h (the NIROPS arrival on the pack)."""
     m, obs, _ = C._pack(pack)
