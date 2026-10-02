@@ -38,6 +38,8 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 	/** Play mode: the fire timeline bar (AEmberHUD calls this every frame). */
 	void DrawTimeline(class UCanvas* Canvas);
+	/** Play HUD: a compass in the upper right that turns with the view. */
+	void DrawCompass(class UCanvas* Canvas);
 
 private:
 	struct FBookmark

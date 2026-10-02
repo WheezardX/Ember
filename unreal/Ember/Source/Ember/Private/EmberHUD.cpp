@@ -12,5 +12,6 @@ void AEmberHUD::DrawHUD()
 	if (GM && GM->Harness && Canvas)
 	{
 		GM->Harness->DrawTimeline(Canvas);
+		GM->Harness->DrawCompass(Canvas);
 	}
 }

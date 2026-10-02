@@ -154,6 +154,20 @@ speaks, and from today's class rules where it is silent, and the render says whi
 with the source's own flame-length and crown maps alongside. The question for Brad is the one
 HCP4 left open: can you now point at where it is hot and what kind of fire it is?
 
+**X2 review 1 (Brad, 2026-10-02, client fly-through, p90 + 38 h): NOT closed.** Burn scar: "a huge
+improvement. Looks more like a real burn scar with a mix of untouched or partially burned areas.
+The ground fire only scorching trees is great. Crown fire areas and torching taking away the
+foliage." The A/B sheet is hard to read; the difference is clear in a fly-through. Flames:
+"still needs a lot of work, the varied flame height is an improvement from before but the fire
+still looks thin and transparent. All flames seem to emit from the ground too where as in
+torching and crowns you'd see it in the tree tops." Brad: "we need to improve flame
+representation before we can close X2". So X2.6 (added): **flames v3** - a flame body that
+occludes (not only additive glow), fuller tongues, and torching / crown flames placed in the
+canopy (crown base to above the tree tops, from the pack's canopy base / height) with the ground
+fire separate below. Also asked: a compass in the play HUD (upper right). Follow-up (smaller):
+logs in the scar keep a uniform ember glow for ~a day and never burn down - vary smoulder time,
+let some burn down / away.
+
 ### X3 — Our own ELMFIRE run (the clean-licence source)
 
 Goal: a forecast we produced ourselves, from our own store, rendered through the same path. This

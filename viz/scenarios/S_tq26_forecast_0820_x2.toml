@@ -22,6 +22,8 @@ exposure_bias = -2.0
 wind_from_deg = 225
 smoke_wind_ms = 5.0
 smoke = false               # the A/B is about the flames and the crowns: our smoke hid them
+play_start_s = 3163380       # play: run + 38 h, just before the p90 run's most active crown fire
+play_rate_h = 0.5
 
 [[bookmarks]]
 name = "crown_near"           # the source says active crown fire, 9.4 m flames (arrived +39.9 h)

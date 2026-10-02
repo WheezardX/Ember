@@ -1133,6 +1133,74 @@ double AEmberHarness::TimeAtTimelineX(double X) const
 	return Fire->StartS + U * (Fire->EndS - Fire->StartS);
 }
 
+void AEmberHarness::DrawCompass(UCanvas* Canvas)
+{
+	// Upper-right compass (Brad 2026-10-02: "it's easy to get lost in the fly through"): a dial that
+	// turns with the view - the top of the dial is where the camera looks - N in red, and the
+	// heading in degrees under it. UE yaw 0 looks along +X (east): compass heading = yaw + 90.
+	if (State != EState::Play || !Canvas || !GEngine)
+	{
+		return;
+	}
+	const APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (!PC)
+	{
+		return;
+	}
+	const double Heading = FMath::Fmod(PC->GetControlRotation().Yaw + 90.0 + 720.0, 360.0);
+	const double R = 46.0;
+	const double Cx = Canvas->ClipX - R - 28.0, Cy = R + 28.0;
+	UFont* Font = GEngine->GetSmallFont();
+	FCanvasTileItem Bg(FVector2D(Cx - R - 10, Cy - R - 10), FVector2D(2 * R + 20, 2 * R + 34),
+		FLinearColor(0.f, 0.f, 0.f, 0.45f));
+	Bg.BlendMode = SE_BLEND_Translucent;
+	Canvas->DrawItem(Bg);
+	// the ring
+	const int32 Seg = 48;
+	for (int32 K = 0; K < Seg; ++K)
+	{
+		const double A0 = 2.0 * PI * K / Seg, A1 = 2.0 * PI * (K + 1) / Seg;
+		FCanvasLineItem L(FVector2D(Cx + R * FMath::Sin(A0), Cy - R * FMath::Cos(A0)),
+			FVector2D(Cx + R * FMath::Sin(A1), Cy - R * FMath::Cos(A1)));
+		L.SetColor(FLinearColor(0.85f, 0.85f, 0.85f, 0.9f));
+		L.LineThickness = 1.5f;
+		Canvas->DrawItem(L);
+	}
+	// ticks every 30 deg and the cardinal letters, placed by bearing - heading (clockwise from up)
+	static const TCHAR* Card[] = {TEXT("N"), TEXT("E"), TEXT("S"), TEXT("W")};
+	for (int32 B = 0; B < 360; B += 30)
+	{
+		const double A = FMath::DegreesToRadians(B - Heading);
+		const bool bCard = B % 90 == 0;
+		const double R0 = bCard ? R - 12.0 : R - 6.0;
+		FCanvasLineItem T(FVector2D(Cx + R0 * FMath::Sin(A), Cy - R0 * FMath::Cos(A)),
+			FVector2D(Cx + R * FMath::Sin(A), Cy - R * FMath::Cos(A)));
+		T.SetColor(B == 0 ? FLinearColor(1.f, 0.25f, 0.2f) : FLinearColor(0.85f, 0.85f, 0.85f));
+		T.LineThickness = bCard ? 2.5f : 1.f;
+		Canvas->DrawItem(T);
+		if (bCard)
+		{
+			const double Rt = R - 24.0;
+			FCanvasTextItem Tx(FVector2D(Cx + Rt * FMath::Sin(A), Cy - Rt * FMath::Cos(A) - 7.0),
+				FText::FromString(Card[B / 90]), Font,
+				B == 0 ? FLinearColor(1.f, 0.3f, 0.25f) : FLinearColor(0.95f, 0.95f, 0.95f));
+			Tx.bCentreX = true;
+			Tx.EnableShadow(FLinearColor::Black);
+			Canvas->DrawItem(Tx);
+		}
+	}
+	// the view marker at the top, and the heading
+	FCanvasLineItem V(FVector2D(Cx, Cy - R - 8.0), FVector2D(Cx, Cy - R + 8.0));
+	V.SetColor(FLinearColor(1.f, 0.85f, 0.3f));
+	V.LineThickness = 3.f;
+	Canvas->DrawItem(V);
+	FCanvasTextItem H(FVector2D(Cx, Cy + R + 6.0), FText::FromString(FString::Printf(TEXT("%03.0f°"), Heading)),
+		Font, FLinearColor(1.f, 0.9f, 0.6f));
+	H.bCentreX = true;
+	H.EnableShadow(FLinearColor::Black);
+	Canvas->DrawItem(H);
+}
+
 void AEmberHarness::DrawTimeline(UCanvas* Canvas)
 {
 	if (State != EState::Play || !Fire || !Canvas || Fire->EndS <= Fire->StartS || !GEngine)
