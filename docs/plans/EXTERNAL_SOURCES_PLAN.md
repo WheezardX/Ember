@@ -82,7 +82,7 @@ not. No skill metrics, no precision / recall, no "the model was wrong" framing i
 | D5 | Canonical units | Channels are stored in SI (m, m/h, kW/m); adapters convert at the boundary and record the source unit | One conversion point |
 | D6 | Percentiles | X1 renders p10 / p50 / p90 as three separate replays. Drawing the envelope as lines in the 3D scene waits for the HCP5 overlay layer and becomes a stated requirement on it | No overlay framework exists yet |
 | D8 ✔ | ELMFIRE licence | **Free (AGPL + Commons Clause) version, re-evaluate before any grant pitch** (Brad, 2026-10-02) | The licence is not EPL-2.0 as first assumed (rule 3) |
-| D7 ⚑ | Approaching PyreCast / SIG | Not executor work. Brad decides after the X1 bundle exists | A working render of their own forecast is the opening; the strategy must not depend on their answer (X3 is the independent path) |
+| D7 ✔ | Approaching PyreCast / SIG | **Brad approaches them himself; PyreCast data is used internally now; re-evaluate before any public demo** (Brad, 2026-10-02: "I'll approach and similar to Elmfire. We move forward now internally, we reevaluate before any public demo.") | A working render of their own forecast is the opening; the strategy must not depend on their answer (X3 is the independent path) |
 
 ## 4. Phases
 

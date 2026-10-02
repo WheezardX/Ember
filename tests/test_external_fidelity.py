@@ -66,6 +66,10 @@ def test_faithful_replay_passes(tmp_path):
     res = fidelity.evaluate(tl, pack, _replay(tmp_path, a, 14, "ok"))
     assert res["ok"], res
     assert res["share_within_one_tick"] == 1.0 and res["exact_arrival_share"] == 1.0
+    fc = res["forecast"]                       # the readable summary of what the source said
+    assert fc["arrival_h"]["first"] == 0.17 and fc["arrival_h"]["last"] == 0.5   # 10 / 30 min
+    assert fc["growth_acres_since_run"]["24h"] == fc["growth_acres_since_run"]["end"]
+    assert fc["starting_area_acres"] > 0
 
 
 def test_tampered_replays_fail(tmp_path):

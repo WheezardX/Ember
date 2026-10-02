@@ -73,6 +73,25 @@ def stream_appearance(ess: Path) -> tuple[StreamHeader, np.ndarray, np.ndarray, 
     return header, appear, arrival, last_t
 
 
+def forecast_summary(tl: FireTimeline) -> dict[str, Any]:
+    """What the source said, so a passing sidecar also reads as a record of what was rendered
+    (Brad 2026-10-02): growth since the run by hour (on the source's own grid), the arrival
+    range, and the starting area. Descriptive only - no comparison with any observation."""
+    a = tl.arrival_s[np.isfinite(tl.arrival_s)] / 3600.0
+    cell_ac = tl.grid.cell_size_m ** 2 / 4046.8564224
+    horizon = tl.provenance.get("horizon_h")
+    growth = {f"{h}h": tl.growth_acres_by(h) for h in (24, 48, 72)}
+    growth["end"] = round(float(a.size * cell_ac), 1)
+    return {
+        "member": tl.provenance.get("member"), "run_utc": tl.provenance.get("run_utc"),
+        "horizon_h": horizon,
+        "growth_acres_since_run": growth,
+        "arrival_h": ({"first": round(float(a.min()), 2), "median": round(float(np.median(a)), 2),
+                       "last": round(float(a.max()), 2)} if a.size else None),
+        "starting_area_acres": round(float(tl.burned_before.sum() * cell_ac), 1),
+    }
+
+
 def evaluate(tl: FireTimeline, pack_dir: str | Path, replay: str | Path) -> dict[str, Any]:
     pack_dir = Path(pack_dir)
     m = json.loads((pack_dir / "world.json").read_text(encoding="utf-8"))
@@ -133,6 +152,7 @@ def evaluate(tl: FireTimeline, pack_dir: str | Path, replay: str | Path) -> dict
         "replay_acres_from_source": round(float(shown.sum()) * cell_ac, 1),
         "observed_history_cells": int(obs_hist.sum()),
         "seams": meta.get("seams"),
+        "forecast": forecast_summary(tl),
     }
     out["ok"] = (out["missing"] == 0 and out["late"] == 0 and out["early"] == 0
                  and out["unsupported"] == 0 and n_due > 0)
