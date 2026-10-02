@@ -81,6 +81,18 @@ def evaluate_run(repo: Path, sc: LoadedScenario, run_dir: Path) -> dict:
                                   "facts/perf.json present"))
 
 
+    # External sources (EXTERNAL_SOURCES_PLAN D3): a replay with a fidelity sidecar must be clean.
+    if sc.replay_path is not None:
+        from ember.external.fidelity import sidecar_path
+
+        fpath = sidecar_path(sc.replay_path)
+        if fpath.exists():
+            fd = json.loads(fpath.read_text(encoding="utf-8"))
+            actual = {k: fd.get(k) for k in ("missing", "late", "early", "unsupported",
+                                             "share_within_one_tick")}
+            checks.append(F.Check("fidelity", "constraint-fidelity", "replay", bool(fd.get("ok")),
+                                  actual, "fidelity sidecar ok (D3 strict)"))
+
     orbit_problems = [o for o in run_meta.get("orbits", []) if not o.get("mp4")]
     for o in orbit_problems:
         checks.append(F.Check("orbit", o["name"], "orbit", False, o.get("error"), "mp4 written"))
