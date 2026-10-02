@@ -15,6 +15,7 @@ class AEmberFireActor;
 class AEmberSmokeActor;
 class AEmberFirebrandActor;
 class AEmberFlameActor;
+class AEmberStarsActor;
 class ACameraActor;
 
 /**
@@ -158,6 +159,9 @@ private:
 	double SmokeWindMs = 8.0;
 	bool bFirebrands = true;   // H4-4 ember showers / spot-fire glows with the replay
 	bool bFlames = true;       // H4-5 eye-level flame cards with the replay
+	bool bStars = true;        // the night sky (real stars for latitude / date, turned to the sun)
+	double LatitudeDeg = 47.0;
+	int64 SkyUnix = 0;         // the date shown without a replay
 	TArray<AEmberFireActor::FProbe> FireProbes;
 	FString PerfBookmark;  // "clay" or an absolute viz/looks/*.toml path
 	TArray<FBookmark> Bookmarks;
@@ -204,6 +208,9 @@ private:
 	UPROPERTY(Transient) TObjectPtr<AEmberSmokeActor> Smoke;
 	UPROPERTY(Transient) TObjectPtr<AEmberFirebrandActor> Firebrands;
 	UPROPERTY(Transient) TObjectPtr<AEmberFlameActor> Flames;
+	UPROPERTY(Transient) TObjectPtr<AEmberStarsActor> Stars;
+	/** The star sky for the sun / date / smoke shown now (cheap when unchanged). */
+	void UpdateStars();
 	void SetFireTime(double SimS, double ClockS);
 	UPROPERTY(Transient) TObjectPtr<ACameraActor> Camera;
 };

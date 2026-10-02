@@ -190,6 +190,26 @@ def world_crs(sc: LoadedScenario) -> str:
     return m["crs"]
 
 
+def world_lonlat(sc: LoadedScenario) -> tuple[float, float]:
+    """The world's centre in WGS84 degrees (lon, lat), from its tiles' content bounds."""
+    from pyproj import Transformer
+
+    m = json.loads((sc.world_path / "manifest.json").read_text(encoding="utf-8"))
+    b = [t["content_bounds"] for t in m["tiles"]]
+    x = (min(v[0] for v in b) + max(v[2] for v in b)) / 2.0
+    y = (min(v[1] for v in b) + max(v[3] for v in b)) / 2.0
+    tr = Transformer.from_crs(m["crs"], "EPSG:4326", always_xy=True)
+    return tr.transform(x, y)
+
+
+def _sky_unix(date: str) -> int:
+    """Noon UTC on a YYYY-MM-DD date (only the date matters to the star sky)."""
+    import datetime as dt
+
+    d = dt.date.fromisoformat(date)
+    return int(dt.datetime(d.year, d.month, d.day, 12, tzinfo=dt.UTC).timestamp())
+
+
 def _plan_bookmark(sc: LoadedScenario, b) -> dict:
     """A bookmark for the harness: an absolute camera given in lon/lat is resolved to the
     world's CRS here, so the harness only ever sees metres; eye height is the default."""
@@ -246,6 +266,9 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "play_rate_h": s.scenario.play_rate_h,
         "firebrands": s.scenario.firebrands,
         "flames": s.scenario.flames,
+        "stars": s.scenario.stars,
+        "latitude_deg": world_lonlat(sc)[1] if s.scenario.stars else 0.0,
+        "sky_unix": _sky_unix(s.scenario.sky_date),
         "veg_lineup": s.scenario.veg_lineup,
         "exec_cmds": list(s.scenario.exec_cmds),
         "perf_exec_cmds": list(s.scenario.perf_exec_cmds),

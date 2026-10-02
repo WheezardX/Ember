@@ -203,6 +203,10 @@ class ScenarioMeta(_Strict):
     play_rate_h: float = 6.0
     firebrands: bool = True      # replay scenarios: spot-fire ember showers + new spot glows (H4-4)
     flames: bool = True          # replay scenarios: eye-level flame cards near the camera (H4-5)
+    # Night sky (Brad 2026-10-01): the real stars for the world's latitude and the date shown (the
+    # replay's; sky_date without one), turned to match the scene's sun (AEmberStarsActor).
+    stars: bool = True
+    sky_date: str = "2026-08-15"  # YYYY-MM-DD, scenarios without a replay
     veg_lineup: bool = False    # B3 silhouette sheet: one tree per species at the first capture's
     #                             target (row across the view) + a 1.8 m post, no scattered trees
     exec_cmds: list[str] = Field(default_factory=list)  # console commands after world load

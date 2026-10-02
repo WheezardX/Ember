@@ -19,10 +19,24 @@ reference library). Every lab scenario runs on `teanaway_dev` (1.44 km fixture, 
 | `L_ground` | timber floor at eye height + a close-up: ground shader, cover, relief | Kachess stand / litter photos |
 | `L_trees` | one tree per species in a row: bark, trunks, crowns | WETC open ponderosa stand |
 | `L_trees_stand` | a stand at eye height: bark close, spacing, crown base | Kachess stand photo |
-| `L_flames` | the lab fire's front at 6 h, low camera: flame cards, glow, scorch | WETC surface fire in litter |
+| `L_flames` | the lab fire's front LINE at 6 h from 50 m (flames v2), + a 4 s clip (`burn`, fire 6 h -> 6 h 10 min) | WETC surface fire in litter |
 | `L_night` | the same front after dark | spruce-fir night torching |
 | `L_smoke` | columns + pall from 800 m at 8 h (peak burning) | Glass Fire telephoto |
+| `L_smoke_motion` | 4 s of the lab columns, fixed camera, fire 6 -> 7 h (smoke must only rise) | - |
 | `L_scar` | the burned mosaic at 20 h from above | spruce-fir aerial scar |
+
+Three Queens 2026 views (`three_queens_2026`, ~30-45 s):
+
+| Scenario | Isolates | Reference |
+|---|---|---|
+| `L_sky` | ground-level exposure / sky: the Kachess shore with and without the Aug 9 front | InciWeb Aug 9 shore photo |
+| `L_smoke_far` | merged far-field smoke, the Aug 21 run from 14 km | the Kachess pall photo |
+| `L_smoke_mid_motion` | 4 s from 4 km (the merge cross-fade), fire sweeping 2 h | - |
+| `L_stars` | the night sky over Kachess, ~1 am mid-August, north + south-west | (check: Polaris ~47 deg up due north) |
+
+Motion clips: scratch tools measure them (frame-to-frame change, block-matched up / down motion).
+Video captures show a known exposure ramp-and-snap every ~25 frames (whole-frame brightness, not
+the subject) - read spikes with that in mind.
 
 The fire scenarios use a 24 h synthetic fire with intensity classes (head 3 / flanks 2 / backing 1,
 kept after burn-out so the burned mosaic has variety):

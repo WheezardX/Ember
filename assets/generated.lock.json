@@ -214,6 +214,12 @@
         "/Game/Ember/Generated/M_Flame": "unreal/Ember/Content/Ember/Generated/M_Flame.uasset"
       }
     },
+    "m_star.py": {
+      "script_sha256": "4274f34f890c7e3509d042a4dd04f37d7e8a7b1d70260ef130c2e8fffbc30895",
+      "outputs": {
+        "/Game/Ember/Generated/M_Star": "unreal/Ember/Content/Ember/Generated/M_Star.uasset"
+      }
+    },
     "ground_cover.py": {
       "script_sha256": "bc41ba5bffafbbdfeca2401b01008852d8c556ca5d8a86a320bf4bfb579304fa",
       "outputs": {

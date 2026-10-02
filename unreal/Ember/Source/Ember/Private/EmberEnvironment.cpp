@@ -88,6 +88,7 @@ bool AEmberEnvironment::SetSun(const FString& Preset)
 	else if (Preset == TEXT("noon")) { Az = 180.f; El = 58.f; }
 	else if (Preset == TEXT("afternoon")) { Az = 245.f; El = 35.f; }
 	else if (Preset == TEXT("dusk")) { Az = 285.f; El = 6.f; }
+	else if (Preset == TEXT("night")) { Az = 345.f; El = -28.f; }   // ~1 am, full dark (the star sky)
 	else
 	{
 		FString A, E;

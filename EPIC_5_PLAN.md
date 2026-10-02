@@ -501,6 +501,14 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   at night. Add a star field - computed for the fire's latitude / longitude and the replay's
   date / time (a bright-star catalogue, sidereal rotation; moon phase / position as a light
   source), dimmed by the smoke pall. Pairs with the night fire look (L_night).
+  **DONE 2026-10-01 (stars):** AEmberStarsActor - the Yale Bright Star Catalogue (5,080 stars to
+  V 6.0, `ember-dev fetch-stars`) for the world's latitude and the replay's date, turned to match
+  the sun shown (sidereal time from the sun's RA + the hour angle its preset implies), extinction
+  near the horizon, twilight limiting magnitude, dimmed by the pall; play key 6 = "night". Verified
+  against an independent projection (L_stars: Polaris ~47 deg up due north, the Dipper NW, Capella
+  rising NE). Still open: the moon (phase / position needs a clock, not just the sun), the Milky
+  Way band (diffuse glow - the catalogue alone reads sparser than photos, which record far fainter
+  stars), and a real time-of-day sun driven by the replay clock.
 - **Flames v2 face-on: a row of campfires, not a front (Brad, 2026-10-01, S_jolly_play head_eye,
   after 7fc8b17):** "Massive improvement. Not our final but for our fixed overhead view this is
   probably 90% range. Face on the flames are still way too sparse so it looks like a series of

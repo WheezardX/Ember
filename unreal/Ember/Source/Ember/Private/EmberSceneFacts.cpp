@@ -24,6 +24,7 @@
 #include "EmberSmokeActor.h"
 #include "EmberFirebrandActor.h"
 #include "EmberFlameActor.h"
+#include "EmberStarsActor.h"
 #include "EmberTerrainActor.h"
 #include "EmberGroundCoverActor.h"
 #include "EmberGroundRelief.h"
@@ -343,6 +344,18 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		FlameJ->SetNumberField(TEXT("nearest_y"), It->NearestY);
 	}
 	F->SetObjectField(TEXT("flames"), FlameJ);
+
+	TSharedRef<FJsonObject> StarJ = MakeShared<FJsonObject>();
+	StarJ->SetBoolField(TEXT("enabled"), false);
+	for (TActorIterator<AEmberStarsActor> It(W); It; ++It)
+	{
+		StarJ->SetBoolField(TEXT("enabled"), true);
+		StarJ->SetNumberField(TEXT("catalogue"), It->NumStars);
+		StarJ->SetNumberField(TEXT("visible"), It->NumVisible);
+		StarJ->SetNumberField(TEXT("limiting_mag"), It->LimitingMag);
+		StarJ->SetNumberField(TEXT("lst_deg"), It->LstDeg);
+	}
+	F->SetObjectField(TEXT("stars"), StarJ);
 
 	TSharedRef<FJsonObject> Env = MakeShared<FJsonObject>();
 	for (TActorIterator<AEmberEnvironment> It(W); It; ++It)

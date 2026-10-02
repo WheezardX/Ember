@@ -140,8 +140,8 @@ def play(name: str,
         raise typer.Exit(2) from None
     typer.echo(f"playing {sc.name} (pid {proc.pid}); log {run_dir / 'log' / 'Ember.log'}")
     typer.echo("  mouse look | WASD | E/Space up, Q/C down | Shift x4, Ctrl x0.25 | wheel speed")
-    typer.echo("  G walk/fly | 1-5 sun | P play fire, , . -/+1 h, [ ] rate | L lamp | H help"
-               " | Esc quit")
+    typer.echo("  G walk/fly | 1-5 sun, 6 night | P play fire, , . -/+1 h, [ ] rate | L lamp"
+               " | H help | Esc quit")
     if wait:
         proc.wait()
 
@@ -619,6 +619,17 @@ def fetch_textures(manifest: Path = typer.Argument(..., help="assets/sources/<se
     for r in texsource.fetch(manifest, ue.repo_root() / "store", res):
         typer.echo(f"  {r['key']}: " + ("on disk, skipped" if r.get("skipped")
                                         else f"{', '.join(r['maps'])}  {r['mb']} MB"))
+
+
+@app.command("fetch-stars")
+def fetch_stars() -> None:
+    """Fetch the Yale Bright Star Catalogue (metered, ~0.5 MB) and write the client's star list."""
+    from ember.dev import stars
+
+    root = ue.repo_root()
+    out = root / "unreal" / "Ember" / "Content" / "Ember" / "Data" / "stars.csv"
+    r = stars.build(root / "store", out)
+    typer.echo(f"  {r['stars']} stars (catalogue {r['raw_kb']} KB) -> {r['out']}")
 
 
 @app.command("regen-assets")

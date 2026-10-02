@@ -1,0 +1,42 @@
+# Look lab (Brad 2026-10-01: "night sky and stars ... we can probably even work out what the night
+# sky should be for that location and time of year"). The Lake Kachess shore (as L_sky) at ~1 am
+# in mid-August, no fire: north (Polaris at the latitude, ~47 deg up; the Big Dipper low in the
+# NW) and south-west (Scorpius / Sagittarius setting, the summer Milky Way's direction).
+render_scenario_version = 1
+
+[scenario]
+name = "L_stars"
+description = "Look lab: the star sky over Lake Kachess, ~1 am mid-August (real stars for latitude and date)"
+world = "terrain:three_queens_2026"
+resolution = [1600, 900]
+look = "viz/looks/terrain_default.toml"
+vegetation = true
+veg_radius_m = 3000
+exposure_bias = -2.0
+sky_date = "2026-08-15"
+
+[[bookmarks]]
+name = "north"
+camera_xy = [632200.0, 5245000.0]
+camera_alt_m = 693
+yaw_deg = 0
+pitch_deg = 28
+fov_deg = 80
+sun = "night"
+
+[[bookmarks]]
+name = "southwest"
+camera_xy = [632200.0, 5245000.0]
+camera_alt_m = 693
+yaw_deg = 225
+pitch_deg = 18
+fov_deg = 80
+sun = "night"
+
+[[captures]]
+name = "north"
+bookmark = "north"
+
+[[captures]]
+name = "southwest"
+bookmark = "southwest"

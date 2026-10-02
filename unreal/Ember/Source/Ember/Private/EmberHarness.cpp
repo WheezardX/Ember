@@ -32,6 +32,7 @@
 #include "EmberGroundCoverActor.h"
 #include "EmberGroundRelief.h"
 #include "EmberSceneFacts.h"
+#include "EmberStarsActor.h"
 #include "EmberTerrainActor.h"
 #include "EmberVegetationActor.h"
 
@@ -128,6 +129,12 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetNumberField(TEXT("smoke_wind_ms"), SmokeWindMs);
 	J->TryGetBoolField(TEXT("firebrands"), bFirebrands);
 	J->TryGetBoolField(TEXT("flames"), bFlames);
+	J->TryGetBoolField(TEXT("stars"), bStars);
+	J->TryGetNumberField(TEXT("latitude_deg"), LatitudeDeg);
+	{
+		double Su = 0.0;
+		if (J->TryGetNumberField(TEXT("sky_unix"), Su)) SkyUnix = static_cast<int64>(Su);
+	}
 	J->TryGetBoolField(TEXT("veg_lineup"), bVegLineup);
 	J->TryGetStringField(TEXT("perf_bookmark"), PerfBookmark);
 	J->TryGetStringField(TEXT("perf_orbit"), PerfOrbit);
@@ -405,7 +412,23 @@ bool AEmberHarness::PlaceCamera(const FBookmark& B, FString& OutError)
 		OutError = TEXT("unknown sun preset: ") + B.Sun;
 		return false;
 	}
+	if (Stars)
+	{
+		Stars->Follow(Loc);
+		UpdateStars();
+	}
 	return true;
+}
+
+void AEmberHarness::UpdateStars()
+{
+	if (!Stars || !Environment)
+	{
+		return;
+	}
+	// The date shown: the replay's clock when there is one (t0 + sim time), else the scenario's.
+	const int64 Unix = Fire && Fire->T0Unix > 0 ? Fire->T0Unix + static_cast<int64>(Fire->TimeS) : SkyUnix;
+	Stars->SetSky(LatitudeDeg, Unix, Environment->SunAzimuth, Environment->SunElevation, Environment->SmokePall);
 }
 
 void AEmberHarness::OnScreenshot(int32 W, int32 H, const TArray<FColor>& Pixels)
@@ -710,6 +733,7 @@ void AEmberHarness::SetFireTime(double SimS, double ClockS)
 		// 900-acre day) is a heavy valley layer; the Aug 21 2026 run (~2,500 ac) saturates it.
 		Environment->SetSmokePall(static_cast<float>(1.0 - FMath::Exp(-Fire->SmokeLoad / 9000.0)));
 	}
+	UpdateStars();   // the pall dims them; the date may have changed
 	if (Smoke)
 	{
 		Smoke->SetSources(Fire->SmokeSources);
@@ -886,15 +910,20 @@ void AEmberHarness::TickPlay(float DeltaSeconds)
 	{
 		FlyPawn->ToggleLamp();
 	}
-	static const TCHAR* Suns[] = {TEXT("dawn"), TEXT("morning"), TEXT("noon"), TEXT("afternoon"), TEXT("dusk")};
-	const FKey SunKeys[] = {EKeys::One, EKeys::Two, EKeys::Three, EKeys::Four, EKeys::Five};
-	for (int32 i = 0; i < 5; ++i)
+	static const TCHAR* Suns[] = {TEXT("dawn"), TEXT("morning"), TEXT("noon"), TEXT("afternoon"), TEXT("dusk"), TEXT("night")};
+	const FKey SunKeys[] = {EKeys::One, EKeys::Two, EKeys::Three, EKeys::Four, EKeys::Five, EKeys::Six};
+	for (int32 i = 0; i < 6; ++i)
 	{
 		if (PC->WasInputKeyJustPressed(SunKeys[i]) && Environment)
 		{
 			Environment->SetSun(Suns[i]);
 			SunIndex = i;
+			UpdateStars();
 		}
+	}
+	if (Stars)
+	{
+		Stars->Follow(FlyPawn->GetActorLocation());
 	}
 	if (Fire)
 	{
@@ -1389,6 +1418,19 @@ void AEmberHarness::Tick(float DeltaSeconds)
 				}
 			}
 			SetFireTime(Fire->EndS, 0.0);  // default: the final footprint
+		}
+		if (bStars)
+		{
+			FActorSpawnParameters SP;
+			SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			Stars = GetWorld()->SpawnActor<AEmberStarsActor>(FVector::ZeroVector, FRotator::ZeroRotator, SP);
+			FString StarErr;
+			if (!Stars->Init(StarErr))
+			{
+				Finish(2, TEXT("stars: ") + StarErr);
+				return;
+			}
+			UpdateStars();
 		}
 		for (const FString& Cmd : ExecCmds)
 		{
