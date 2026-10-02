@@ -501,6 +501,12 @@ Notes only; nothing decided or scheduled yet. Ground plane v1 checkpoint SIGNED 
   at night. Add a star field - computed for the fire's latitude / longitude and the replay's
   date / time (a bright-star catalogue, sidereal rotation; moon phase / position as a light
   source), dimmed by the smoke pall. Pairs with the night fire look (L_night).
+- **Fire glow by day may be too strong (Brad, 2026-10-01, S_jolly_play head_eye, after the exposure
+  fix b02d0c1):** "the glow from the fire is a bit much during the day but looks great at night.
+  Let's not fix it, just note it because I don't trust my own judgement on this one." Documented
+  only - wants a second opinion before any change. If it gets fixed: scale the flame / ember
+  emissive and the smoke underglow (M_Smoke Hot, Data[1]) down with sun elevation or scene
+  exposure, so night stays as is; check against daylight flame stills (L_flames reference).
 - **Smoke toggle None / Lite / Full (Brad, 2026-10-01):** smoke v1 stays heavy ("keep the smoke") -
   on the big Jolly days the valley pall makes the overhead views murky, which is realistic. Later a
   player-facing toggle: None (no plumes, no pall), Lite (columns, pall capped), Full (as now).
