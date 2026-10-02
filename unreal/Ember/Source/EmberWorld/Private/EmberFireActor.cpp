@@ -122,8 +122,56 @@ bool AEmberFireActor::Load(const FString& ReplayPath, AEmberTerrainActor* Terrai
 		*ReplayPath, *ModelId, Nx, Ny, CellM, StartS, EndS, Stream.ticks());
 	LoadObservedHeat(ReplayPath);
 	LoadChannels(ReplayPath);
+	LoadCanopy(ReplayPath);
 	SetTime(StartS);
 	return true;
+}
+
+void AEmberFireActor::LoadCanopy(const FString& ReplayPath)
+{
+	CanopyBaseDm.Reset();
+	CanopyHeightDm.Reset();
+	FString Text;
+	if (!FFileHelper::LoadFileToString(Text, *ReplayPath))
+	{
+		return;
+	}
+	try
+	{
+		const nlohmann::json R = nlohmann::json::parse(TCHAR_TO_UTF8(*Text));
+		if (!R.contains("world") || !R["world"].contains("pack_relative"))
+		{
+			return;
+		}
+		const FString Pack = FPaths::ConvertRelativePathToFull(FPaths::GetPath(ReplayPath),
+			UTF8_TO_TCHAR(R["world"]["pack_relative"].get<std::string>().c_str()));
+		FString Meta;
+		if (!FFileHelper::LoadFileToString(Meta, *FPaths::Combine(Pack, TEXT("world.json"))))
+		{
+			return;
+		}
+		const nlohmann::json W = nlohmann::json::parse(TCHAR_TO_UTF8(*Meta));
+		auto Load = [&](const char* Name, TArray<uint16>& Out)
+		{
+			if (!W["layers"].contains(Name) || W["layers"][Name].value("dtype", "") != "u16")
+			{
+				return;
+			}
+			TArray<uint8> Bytes;
+			const FString Bin = FPaths::Combine(Pack, UTF8_TO_TCHAR(W["layers"][Name]["file"].get<std::string>().c_str()));
+			if (FFileHelper::LoadFileToArray(Bytes, *Bin) && Bytes.Num() == Nx * Ny * 2)
+			{
+				Out.SetNumUninitialized(Nx * Ny);
+				FMemory::Memcpy(Out.GetData(), Bytes.GetData(), Bytes.Num());   // little-endian u16
+			}
+		};
+		Load("cbh_dm", CanopyBaseDm);
+		Load("ch_dm", CanopyHeightDm);
+	}
+	catch (const std::exception& E)
+	{
+		UE_LOG(LogEmberFire, Warning, TEXT("fire canopy: %s"), UTF8_TO_TCHAR(E.what()));
+	}
 }
 
 void AEmberFireActor::LoadChannels(const FString& ReplayPath)
@@ -594,6 +642,8 @@ void AEmberFireActor::FlameCellsNear(double X, double Y, double RadiusM, double 
 			C.Cls = CellClass(I, bIntensityReported ? FMath::Clamp(Own, 1, 3) : 3);
 			C.SourceFlameM = SourceFlameM(I);
 			C.SourceCrown = SourceCrown(I);
+			C.CanopyBaseM = CanopyBaseDm.IsValidIndex(I) ? CanopyBaseDm[I] / 10.f : 0.f;
+			C.CanopyHeightM = CanopyHeightDm.IsValidIndex(I) ? CanopyHeightDm[I] / 10.f : 0.f;
 			C.Spread = Spread.IsValidIndex(I) ? Spread[I] / 255.f : 0.f;
 			C.Index = static_cast<uint32>(I);
 			Out.Add(C);

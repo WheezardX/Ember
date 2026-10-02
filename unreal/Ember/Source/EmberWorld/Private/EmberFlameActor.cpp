@@ -136,7 +136,8 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 	const double Dx = Ws > 0.1 ? Wu / Ws : 0.0, Dy = Ws > 0.1 ? Wv / Ws : 0.0;
 	const double Umid = 0.5 * Ws;
 
-	auto Spawn = [&](uint64 Key, FSite& St, double X, double Y, double L, double Wf, double I, double Age, bool bFrac = false)
+	auto Spawn = [&](uint64 Key, FSite& St, double X, double Y, double L, double Wf, double I, double BaseUp,
+		bool bCrownLick, double Age, bool bFrac = false)
 	{
 		if (Pool.Num() >= MaxLicks)
 		{
@@ -163,7 +164,9 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 		Lk.Ox = X + (H3 - 0.5) * Wf;
 		Lk.Oy = Y + (H1 - 0.5) * Wf;
 		Lk.Gz = Gz;
-		Lk.Lean = static_cast<float>(FMath::Min(1.5, 0.9 * Umid / FMath::Sqrt(9.8 * Lk.H)));
+		Lk.BaseUp = static_cast<float>(BaseUp);
+		// crown flames stand in the full wind above the canopy; ground flames in the mid-flame wind
+		Lk.Lean = static_cast<float>(FMath::Min(1.5, 0.9 * (bCrownLick ? Ws : Umid) / FMath::Sqrt(9.8 * Lk.H)));
 		Lk.Lx = static_cast<float>(Dx);
 		Lk.Ly = static_cast<float>(Dy);
 		Lk.Seed = static_cast<float>(H1 * 0.7 + H3 * 0.3);
@@ -226,6 +229,7 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 				? (bCrown || C.SourceCrown <= 0 ? C.SourceFlameM : FMath::Min<double>(C.SourceFlameM, GroundUnderCrownM))
 				: (bCrown ? CrownL : FlameL[C.Cls]) * FMath::Lerp(0.8, 1.3, static_cast<double>(C.Spread));
 			Lm = FMath::Max(Lm, 0.15);
+			bool bResidual = false;
 			if (K < NRes && Behind >= 0.5 * Band)
 			{
 				// long burners (logs, stumps, a snag): small flames for 15 - 45 min after the front
@@ -235,6 +239,7 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 				{
 					I = Res;
 					Lm = FlameL[C.Cls] * FMath::Lerp(0.5, 1.0, Hash01(C.Index, K * 6u + 3u));
+					bResidual = true;              // a long burner: on the ground, not in the crowns
 				}
 			}
 			if (I < 0.06)
@@ -254,15 +259,26 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 			const double X = C.X + U * CellM;
 			const double Y = C.Y - V * CellM;
 			Lm *= FMath::Lerp(0.7, 1.2, Hash01(C.Index, K * 6u + 3u)) * FMath::Lerp(0.6, 1.0, I);
-			// Licks are narrow tongues (~0.3 of their height); far off they widen toward the point
-			// spacing so the line stays continuous, but never into blobs.
-			// (first lab pass: 0.5 x height or 0.9 x spacing made a solid wall)
-			const double Wf = FMath::Min(FMath::Max((bCrown ? 0.2 : 0.3) * Lm, 0.5 * Spacing), 0.6 * Lm);
-			// Seen from the side, the band's rows of points stack (additive): each point's share of
-			// the brightness falls with the number of rows, so a deep band is not a white sheet.
-			// (0.2 floor: deep bands went to pale ghosts - fewer, brighter licks read better)
-			const double Stack = FMath::Clamp(3.0 * Spacing / Band, 0.4, 1.0);
-			I *= 0.7 * Stack;
+			// Flames v3 (Brad 2026-10-02: "in torching and crowns you'd see it in the tree tops"):
+			// crown / torching licks start at the crown base (the pack's canopy base height; a quarter
+			// of the canopy height where that is missing) and run through the crown and above the
+			// tops - at least 1.25 x the crown depth, or the source's flame length if longer. Ground
+			// licks stay on the ground. Without canopy data, crown licks stay on the ground (v2).
+			double BaseUp = 0.0;
+			if (bCrown && !bResidual && C.CanopyHeightM > 2.f)
+			{
+				const double Ch = C.CanopyHeightM;
+				const double Cb = C.CanopyBaseM > 0.5f ? FMath::Min<double>(C.CanopyBaseM, 0.8 * Ch) : 0.25 * Ch;
+				BaseUp = Cb * FMath::Lerp(0.85, 1.05, Hash01(C.Index, K * 6u + 4u));
+				Lm = FMath::Max(Lm, 1.25 * (Ch - Cb) * FMath::Lerp(0.8, 1.2, Hash01(C.Index, K * 6u + 3u)));
+			}
+			// Fuller tongues (v3: "thin and transparent"): ~0.42 of their height (0.35 in the crowns);
+			// far off they widen toward the point spacing so the line stays continuous.
+			const double Wf = FMath::Min(FMath::Max((bCrown ? 0.35 : 0.42) * Lm, 0.5 * Spacing), 0.7 * Lm);
+			// The body now occludes (M_Flame alpha-blended, v3), so stacked rows no longer add up to a
+			// white sheet: only a mild thinning for deep bands, not the v2 additive share.
+			const double Stack = FMath::Clamp(4.0 * Spacing / Band, 0.6, 1.0);
+			I *= 0.9 * Stack;
 			const uint64 Key = (static_cast<uint64>(C.Index) << 12) | static_cast<uint64>(K);
 			const double LifeMean = 0.3 + 0.3 * FMath::Sqrt(0.8 * Lm);
 			const double Rate = 2.0 / LifeMean;               // ~2 licks alive per point
@@ -275,8 +291,8 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 				if (bReset)
 				{
 					// a still / scrub: the point is already burning - two licks mid-life
-					Spawn(Key, *St, X, Y, Lm, Wf, I, 0.05 + 0.45 * Ph, true);
-					Spawn(Key, *St, X, Y, Lm, Wf, I, 0.5 + 0.45 * Ph, true);
+					Spawn(Key, *St, X, Y, Lm, Wf, I, BaseUp, bCrown, 0.05 + 0.45 * Ph, true);
+					Spawn(Key, *St, X, Y, Lm, Wf, I, BaseUp, bCrown, 0.5 + 0.45 * Ph, true);
 				}
 			}
 			St->LastSeen = ClockS;
@@ -284,7 +300,7 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 			while (St->Acc >= 1.0)
 			{
 				St->Acc -= 1.0;
-				Spawn(Key, *St, X, Y, Lm, Wf, I, St->Acc / Rate);
+				Spawn(Key, *St, X, Y, Lm, Wf, I, BaseUp, bCrown, St->Acc / Rate);
 			}
 		}
 	}
@@ -297,10 +313,10 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 	}
 
 	// Lay the licks out: each from its own age - it grows, lifts off, leans downwind, fades.
-	TArray<FTransform> Xf;
-	TArray<float> Data;
-	Xf.Reserve(Pool.Num());
-	Data.Reserve(Pool.Num() * DataFloats);
+	// v3: M_Flame is alpha-blended (the body occludes), so the cards go back to front.
+	struct FOut { FTransform Xf; float D[DataFloats]; double Dist2; };
+	TArray<FOut> Outs;
+	Outs.Reserve(Pool.Num());
 	for (const FLick& L : Pool)
 	{
 		const double Uf = L.Age / L.Life;
@@ -319,8 +335,9 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 			continue;
 		}
 		const double Wf = L.W * (0.85 + 0.3 * Uf);
-		// Base a little below the surface (the card's depth fade melts it into the ground).
-		const FVector Centre = Terrain->WorldToUE(X, Y, L.Gz - 0.08 * Hh + Up);
+		// Base a little below the surface (the card's depth fade melts it into the ground); crown
+		// licks start at their base height in the canopy (v3).
+		const FVector Centre = Terrain->WorldToUE(X, Y, L.Gz + L.BaseUp - 0.08 * Hh + Up);
 		FVector ToCam = CameraLoc - Centre;
 		ToCam.Z = 0.0;
 		if (!ToCam.Normalize())
@@ -331,20 +348,26 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 		const FQuat Q = FRotationMatrix::MakeFromZX(ToCam, FVector::UpVector).ToQuat();
 		// The flame's shape is defined in world units from the centre (M_Flame); the card is
 		// oversized so the tongue never meets its edge (a clipped card reads as a rectangle).
-		Xf.Add(FTransform(Q, Centre, FVector(Hh * 1.3, Wf * 2.0, 1.0)));   // the engine plane is 1 m
-		Data.Add(static_cast<float>(Alpha));
-		Data.Add(L.Seed);
-		Data.Add(static_cast<float>(Hh * 50.0));
-		Data.Add(static_cast<float>(Wf * 50.0));
-		Data.Add(static_cast<float>(Centre.X));
-		Data.Add(static_cast<float>(Centre.Y));
-		Data.Add(static_cast<float>(Centre.Z));
+		FOut& O = Outs.AddDefaulted_GetRef();
+		O.Xf = FTransform(Q, Centre, FVector(Hh * 1.3, Wf * 2.0, 1.0));   // the engine plane is 1 m
+		const float D[DataFloats] = {static_cast<float>(Alpha), L.Seed, static_cast<float>(Hh * 50.0),
+			static_cast<float>(Wf * 50.0), static_cast<float>(Centre.X), static_cast<float>(Centre.Y),
+			static_cast<float>(Centre.Z)};
+		FMemory::Memcpy(O.D, D, sizeof(D));
+		O.Dist2 = FVector::DistSquared(Centre, CameraLoc);
+	}
+	Outs.Sort([](const FOut& A, const FOut& B) { return A.Dist2 > B.Dist2; });
+	TArray<FTransform> Xf;
+	Xf.Reserve(Outs.Num());
+	for (const FOut& O : Outs)
+	{
+		Xf.Add(O.Xf);
 	}
 	Cards->ClearInstances();
 	Cards->AddInstances(Xf, false, true);
-	for (int32 I = 0; I < Xf.Num(); ++I)
+	for (int32 I = 0; I < Outs.Num(); ++I)
 	{
-		Cards->SetCustomData(I, TArrayView<const float>(&Data[I * DataFloats], DataFloats), false);
+		Cards->SetCustomData(I, TArrayView<const float>(Outs[I].D, DataFloats), false);
 	}
 	Cards->MarkRenderStateDirty();
 	NumCells = Cells.Num();

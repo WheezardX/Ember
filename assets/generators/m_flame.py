@@ -1,7 +1,7 @@
 """Generator: /Game/Ember/Generated/M_Flame - eye-level flame cards (EPIC_5_PLAN HCP4 H4-5: flames
 with shape instead of paint).
 
-Additive, unlit, vertical camera-facing cards (AEmberFlameActor places them on burning cells near
+Alpha-blended (v3; additive before), unlit, vertical camera-facing cards (AEmberFlameActor places them on burning cells near
 the camera). The flame is procedural: a tongue that narrows upward, its edge eaten by value noise
 scrolling up with FireTime (frozen in stills, so captures stay deterministic), hot yellow-white at
 the base core, orange, then red at the ragged tips. Shape comes from world position relative to
@@ -122,14 +122,30 @@ def build_material():
         "float3 core = float3(6.0, 2.6, 0.35);\n"
         "float3 c = lerp(red, orange, saturate(heat * 1.6));\n"
         "c = lerp(c, core, saturate(heat * 2.0 - 1.0));\n"
-        "return G * I * DF * body * body * c;\n"))
+        # flames v3 (Brad 2026-10-02: "the fire still looks thin and transparent"): alpha-blended,
+        # not additive - the body OCCLUDES what is behind it (opacity from the body, a solid core,
+        # soft ragged edges), and the colour is the flame's own HDR emission (bright core).
+        "float a = saturate(I * DF * body * 1.6);\n"
+        "return float4(G * c * (0.7 + 0.6 * body), a);\n"))
+    flame.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT4)
     for src, inp in ((wp, "WP"), (px, "PX"), (py, "PY"), (pz, "PZ"), (cam, "Cam"), (inten, "I"), (seed, "S"), (hh, "HH"), (hw, "HW"),
                      (t, "T"), (gain, "G"), (fade, "DF")):
         link(src, "", flame, inp)
-    if not mel.connect_material_property(flame, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR):
-        raise RuntimeError("connect failed -> emissive")
 
-    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
+    def mask(rgb: bool, x: int, y: int):
+        e = mel.create_material_expression(mat, unreal.MaterialExpressionComponentMask, x, y)
+        for ch, on in (("r", rgb), ("g", rgb), ("b", rgb), ("a", not rgb)):
+            e.set_editor_property(ch, on)
+        link(flame, "", e, "")
+        return e
+
+    rgb, alpha = mask(True, -250, 0), mask(False, -250, 150)
+    if not mel.connect_material_property(rgb, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR):
+        raise RuntimeError("connect failed -> emissive")
+    if not mel.connect_material_property(alpha, "", unreal.MaterialProperty.MP_OPACITY):
+        raise RuntimeError("connect failed -> opacity")
+
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     mat.set_editor_property("two_sided", True)
     mat.set_editor_property("used_with_instanced_static_meshes", True)

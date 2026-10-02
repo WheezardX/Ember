@@ -47,6 +47,8 @@ struct FEmberFlameCell
 	uint32 Index = 0;            // cell index: stable seeds
 	float SourceFlameM = -1.f;   // the source's flame length here (ADR 0010), < 0 = silent
 	int32 SourceCrown = -1;      // the source's crown class 0 / 1 / 2, -1 = silent
+	float CanopyBaseM = 0.f;     // the pack's canopy base height (m), 0 = no canopy data
+	float CanopyHeightM = 0.f;   // the pack's canopy height (m): crown flames sit in the canopy
 	/** Arrival (sim s) at the 3 x 3 cell centres around it, row by row north to south, west to east;
 	 *  a cell that never burns counts as late (an hour after its latest burned neighbour). */
 	double A[9] = {};
@@ -192,6 +194,9 @@ private:
 	TArray<FString> HeatUtc;
 	void LoadObservedHeat(const FString& ReplayPath);
 	void LoadChannels(const FString& ReplayPath);
+	/** The world pack's canopy base / height (flames v3: torching and crown flames in the trees). */
+	void LoadCanopy(const FString& ReplayPath);
+	TArray<uint16> CanopyBaseDm, CanopyHeightDm;   // per cell, decimetres (LANDFIRE via the pack)
 	TArray<float> ChFlameM;        // per cell, -1 = silent
 	TArray<int8> ChCrown;          // per cell, -1 = silent
 	FLinearColor Rect = FLinearColor(0, 0, 1, 1);

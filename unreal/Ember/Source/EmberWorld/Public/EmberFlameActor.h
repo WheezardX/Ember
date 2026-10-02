@@ -59,6 +59,7 @@ private:
 		float H = 1.f, W = 0.3f, I = 1.f;      // frozen at birth: full height, half width, intensity
 		float Lean = 0.f, Lx = 0.f, Ly = 0.f;  // lean (tan) and its downwind direction
 		float Seed = 0.f;
+		float BaseUp = 0.f;     // flames v3: height of the lick's base above the ground (crown flames sit in the canopy)
 	};
 	struct FSite { double Acc = 0.0; uint32 Born = 0; double LastSeen = 0.0; };
 	TArray<FLick> Pool;
