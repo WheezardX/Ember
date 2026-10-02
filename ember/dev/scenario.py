@@ -147,10 +147,14 @@ class ScenarioMeta(_Strict):
     # pace in play mode; auto_exposure_bias compensates (EV). "manual": the fixed bias above.
     # Defaults from the 2026-09-30 sweep over every still (runs/exp_sweep_d): daylight views
     # land near the old manual -2 frames, dusk / backlit / under-canopy views lift 2-3 stops.
+    # Bias -1.3 -> 0.0 (Brad 2026-10-01: from the ground too dark - navy sky, grey smoke). Look lab
+    # L_sky vs the Aug 9 InciWeb photo from the Kachess shore: median luminance 68 -> 128 (photo
+    # 138), sky top [46 71 102] -> [97 133 170] (photo [112 146 192]); under canopy (L_trees_stand)
+    # 53 -> 104 with the sun flecks not clipping (p90 220). +0.7 washed the stand out.
     exposure_mode: Literal["manual", "auto"] = "auto"
     exposure_ev_min: float = 0.5
     exposure_ev_max: float = 10.0
-    auto_exposure_bias: float = -1.3
+    auto_exposure_bias: float = 0.0
     # Lumen skylight leaking (post-process, 0..1): an ambient floor so a forest floor under closed
     # canopy is dim, not black (ground plane v1: close-ups under trees rendered pure black).
     # Ground v2 (2026-09-30): default 0.15, tinted warm (AEmberEnvironment) - with sky occlusion
