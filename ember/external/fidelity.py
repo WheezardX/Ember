@@ -154,8 +154,46 @@ def evaluate(tl: FireTimeline, pack_dir: str | Path, replay: str | Path) -> dict
         "seams": meta.get("seams"),
         "forecast": forecast_summary(tl),
     }
+    out["channels"] = channel_fidelity(tl, pack_dir, grid)
+    ch_ok = all(c["ok"] for c in out["channels"].values()) if out["channels"] else True
     out["ok"] = (out["missing"] == 0 and out["late"] == 0 and out["early"] == 0
-                 and out["unsupported"] == 0 and n_due > 0)
+                 and out["unsupported"] == 0 and n_due > 0 and ch_ok)
+    return out
+
+
+def channel_fidelity(tl: FireTimeline, pack_dir: Path, grid: dict[str, Any]) -> dict[str, Any]:
+    """ADR 0010 §7: per channel, how many of the source's burned cells it covers, and that the
+    value the renderer reads equals the source's number after conversion (to float precision)."""
+    from ember.external import channels as CH
+
+    mpath, _ = CH.sidecar_paths(pack_dir)
+    if not mpath.exists():
+        return {}
+    got = CH.read(pack_dir)
+    rr, cc, _ = sample_onto(tl, grid)
+    inside = (rr >= 0) & (cc >= 0)
+    r0, c0 = np.where(inside, rr, 0), np.where(inside, cc, 0)
+    growth = inside & np.isfinite(tl.arrival_s[r0, c0])
+    out = {}
+    for layer, (name, _unit, scale, _su, _note) in CH.PYRECAST.items():
+        if name not in got or layer not in tl.layers:
+            continue
+        val, entry = got[name]
+        ly = tl.layers[layer]
+        src_speaks = inside & ly.speaks[r0, c0]
+        want = ly.values[r0, c0].astype(np.float64) * CH.SOURCE_SCALE[layer] * scale
+        speaks = np.isfinite(val)
+        err = np.abs(np.where(src_speaks & speaks, val - want, 0.0))
+        out[name] = {
+            "unit": entry["unit"], "source_unit": entry["source"]["unit"],
+            "cells_speaking": int(speaks.sum()),
+            "coverage_of_source_growth": round(float((speaks & growth).sum())
+                                               / max(1, int(growth.sum())), 4),
+            "speaks_where_source_speaks": bool(np.array_equal(speaks, src_speaks)),
+            "max_abs_error": float(err.max()) if err.size else 0.0,
+        }
+        out[name]["ok"] = (out[name]["speaks_where_source_speaks"]
+                           and out[name]["max_abs_error"] < 1e-6)
     return out
 
 

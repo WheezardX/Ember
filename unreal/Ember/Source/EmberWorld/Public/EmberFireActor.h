@@ -45,6 +45,8 @@ struct FEmberFlameCell
 	int32 Cls = 1;               // intensity class 1..3 it burns at (unarrived: its burning neighbours')
 	float Spread = 0.f;          // 0..1 (FireTex A)
 	uint32 Index = 0;            // cell index: stable seeds
+	float SourceFlameM = -1.f;   // the source's flame length here (ADR 0010), < 0 = silent
+	int32 SourceCrown = -1;      // the source's crown class 0 / 1 / 2, -1 = silent
 	/** Arrival (sim s) at the 3 x 3 cell centres around it, row by row north to south, west to east;
 	 *  a cell that never burns counts as late (an hour after its latest burned neighbour). */
 	double A[9] = {};
@@ -102,6 +104,7 @@ public:
 	int32 EndS = 0;	FString ModelId;
 	bool bIntensityReported = false;  // the stream carries intensity classes (>= 2 somewhere)
 	bool bUseIntensity = true;        // set before Load; false draws it as if it had none (A/B)
+	bool bUseChannels = true;         // set before Load; false ignores the channels sidecar (X2 A/B)
 	// The tick's grid-mean 10 m wind (stream metrics): velocity, the air moves TOWARD (u, v).
 	double WindU = 0.0, WindV = 0.0;  // m/s, east / north
 	double WindSpeedMs() const { return FMath::Sqrt(WindU * WindU + WindV * WindV); }
@@ -145,6 +148,21 @@ public:
 	static constexpr double HeatMaxAgeH = 72.0;
 	static constexpr double HeatDecayH = 48.0;
 
+	/** Fire channels (ADR 0010, `<pack>.channels.json` beside the world pack): what the SOURCE said
+	 *  per cell - flame length (m), crown class (0 surface / 1 passive / 2 active), head-fire spread
+	 *  rate (m/h). Where a channel speaks the renderer uses it; where silent, today's rules. */
+	bool bChannels = false;
+	TArray<FString> ChannelNames;            // facts
+	int64 ChannelCells = 0;                  // cells where any channel speaks (facts)
+	/** Source flame length (m), < 0 where silent. */
+	float SourceFlameM(int32 I) const { return ChFlameM.IsValidIndex(I) ? ChFlameM[I] : -1.f; }
+	/** Source crown class 0 / 1 / 2, -1 where silent. */
+	int32 SourceCrown(int32 I) const { return ChCrown.IsValidIndex(I) ? ChCrown[I] : -1; }
+	/** The renderer's intensity class 1..3 for a cell: from the source's crown class (2 -> 3 crown
+	 *  fire, 1 -> 2 torching) or, for a surface fire, its flame length (> 1.2 m -> 2, else 1) where
+	 *  the channels speak; otherwise Fallback (the stream's class, or 3 for a playback). */
+	int32 CellClass(int32 I, int32 Fallback) const;
+
 	/** Burning cells (as rendered) whose centres lie within RadiusM of (X, Y), metres. */
 	void BurningNear(double X, double Y, double RadiusM, TArray<FEmberBurningCell>& Out) const;
 	/** Cells within RadiusM of (X, Y) that the front is crossing now or crossed within MaxBehindS
@@ -173,6 +191,9 @@ private:
 	TArray<int64> HeatUnix;        // per flight, ascending
 	TArray<FString> HeatUtc;
 	void LoadObservedHeat(const FString& ReplayPath);
+	void LoadChannels(const FString& ReplayPath);
+	TArray<float> ChFlameM;        // per cell, -1 = silent
+	TArray<int8> ChCrown;          // per cell, -1 = silent
 	FLinearColor Rect = FLinearColor(0, 0, 1, 1);
 
 	UPROPERTY(Transient)

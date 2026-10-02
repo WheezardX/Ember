@@ -193,6 +193,9 @@ class ScenarioMeta(_Strict):
     # HCP4 A/B: false draws the stream as if it had no intensity classes (the HCP3 look: one
     # class, a ~1 h flame window after arrival).
     fire_classes: bool = True
+    # External Sources X2 A/B: false ignores the source's channels sidecar (ADR 0010) and draws the
+    # class rules everywhere.
+    fire_channels: bool = True
     wind_strength: float = 6.0
     wind_from_deg: float = 270.0
     smoke: bool = True           # replay scenarios: smoke v0 plumes (bend with wind_from_deg)

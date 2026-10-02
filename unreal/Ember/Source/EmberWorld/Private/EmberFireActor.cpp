@@ -121,8 +121,96 @@ bool AEmberFireActor::Load(const FString& ReplayPath, AEmberTerrainActor* Terrai
 	UE_LOG(LogEmberFire, Log, TEXT("fire replay %s: model %s, %dx%d cells of %.0f m, t %d..%d s, %u ticks"),
 		*ReplayPath, *ModelId, Nx, Ny, CellM, StartS, EndS, Stream.ticks());
 	LoadObservedHeat(ReplayPath);
+	LoadChannels(ReplayPath);
 	SetTime(StartS);
 	return true;
+}
+
+void AEmberFireActor::LoadChannels(const FString& ReplayPath)
+{
+	bChannels = false;
+	ChannelNames.Reset();
+	ChannelCells = 0;
+	ChFlameM.Reset();
+	ChCrown.Reset();
+	if (!bUseChannels)
+	{
+		return;   // A/B: draw the class rules everywhere
+	}
+	FString Text;
+	if (!FFileHelper::LoadFileToString(Text, *ReplayPath))
+	{
+		return;
+	}
+	try
+	{
+		const nlohmann::json R = nlohmann::json::parse(TCHAR_TO_UTF8(*Text));
+		if (!R.contains("world") || !R["world"].contains("pack_relative"))
+		{
+			return;
+		}
+		FString Pack = FPaths::ConvertRelativePathToFull(FPaths::GetPath(ReplayPath),
+			UTF8_TO_TCHAR(R["world"]["pack_relative"].get<std::string>().c_str()));
+		FPaths::NormalizeDirectoryName(Pack);
+		const FString Manifest = FPaths::ChangeExtension(Pack, TEXT("channels.json"));
+		if (!FPaths::FileExists(Manifest))
+		{
+			return;   // no channels: every cell follows today's rules
+		}
+		const emberworld::fire::Channels C = emberworld::fire::read_channels(TCHAR_TO_UTF8(*Manifest));
+		if (!C.ok() || static_cast<int32>(C.nx) != Nx || static_cast<int32>(C.ny) != Ny)
+		{
+			UE_LOG(LogEmberFire, Warning, TEXT("fire channels %s: %s - ignored"), *Manifest,
+				C.ok() ? TEXT("grid differs from the replay's") : UTF8_TO_TCHAR(C.error.c_str()));
+			return;
+		}
+		const int32 N = Nx * Ny;
+		ChFlameM.Init(-1.f, N);
+		ChCrown.Init(-1, N);
+		TArray<bool> Any;
+		Any.Init(false, N);
+		const emberworld::fire::Channel* Fl = C.find("flame_length_m");
+		const emberworld::fire::Channel* Cr = C.find("crown_class");
+		const emberworld::fire::Channel* Sp = C.find("spread_rate_mh");
+		for (int32 I = 0; I < N; ++I)
+		{
+			if (Fl && Fl->speaks(I)) { ChFlameM[I] = static_cast<float>(Fl->value(I)); Any[I] = true; }
+			if (Cr && Cr->speaks(I)) { ChCrown[I] = static_cast<int8>(FMath::Clamp(static_cast<int32>(Cr->value(I) + 0.5), 0, 2)); Any[I] = true; }
+			if (Sp && Sp->speaks(I))
+			{
+				// the source's head-fire spread rate replaces the arrival-gradient estimate (FireTex A)
+				const double Mh = Sp->value(I);
+				const double K = Mh > 0.0 ? FMath::Loge(Mh / 15.0) / FMath::Loge(20.0) : 0.0;
+				Spread[I] = static_cast<uint8>(FMath::Clamp(K, 0.0, 1.0) * 255.0 + 0.5);
+				Any[I] = true;
+			}
+			ChannelCells += Any[I];
+		}
+		for (const emberworld::fire::Channel& Ch : C.list)
+		{
+			ChannelNames.Add(UTF8_TO_TCHAR(Ch.name.c_str()));
+		}
+		bChannels = ChannelCells > 0;
+		UE_LOG(LogEmberFire, Log, TEXT("fire channels %s: %s on %lld cells"), *Manifest,
+			*FString::Join(ChannelNames, TEXT(", ")), ChannelCells);
+	}
+	catch (const std::exception& E)
+	{
+		UE_LOG(LogEmberFire, Warning, TEXT("fire channels: %s"), UTF8_TO_TCHAR(E.what()));
+	}
+}
+
+int32 AEmberFireActor::CellClass(int32 I, int32 Fallback) const
+{
+	const int32 Crown = SourceCrown(I);
+	if (Crown == 2) return 3;
+	if (Crown == 1) return 2;
+	const float Fl = SourceFlameM(I);
+	if (Crown == 0 || Fl >= 0.f)
+	{
+		return Fl > 1.2f ? 2 : 1;      // a surface fire: knee-high or a few metres
+	}
+	return Fallback;
 }
 
 void AEmberFireActor::LoadObservedHeat(const FString& ReplayPath)
@@ -308,7 +396,8 @@ void AEmberFireActor::SetTime(double TSeconds)
 			}
 		}
 		// Intensity class 1..3 (a stream that does not report it is drawn as 3: the HCP3 look).
-		const int32 Cls = bIntensityReported ? FMath::Clamp(static_cast<int32>(State.intensity[I]), 1, 3) : 3;
+		// (where the source's channels speak, its crown class / flame length set the class, ADR 0010)
+		const int32 Cls = CellClass(I, bIntensityReported ? FMath::Clamp(static_cast<int32>(State.intensity[I]), 1, 3) : 3);
 		if (bBurning)
 		{
 			++CellsByClass[Cls];
@@ -432,7 +521,7 @@ void AEmberFireActor::BurningNear(double X, double Y, double RadiusM, TArray<FEm
 			FEmberBurningCell C;
 			C.X = Grid.origin_x + (Ix + 0.5) * CellM;
 			C.Y = Grid.origin_y - (Iy + 0.5) * CellM;
-			C.Cls = bIntensityReported ? FMath::Clamp(static_cast<int32>(State.intensity[I]), 1, 3) : 3;
+			C.Cls = CellClass(I, bIntensityReported ? FMath::Clamp(static_cast<int32>(State.intensity[I]), 1, 3) : 3);
 			C.AgeS = Arrival[I] >= 0 ? FMath::Max(0.0, TimeS - Arrival[I]) : 0.0;
 			C.Spread = Spread.IsValidIndex(I) ? Spread[I] / 255.f : 0.f;
 			C.Index = static_cast<uint32>(I);
@@ -502,7 +591,9 @@ void AEmberFireActor::FlameCellsNear(double X, double Y, double RadiusM, double 
 				C.A[K] = A[K] >= 0.0 ? A[K] : Latest + 3600.0;
 			}
 			const int32 Own = Ai <= TimeS ? static_cast<int32>(State.intensity[I]) : NbCls;
-			C.Cls = bIntensityReported ? FMath::Clamp(Own, 1, 3) : 3;
+			C.Cls = CellClass(I, bIntensityReported ? FMath::Clamp(Own, 1, 3) : 3);
+			C.SourceFlameM = SourceFlameM(I);
+			C.SourceCrown = SourceCrown(I);
 			C.Spread = Spread.IsValidIndex(I) ? Spread[I] / 255.f : 0.f;
 			C.Index = static_cast<uint32>(I);
 			Out.Add(C);

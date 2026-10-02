@@ -38,6 +38,32 @@ def x1_map_video() -> None:
         typer.echo(f"  {v}")
 
 
+@external_app.command("x2-bundle")
+def x2_bundle() -> None:
+    """External Sources X2 gate: the A/B sheet - class-based vs the source's own flame length /
+    crown class (p90, run + 40 h) -> store/review/X2/ (internal only). Needs the X1 replays and
+    their channels sidecars (`ember external channels`)."""
+    from ember.dev.ue import repo_root
+    from ember.external import x2
+
+    typer.echo(f"  {x2.build(repo_root())}")
+
+
+@external_app.command("channels")
+def channels_cmd(run_ts: str = typer.Option("20260820_051100", "--run", help="Run timestamp."),
+                 pct: str = typer.Option("10,50,90", "--pct", help="Percentiles.")) -> None:
+    """Write the channels sidecar (ADR 0010) beside each forecast pack, from its timeline."""
+    from ember.dev.ue import repo_root
+    from ember.external import channels
+    from ember.external.timeline import read_timeline
+
+    repo = repo_root()
+    for p in (int(x) for x in pct.split(",")):
+        tl = read_timeline(repo / TQ26 / "timelines" / run_ts / f"p{p}")
+        pack = repo / "store" / "sim" / f"tq26-fc{run_ts[4:8]}-p{p}.ewp"
+        typer.echo(f"  {channels.from_pyrecast(tl, pack)}")
+
+
 @external_app.command("x1-bundle")
 def x1_bundle(run_ts: str = typer.Option("20260820_051100", "--run", help="Run timestamp."),
               no_render: bool = typer.Option(False, "--no-render", help="Stop before rendering.")

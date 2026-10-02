@@ -281,6 +281,10 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		FireJ->SetNumberField(TEXT("end_s"), It->EndS);
 		// HCP4: what the fire is doing (the stream's own numbers, so reviews can check the picture)
 		FireJ->SetBoolField(TEXT("intensity_reported"), It->bIntensityReported);
+		// ADR 0010: the source's own channels, where they speak the renderer uses them
+		FireJ->SetBoolField(TEXT("channels"), It->bChannels);
+		FireJ->SetStringField(TEXT("channel_names"), FString::Join(It->ChannelNames, TEXT(",")));
+		FireJ->SetNumberField(TEXT("channel_cells"), static_cast<double>(It->ChannelCells));
 		FireJ->SetNumberField(TEXT("burning_class1"), static_cast<double>(It->CellsByClass[1]));
 		FireJ->SetNumberField(TEXT("burning_class2"), static_cast<double>(It->CellsByClass[2]));
 		FireJ->SetNumberField(TEXT("burning_class3"), static_cast<double>(It->CellsByClass[3]));

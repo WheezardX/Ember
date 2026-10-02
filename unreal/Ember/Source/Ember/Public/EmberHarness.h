@@ -139,6 +139,7 @@ private:
 	bool bGroundCover = false;
 	bool bWindFromReplay = false;
 	bool bFireClasses = true;   // false: draw the stream as if it had no intensity (HCP4 A/B)
+	bool bFireChannels = true;  // false: ignore the source's channels sidecar (External X2 A/B)
 	double GroundCoverRadiusM = 60.0;
 	bool bGroundRelief = false;
 	double GroundReliefRadiusM = 56.0;

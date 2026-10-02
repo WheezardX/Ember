@@ -259,6 +259,7 @@ def write_run_plan(sc: LoadedScenario, run_dir: Path, exposure_bias: float = 0.0
         "wind_strength": s.scenario.wind_strength,
         "wind_from_replay": s.scenario.wind_from_replay,
         "fire_classes": s.scenario.fire_classes,
+        "fire_channels": s.scenario.fire_channels,
         "wind_from_deg": s.scenario.wind_from_deg,
         "smoke": s.scenario.smoke,
         "smoke_wind_ms": s.scenario.smoke_wind_ms,

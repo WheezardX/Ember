@@ -116,6 +116,7 @@ bool AEmberHarness::LoadPlan(const FString& Path, FString& OutError)
 	J->TryGetBoolField(TEXT("ground_cover"), bGroundCover);
 	J->TryGetBoolField(TEXT("wind_from_replay"), bWindFromReplay);
 	J->TryGetBoolField(TEXT("fire_classes"), bFireClasses);
+	J->TryGetBoolField(TEXT("fire_channels"), bFireChannels);
 	J->TryGetNumberField(TEXT("ground_cover_radius_m"), GroundCoverRadiusM);
 	J->TryGetBoolField(TEXT("ground_relief"), bGroundRelief);
 	J->TryGetNumberField(TEXT("ground_relief_radius_m"), GroundReliefRadiusM);
@@ -1373,6 +1374,7 @@ void AEmberHarness::Tick(float DeltaSeconds)
 		{
 			Fire = GetWorld()->SpawnActor<AEmberFireActor>(FVector::ZeroVector, FRotator::ZeroRotator, P);
 			Fire->bUseIntensity = bFireClasses;
+			Fire->bUseChannels = bFireChannels;
 			if (!Fire->Load(ReplayPath, Terrain, Err))
 			{
 				Finish(2, TEXT("replay: ") + Err);

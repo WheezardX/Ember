@@ -38,6 +38,11 @@ namespace
 	constexpr double CrownShare = 0.07;   // (0.18: tall pale licks filled the gaps between trees)
 	constexpr double CrownL = 12.0;
 	constexpr double CrownBandM = 20.0;
+	// Source-driven (ADR 0010): share of points torching per source crown class, and the cap on
+	// ground flames under a crowning canopy.
+	constexpr double SourcePassiveShare = 0.25;
+	constexpr double SourceActiveShare = 0.6;
+	constexpr double GroundUnderCrownM = 2.5;
 	constexpr int32 MaxSitesPerCell = 500;
 	// M_Flame instance data: intensity, seed, half height, half width, card centre (UE cm)
 	constexpr int32 DataFloats = 7;
@@ -206,11 +211,21 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 			const double Gy = FMath::Lerp(A01 - A00, A11 - A10, Tx) / CellM;
 			const double Ros = FMath::Clamp(1.0 / FMath::Max(1e-6, FMath::Sqrt(Gx * Gx + Gy * Gy)), 0.002, 3.0);   // m/s
 			const double Behind = Since * Ros;                // metres behind the front line
-			const bool bCrown = C.Cls == 3 && Hash01(C.Index, K * 6u + 5u) < CrownShare;
+			// Where the source's channels speak (ADR 0010): its flame length is the lick length and its
+			// crown class decides how many points torch (surface none, passive a quarter, active most);
+			// under a crowning canopy the ground flames are capped (the source's number is the crown
+			// flame, not a wall of ground fire). Elsewhere: the class rules of flames v2.
+			const bool bSource = C.SourceFlameM >= 0.f;
+			const double Share = bSource ? (C.SourceCrown == 2 ? SourceActiveShare : C.SourceCrown == 1 ? SourcePassiveShare : 0.0)
+				: (C.Cls == 3 ? CrownShare : 0.0);
+			const bool bCrown = Share > 0.0 && Hash01(C.Index, K * 6u + 5u) < Share;
 			const double Band = (bCrown ? CrownBandM : BandM[C.Cls]) * FMath::Lerp(0.8, 1.4, static_cast<double>(C.Spread));
 			// the front: flames rise fast at the line and die down across the band
 			double I = SmoothStep(0.0, 0.12 * Band, Behind) * (1.0 - SmoothStep(0.5 * Band, Band, Behind));
-			double Lm = (bCrown ? CrownL : FlameL[C.Cls]) * FMath::Lerp(0.8, 1.3, static_cast<double>(C.Spread));
+			double Lm = bSource
+				? (bCrown || C.SourceCrown <= 0 ? C.SourceFlameM : FMath::Min<double>(C.SourceFlameM, GroundUnderCrownM))
+				: (bCrown ? CrownL : FlameL[C.Cls]) * FMath::Lerp(0.8, 1.3, static_cast<double>(C.Spread));
+			Lm = FMath::Max(Lm, 0.15);
 			if (K < NRes && Behind >= 0.5 * Band)
 			{
 				// long burners (logs, stumps, a snag): small flames for 15 - 45 min after the front
