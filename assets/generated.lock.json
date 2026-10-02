@@ -209,7 +209,7 @@
       }
     },
     "m_flame.py": {
-      "script_sha256": "ce87fb242674fb39e4a6672eae829c9ca87cf04b88a334e13248a3eb4e1d3ed1",
+      "script_sha256": "68cba035145a33961f98e516ce52dc2aaf084b1ef13317bb28034f80451b67cf",
       "outputs": {
         "/Game/Ember/Generated/M_Flame": "unreal/Ember/Content/Ember/Generated/M_Flame.uasset"
       }

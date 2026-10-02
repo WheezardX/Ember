@@ -44,8 +44,8 @@ namespace
 	constexpr double SourceActiveShare = 0.6;
 	constexpr double GroundUnderCrownM = 2.5;
 	constexpr int32 MaxSitesPerCell = 500;
-	// M_Flame instance data: intensity, seed, half height, half width, card centre (UE cm)
-	constexpr int32 DataFloats = 7;
+	// M_Flame instance data: intensity, seed, half height, half width, card centre (UE cm), lean x / y
+	constexpr int32 DataFloats = 9;   // + the lean (tan, along UE X / Y) - flames v3
 }
 
 AEmberFlameActor::AEmberFlameActor()
@@ -134,10 +134,9 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 	const double Wu = Fire->WindU, Wv = Fire->WindV;
 	const double Ws = FMath::Sqrt(Wu * Wu + Wv * Wv);
 	const double Dx = Ws > 0.1 ? Wu / Ws : 0.0, Dy = Ws > 0.1 ? Wv / Ws : 0.0;
-	const double Umid = 0.5 * Ws;
 
 	auto Spawn = [&](uint64 Key, FSite& St, double X, double Y, double L, double Wf, double I, double BaseUp,
-		bool bCrownLick, double Age, bool bFrac = false)
+		double DirE, double DirN, double LeanTan, double Age, bool bFrac = false)
 	{
 		if (Pool.Num() >= MaxLicks)
 		{
@@ -165,10 +164,11 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 		Lk.Oy = Y + (H1 - 0.5) * Wf;
 		Lk.Gz = Gz;
 		Lk.BaseUp = static_cast<float>(BaseUp);
-		// crown flames stand in the full wind above the canopy; ground flames in the mid-flame wind
-		Lk.Lean = static_cast<float>(FMath::Min(1.5, 0.9 * (bCrownLick ? Ws : Umid) / FMath::Sqrt(9.8 * Lk.H)));
-		Lk.Lx = static_cast<float>(Dx);
-		Lk.Ly = static_cast<float>(Dy);
+		// lean: toward the spread (and the wind) - the whole tongue tilts (M_Flame's axis), and it
+		// rises along that axis; a little per-lick jitter so a front is not a combed row
+		Lk.Lean = static_cast<float>(LeanTan * FMath::Lerp(0.8, 1.15, H2));
+		Lk.Lx = static_cast<float>(DirE);
+		Lk.Ly = static_cast<float>(DirN);
 		Lk.Seed = static_cast<float>(H1 * 0.7 + H3 * 0.3);
 		Pool.Add(Lk);
 	};
@@ -261,20 +261,53 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 			Lm *= FMath::Lerp(0.7, 1.2, Hash01(C.Index, K * 6u + 3u)) * FMath::Lerp(0.6, 1.0, I);
 			// Flames v3 (Brad 2026-10-02: "in torching and crowns you'd see it in the tree tops"):
 			// crown / torching licks start at the crown base (the pack's canopy base height; a quarter
-			// of the canopy height where that is missing) and run through the crown and above the
-			// tops - at least 1.25 x the crown depth, or the source's flame length if longer. Ground
-			// licks stay on the ground. Without canopy data, crown licks stay on the ground (v2).
+			// of the canopy height where that is missing). The flame length is measured from the
+			// GROUND (Brad: "Ground + Flame Height != Ground + Flame Height + Offset"), so a crown lick
+			// runs from the crown base to ground + flame length; a flame that does not reach the crown
+			// base is not torching - it burns on the ground at its own length. Without canopy data,
+			// crown licks stay on the ground (v2).
+			bool bCrownLick = bCrown && !bResidual;
 			double BaseUp = 0.0;
-			if (bCrown && !bResidual && C.CanopyHeightM > 2.f)
+			if (bCrownLick && C.CanopyHeightM > 2.f)
 			{
 				const double Ch = C.CanopyHeightM;
 				const double Cb = C.CanopyBaseM > 0.5f ? FMath::Min<double>(C.CanopyBaseM, 0.8 * Ch) : 0.25 * Ch;
-				BaseUp = Cb * FMath::Lerp(0.85, 1.05, Hash01(C.Index, K * 6u + 4u));
-				Lm = FMath::Max(Lm, 1.25 * (Ch - Cb) * FMath::Lerp(0.8, 1.2, Hash01(C.Index, K * 6u + 3u)));
+				const double Base = Cb * FMath::Lerp(0.85, 1.05, Hash01(C.Index, K * 6u + 4u));
+				if (Lm > Base + 1.0)
+				{
+					BaseUp = Base;
+					Lm -= Base;                                   // the top stays at ground + flame length
+				}
+				else
+				{
+					bCrownLick = false;                           // short of the crowns: a ground flame
+				}
 			}
+			// Lean (Brad: "fire tends to get pushed by the wind ... lean the fire towards [the next cell
+			// that burns]"): toward the local spread direction (the arrival gradient), more for a fast
+			// front, more again in the crowns; the replay's wind, where it has one, pushes too.
+			double DirE = 0.0, DirN = 0.0;
+			{
+				const double Gn = FMath::Sqrt(Gx * Gx + Gy * Gy);
+				if (Gn > 1e-9)
+				{
+					DirE = Gx / Gn;
+					DirN = -Gy / Gn;                              // Gy runs south (row order)
+				}
+				if (Ws > 0.5)
+				{
+					DirE += 0.7 * Dx;
+					DirN += 0.7 * Dy;
+					const double Dn = FMath::Sqrt(DirE * DirE + DirN * DirN);
+					DirE = Dn > 1e-6 ? DirE / Dn : 0.0;
+					DirN = Dn > 1e-6 ? DirN / Dn : 0.0;
+				}
+			}
+			const double LeanTan = FMath::Clamp(0.3 + 0.55 * FMath::Sqrt(Ros) + 0.04 * Ws, 0.2, 1.2)
+				* (bCrownLick ? 1.2 : 1.0) * ((DirE != 0.0 || DirN != 0.0) ? 1.0 : 0.0);
 			// Fuller tongues (v3: "thin and transparent"): ~0.42 of their height (0.35 in the crowns);
 			// far off they widen toward the point spacing so the line stays continuous.
-			const double Wf = FMath::Min(FMath::Max((bCrown ? 0.35 : 0.42) * Lm, 0.5 * Spacing), 0.7 * Lm);
+			const double Wf = FMath::Min(FMath::Max((bCrownLick ? 0.35 : 0.42) * Lm, 0.5 * Spacing), 0.7 * Lm);
 			// The body now occludes (M_Flame alpha-blended, v3), so stacked rows no longer add up to a
 			// white sheet: only a mild thinning for deep bands, not the v2 additive share.
 			const double Stack = FMath::Clamp(4.0 * Spacing / Band, 0.6, 1.0);
@@ -291,8 +324,8 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 				if (bReset)
 				{
 					// a still / scrub: the point is already burning - two licks mid-life
-					Spawn(Key, *St, X, Y, Lm, Wf, I, BaseUp, bCrown, 0.05 + 0.45 * Ph, true);
-					Spawn(Key, *St, X, Y, Lm, Wf, I, BaseUp, bCrown, 0.5 + 0.45 * Ph, true);
+					Spawn(Key, *St, X, Y, Lm, Wf, I, BaseUp, DirE, DirN, LeanTan, 0.05 + 0.45 * Ph, true);
+					Spawn(Key, *St, X, Y, Lm, Wf, I, BaseUp, DirE, DirN, LeanTan, 0.5 + 0.45 * Ph, true);
 				}
 			}
 			St->LastSeen = ClockS;
@@ -300,7 +333,7 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 			while (St->Acc >= 1.0)
 			{
 				St->Acc -= 1.0;
-				Spawn(Key, *St, X, Y, Lm, Wf, I, BaseUp, bCrown, St->Acc / Rate);
+				Spawn(Key, *St, X, Y, Lm, Wf, I, BaseUp, DirE, DirN, LeanTan, St->Acc / Rate);
 			}
 		}
 	}
@@ -344,15 +377,25 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 		{
 			ToCam = FVector::ForwardVector;
 		}
-		// Plane normal (local Z) to the camera, local X up: a vertical card.
-		const FQuat Q = FRotationMatrix::MakeFromZX(ToCam, FVector::UpVector).ToQuat();
+		// The flame's axis leans (v3): east / north -> UE +X / -Y. The card contains that axis (local
+		// X along it) and turns to the camera as far as it can (local Z = the view direction made
+		// perpendicular to the axis); M_Flame draws the tongue along the same axis.
+		const double LeanUx = L.Lx * L.Lean, LeanUy = -L.Ly * L.Lean;
+		const FVector Axis = FVector(LeanUx, LeanUy, 1.0).GetSafeNormal();
+		const double AxisLen = FMath::Sqrt(1.0 + L.Lean * L.Lean);
+		FVector Normal = ToCam - Axis * FVector::DotProduct(ToCam, Axis);
+		if (!Normal.Normalize())
+		{
+			Normal = ToCam;
+		}
+		const FQuat Q = FRotationMatrix::MakeFromZX(Normal, Axis).ToQuat();
 		// The flame's shape is defined in world units from the centre (M_Flame); the card is
 		// oversized so the tongue never meets its edge (a clipped card reads as a rectangle).
 		FOut& O = Outs.AddDefaulted_GetRef();
-		O.Xf = FTransform(Q, Centre, FVector(Hh * 1.3, Wf * 2.0, 1.0));   // the engine plane is 1 m
+		O.Xf = FTransform(Q, Centre, FVector(Hh * 1.3 * AxisLen, Wf * 2.0, 1.0));   // the engine plane is 1 m
 		const float D[DataFloats] = {static_cast<float>(Alpha), L.Seed, static_cast<float>(Hh * 50.0),
 			static_cast<float>(Wf * 50.0), static_cast<float>(Centre.X), static_cast<float>(Centre.Y),
-			static_cast<float>(Centre.Z)};
+			static_cast<float>(Centre.Z), static_cast<float>(LeanUx), static_cast<float>(LeanUy)};
 		FMemory::Memcpy(O.D, D, sizeof(D));
 		O.Dist2 = FVector::DistSquared(Centre, CameraLoc);
 	}
