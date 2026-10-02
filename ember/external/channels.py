@@ -70,7 +70,7 @@ def write(channels: list[dict[str, Any]], grid: dict[str, Any], pack_dir: str | 
                 "grid": {k: grid[k] for k in ("nx", "ny", "cell_size_m", "origin_x", "origin_y",
                                               "crs")},
                 "bin": bpath.name, "channels": entries, "provenance": provenance}
-    mpath.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    mpath.write_bytes(json.dumps(manifest, indent=2).encode("utf-8"))   # LF on every OS
     return mpath
 
 
@@ -142,6 +142,5 @@ def write_fixture(out_dir: str | Path) -> Path:
     dec = read(out_dir / "fire_channels.ewp")
     exp = {name: [None if np.isnan(v) else round(float(v), 6) for v in dec[name][0].ravel()]
            for name in ("flame_length_m", "spread_rate_mh", "crown_class")}
-    (out_dir / "fire_channels.expected.json").write_text(json.dumps(exp, indent=1),
-                                                         encoding="utf-8")
+    (out_dir / "fire_channels.expected.json").write_bytes(json.dumps(exp, indent=1).encode())
     return mpath
