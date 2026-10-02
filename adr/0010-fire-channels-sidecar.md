@@ -1,6 +1,6 @@
 # ADR 0010 — Fire channels sidecar: the renderer draws what the source said
 
-**Status:** Proposed (2026-10-02), External Sources X2.1. Plan decision D2 (Brad, 2026-10-01:
+**Status:** Accepted (Brad, 2026-10-02: "I agree with your choices" - the three Open points below are decided as proposed). External Sources X2.1. Plan decision D2 (Brad, 2026-10-01:
 "agreed, I think" - this ADR is its second look).
 
 ## Context
@@ -84,7 +84,7 @@ the stream format and its golden hashes do not change.
 - **Keep the raw codes in the renderer.** No: the renderer would need to know every source's
   units. One conversion point (D5).
 
-## Open (for Brad)
+## Decided (were open; Brad 2026-10-02, as proposed)
 
 1. **Active crown flame length unit.** In ELMFIRE's source, active crown cells get flame length
    = 2.5 x canopy height with canopy height in metres, while every other cell is in feet - one
@@ -95,5 +95,6 @@ the stream format and its golden hashes do not change.
    anomaly in the channel's `source.note`.
 2. **Where the sidecar lives**: beside the pack (proposed) vs referenced from `replay.json`
    (the plan's wording, which needs embersim to write the reference).
-3. **Quantisation**: `u16` with scale 0.01 m (flame) and 0.1 m/h (spread) keeps the source's
-   1-ft / 1-ft/min steps exactly; `u8` cannot.
+3. **Quantisation**: `u16`. As built (X2.2) the scale is 0.01 of the SOURCE unit - flame
+   0.003048 m (0.01 ft), spread 0.18288 m/h (0.01 ft/min) - so the source's 1-ft / 1-ft/min
+   steps are kept exactly (a 0.01 m step would round them by up to 5 mm); `u8` cannot.

@@ -1,0 +1,44 @@
+{
+ "flame_length_m": [
+  0.3048,
+  1.6764,
+  13.4112,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+ ],
+ "spread_rate_mh": [
+  54.864,
+  null,
+  null,
+  null,
+  null,
+  3182.112,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+ ],
+ "crown_class": [
+  0.0,
+  1.0,
+  2.0,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+ ]
+}

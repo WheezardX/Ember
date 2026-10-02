@@ -220,6 +220,53 @@ State Stream::at(int32_t t_s) const {
     return s;
 }
 
+Channels read_channels(const std::string& manifest_path) {
+    Channels out;
+    try {
+        std::ifstream f(manifest_path);
+        if (!f) {
+            out.error = "cannot open channels " + manifest_path;
+            return out;
+        }
+        const nlohmann::json j = nlohmann::json::parse(f);
+        if (j.value("format", "") != "ember-fire-channels" || j.value("version", 0) != 1) {
+            out.error = manifest_path + ": not an ember-fire-channels v1 manifest";
+            return out;
+        }
+        out.nx = j.at("grid").at("nx").get<uint32_t>();
+        out.ny = j.at("grid").at("ny").get<uint32_t>();
+        const size_t n = static_cast<size_t>(out.nx) * out.ny;
+        const auto bin = std::filesystem::path(manifest_path).parent_path() / j.at("bin").get<std::string>();
+        std::ifstream b(bin, std::ios::binary);
+        if (!b) {
+            out.error = "cannot open channels data " + bin.string();
+            return out;
+        }
+        for (const auto& e : j.at("channels")) {
+            if (e.value("dtype", "") != "u16" || e.value("kind", "") != "at_arrival") continue;
+            Channel c;
+            c.name = e.at("name").get<std::string>();
+            c.unit = e.value("unit", "");
+            c.kind = e.value("kind", "");
+            c.scale = e.value("scale", 1.0);
+            c.offset = e.value("offset", 0.0);
+            c.nodata = e.value("nodata", uint16_t{65535});
+            c.raw.resize(n);
+            b.seekg(static_cast<std::streamoff>(e.at("index").get<size_t>() * n * 2));
+            // little-endian u16 on disk; every target we build for is little-endian
+            b.read(reinterpret_cast<char*>(c.raw.data()), static_cast<std::streamsize>(n * 2));
+            if (!b) {
+                out.error = bin.string() + ": short read for channel " + c.name;
+                return out;
+            }
+            out.list.push_back(std::move(c));
+        }
+    } catch (const std::exception& e) {
+        out.error = manifest_path + ": " + e.what();
+    }
+    return out;
+}
+
 ReplayInfo read_replay(const std::string& path) {
     ReplayInfo r;
     try {

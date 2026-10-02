@@ -112,6 +112,33 @@ TEST_CASE("fire: Jolly CA run spot fires match Epic 4's reader") {
     }
 }
 
+TEST_CASE("fire: channels sidecar matches the Python writer (ADR 0010)") {
+    // fixture: ember.external.channels.write_fixture (synthetic, no PyreCast data)
+    const Channels ch = read_channels(data("fire_channels.channels.json"));
+    REQUIRE(ch.ok());
+    CHECK(ch.nx == 4);
+    CHECK(ch.ny == 3);
+    REQUIRE(ch.list.size() == 3);
+    std::ifstream f(data("fire_channels.expected.json"));
+    const auto exp = nlohmann::json::parse(f);
+    for (const char* name : {"flame_length_m", "spread_rate_mh", "crown_class"}) {
+        const Channel* c = ch.find(name);
+        REQUIRE(c != nullptr);
+        const auto& want = exp.at(name);
+        for (size_t i = 0; i < want.size(); ++i) {
+            INFO(name << " cell " << i);
+            if (want[i].is_null()) {
+                CHECK_FALSE(c->speaks(i));
+            } else {
+                REQUIRE(c->speaks(i));
+                CHECK(c->value(i) == doctest::Approx(want[i].get<double>()).epsilon(1e-6));
+            }
+        }
+    }
+    CHECK(ch.find("no_such_channel") == nullptr);
+    CHECK_FALSE(read_channels(data("missing.channels.json")).ok());
+}
+
 TEST_CASE("fire: replay points at its stream and world grid") {
     const std::string path = repo_path("runs/cp2/cp2-jolly-playback.replay.json");
     if (!std::filesystem::exists(path)) return;

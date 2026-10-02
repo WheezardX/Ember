@@ -1,0 +1,66 @@
+{
+  "format": "ember-fire-channels",
+  "version": 1,
+  "grid": {
+    "nx": 4,
+    "ny": 3,
+    "cell_size_m": 30.0,
+    "origin_x": 1000.0,
+    "origin_y": 2000.0,
+    "crs": "EPSG:32610"
+  },
+  "bin": "fire_channels.channels.bin",
+  "channels": [
+    {
+      "name": "flame_length_m",
+      "kind": "at_arrival",
+      "unit": "m",
+      "dtype": "u16",
+      "scale": 0.0030480000000000004,
+      "offset": 0.0,
+      "nodata": 65535,
+      "index": 0,
+      "cells_speaking": 3,
+      "max": 13.4112,
+      "source": {
+        "name": "synthetic",
+        "unit": "ft"
+      }
+    },
+    {
+      "name": "spread_rate_mh",
+      "kind": "at_arrival",
+      "unit": "m/h",
+      "dtype": "u16",
+      "scale": 0.18288000000000001,
+      "offset": 0.0,
+      "nodata": 65535,
+      "index": 1,
+      "cells_speaking": 2,
+      "max": 3182.112,
+      "source": {
+        "name": "synthetic",
+        "unit": "ft/min"
+      }
+    },
+    {
+      "name": "crown_class",
+      "kind": "at_arrival",
+      "unit": "class",
+      "dtype": "u16",
+      "scale": 1.0,
+      "offset": 0.0,
+      "nodata": 65535,
+      "index": 2,
+      "cells_speaking": 3,
+      "max": 2.0,
+      "source": {
+        "name": "synthetic",
+        "unit": "class"
+      }
+    }
+  ],
+  "provenance": {
+    "source": "synthetic"
+  }
+}

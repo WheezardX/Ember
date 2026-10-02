@@ -105,6 +105,34 @@ struct ReplayInfo {
 // Reads `<name>.replay.json` (formats.md §5): the stream it points to and its world grid.
 EMBERWORLD_CORE_API ReplayInfo read_replay(const std::string& path);
 
+// Fire channels sidecar (ADR 0010): the source's physical numbers per cell on the pack grid,
+// `<pack>.channels.json` + `.channels.bin` beside the world pack. value = raw x scale + offset;
+// raw == nodata means the source is silent there (the renderer then uses its own rules).
+struct Channel {
+    std::string name, unit, kind;
+    double scale = 1.0, offset = 0.0;
+    uint16_t nodata = 65535;
+    std::vector<uint16_t> raw;   // row-major, row 0 north, as the pack
+    bool speaks(size_t i) const { return i < raw.size() && raw[i] != nodata; }
+    double value(size_t i) const { return raw[i] * scale + offset; }
+};
+
+struct Channels {
+    uint32_t nx = 0, ny = 0;
+    std::vector<Channel> list;
+    std::string error;
+    bool ok() const { return error.empty(); }
+    const Channel* find(const std::string& name) const {
+        for (const Channel& c : list)
+            if (c.name == name) return &c;
+        return nullptr;
+    }
+};
+
+// Reads a channels manifest (and its .bin). An absent file is not an error the caller needs to
+// report: check ok() / list.empty().
+EMBERWORLD_CORE_API Channels read_channels(const std::string& manifest_path);
+
 // Local rate of spread (m/h) per cell from the arrival field (HCP4 H4-3, "where it's heading":
 // the head is where the fire moves fastest). A least-squares plane through the cell and its
 // arrived 3 x 3 neighbours gives the arrival gradient (s per cell); rate = cell / |gradient|,
