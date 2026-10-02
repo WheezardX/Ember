@@ -441,6 +441,75 @@ void AEmberFireActor::BurningNear(double X, double Y, double RadiusM, TArray<FEm
 	}
 }
 
+void AEmberFireActor::FlameCellsNear(double X, double Y, double RadiusM, double MaxBehindS, TArray<FEmberFlameCell>& Out) const
+{
+	Out.Reset();
+	if (State.phase.empty())
+	{
+		return;
+	}
+	const double Cx = (X - Grid.origin_x) / CellM - 0.5;
+	const double Cy = (Grid.origin_y - Y) / CellM - 0.5;
+	const int32 Rc = FMath::CeilToInt32(RadiusM / CellM);
+	const int32 X0 = FMath::Max(0, FMath::FloorToInt32(Cx) - Rc), X1 = FMath::Min(Nx - 1, FMath::CeilToInt32(Cx) + Rc);
+	const int32 Y0 = FMath::Max(0, FMath::FloorToInt32(Cy) - Rc), Y1 = FMath::Min(Ny - 1, FMath::CeilToInt32(Cy) + Rc);
+	const std::vector<int32_t>& Arrival = Stream.final_arrival();
+	const double R2 = FMath::Square(RadiusM / CellM);
+	for (int32 Iy = Y0; Iy <= Y1; ++Iy)
+	{
+		for (int32 Ix = X0; Ix <= X1; ++Ix)
+		{
+			if (FMath::Square(Ix - Cx) + FMath::Square(Iy - Cy) > R2)
+			{
+				continue;
+			}
+			const int32 I = Iy * Nx + Ix;
+			const int32 Ai = Arrival[I];
+			if (Ai < 0 || TimeS - Ai > MaxBehindS)
+			{
+				continue;   // never burns / long out
+			}
+			// the 3 x 3 neighbourhood; is the front here yet (this cell or a neighbour arrived)?
+			double A[9];
+			double Latest = -1.0;
+			int32 NbCls = 0;
+			bool bAny = Ai <= TimeS;
+			for (int32 K = 0; K < 9; ++K)
+			{
+				const int32 Jx = FMath::Clamp(Ix + K % 3 - 1, 0, Nx - 1);
+				const int32 Jy = FMath::Clamp(Iy + K / 3 - 1, 0, Ny - 1);
+				const int32 Aj = Arrival[Jy * Nx + Jx];
+				A[K] = Aj;
+				if (Aj >= 0)
+				{
+					Latest = FMath::Max(Latest, static_cast<double>(Aj));
+					if (Aj <= TimeS)
+					{
+						bAny = true;
+						NbCls = FMath::Max(NbCls, static_cast<int32>(State.intensity[Jy * Nx + Jx]));
+					}
+				}
+			}
+			if (!bAny)
+			{
+				continue;
+			}
+			FEmberFlameCell C;
+			C.X = Grid.origin_x + (Ix + 0.5) * CellM;
+			C.Y = Grid.origin_y - (Iy + 0.5) * CellM;
+			for (int32 K = 0; K < 9; ++K)
+			{
+				C.A[K] = A[K] >= 0.0 ? A[K] : Latest + 3600.0;
+			}
+			const int32 Own = Ai <= TimeS ? static_cast<int32>(State.intensity[I]) : NbCls;
+			C.Cls = bIntensityReported ? FMath::Clamp(Own, 1, 3) : 3;
+			C.Spread = Spread.IsValidIndex(I) ? Spread[I] / 255.f : 0.f;
+			C.Index = static_cast<uint32>(I);
+			Out.Add(C);
+		}
+	}
+}
+
 int32 AEmberFireActor::PhaseAt(double WorldX, double WorldY) const
 {
 	const int32 Cx = FMath::FloorToInt32((WorldX - Grid.origin_x) / CellM);

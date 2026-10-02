@@ -338,6 +338,9 @@ TSharedRef<FJsonObject> UEmberSceneFactsSubsystem::BuildFacts(const FString& Sce
 		FlameJ->SetBoolField(TEXT("enabled"), true);
 		FlameJ->SetNumberField(TEXT("cells"), It->NumCells);
 		FlameJ->SetNumberField(TEXT("cards"), It->NumCards);
+		FlameJ->SetNumberField(TEXT("sites"), It->NumSites);
+		FlameJ->SetNumberField(TEXT("nearest_x"), It->NearestX);
+		FlameJ->SetNumberField(TEXT("nearest_y"), It->NearestY);
 	}
 	F->SetObjectField(TEXT("flames"), FlameJ);
 

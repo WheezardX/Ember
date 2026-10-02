@@ -18,10 +18,10 @@ exposure_bias = -2.0
 
 [[bookmarks]]
 name = "night_front"
-target_frac = [0.53, 0.33]   # front / scar from the lab fire arrival field
-distance_m = 60
-yaw_deg = 240
-pitch_deg = -6
+# (flames v2: on the front line itself, as L_flames - the old target sat in the scar behind it)
+camera_xy = [657595.0, 5231077.0]
+yaw_deg = 45
+pitch_deg = 2
 fov_deg = 60
 sun = "315,-14"
 exposure_ev_min = 2.0

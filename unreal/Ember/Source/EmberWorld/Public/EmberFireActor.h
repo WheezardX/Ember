@@ -37,6 +37,19 @@ struct FEmberFirebrand
 	uint32 Key = 0;              // index in the stream: stable per-brand seeds
 };
 
+/** A cell the fire front is in or near, with the arrival times around it (flames v2: the front
+ *  line drawn through the cell, not per cell). */
+struct FEmberFlameCell
+{
+	double X = 0.0, Y = 0.0;     // cell centre, metres (region CRS)
+	int32 Cls = 1;               // intensity class 1..3 it burns at (unarrived: its burning neighbours')
+	float Spread = 0.f;          // 0..1 (FireTex A)
+	uint32 Index = 0;            // cell index: stable seeds
+	/** Arrival (sim s) at the 3 x 3 cell centres around it, row by row north to south, west to east;
+	 *  a cell that never burns counts as late (an hour after its latest burned neighbour). */
+	double A[9] = {};
+};
+
 /** A burning cell as rendered (HCP4 H4-5 flame cards). */
 struct FEmberBurningCell
 {
@@ -134,6 +147,9 @@ public:
 
 	/** Burning cells (as rendered) whose centres lie within RadiusM of (X, Y), metres. */
 	void BurningNear(double X, double Y, double RadiusM, TArray<FEmberBurningCell>& Out) const;
+	/** Cells within RadiusM of (X, Y) that the front is crossing now or crossed within MaxBehindS
+	 *  (an unarrived cell counts once a neighbour has arrived), with their arrival neighbourhoods. */
+	void FlameCellsNear(double X, double Y, double RadiusM, double MaxBehindS, TArray<FEmberFlameCell>& Out) const;
 
 	/** The phase shown at a world point (metres, region CRS); -1 outside the grid. Probes. */
 	int32 PhaseAt(double WorldX, double WorldY) const;

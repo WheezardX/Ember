@@ -104,8 +104,10 @@ def build_material():
         "float xs = xs0 + (n - 0.5) * 1.8 * y;\n"
         # teardrop: full width low down, tapering hard to a point; the noise eats the edge
         "float w = 0.8 * pow(saturate(1.0 - y), 1.3) * pow(saturate(y * 6.0), 0.35) * (0.4 + 1.2 * n);\n"
-        "float body = saturate((w - abs(xs)) * 5.0);\n"
-        "body *= saturate((1.5 * n + 0.05 - y) * 4.0);\n"            # ragged top: tongues tear off
+        # (flames v2: crisper edges - many small licks with soft edges read as pale ghosts; the
+        # reference tongues are sharp-edged with dark gaps between them)
+        "float body = saturate((w - abs(xs)) * 10.0);\n"
+        "body *= saturate((1.5 * n + 0.05 - y) * 8.0);\n"            # ragged top: tongues tear off
         "body *= saturate(y * 25.0);\n"                               # base melts into the ground
         # internal texture: a finer noise scrolling faster, so the fill is not flat
         "float2 q2 = float2(xs0 * 6.0 + S * 3.0, y * 9.0 - T * 5.0 + S * 11.0);\n"
