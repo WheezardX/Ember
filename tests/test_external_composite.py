@@ -51,7 +51,7 @@ def test_composite_rules(tmp_path):
     obs[0, 0] = 100                # observed before the run
     obs[1, 0] = 200                # observed before, inside the start perimeter
     obs[0, 1] = R + 5000           # observed AFTER the run: dropped
-    c = composite(_timeline(2, 3), _pack(tmp_path, obs))
+    c = composite(_timeline(2, 3), _pack(tmp_path, obs), start="observed")
     a = c["arrival_s"]
     assert c["t_ref_s"] == R
     assert a[0, 0] == 100 and a[1, 0] == 200          # observed kept
@@ -66,10 +66,22 @@ def test_composite_rules(tmp_path):
     assert c["confidence"][0, 2] == 0 and c["confidence"][0, 0] == 2
 
 
+def test_source_start_burns_at_run_time(tmp_path):
+    """Default policy (Brad: render true to the model): the forecast's starting perimeter is
+    burned at t_ref where the observation had not burned it."""
+    obs = np.full((2, 3), -1, np.int64)
+    obs[1, 0] = 200
+    c = composite(_timeline(2, 3), _pack(tmp_path, obs))
+    assert c["arrival_s"][1, 1] == c["t_ref_s"]
+    assert c["arrival_s"][1, 0] == 200                 # observed earlier: kept
+    assert c["start"]["policy"] == "source" and c["start"]["cells_shown_at_t_ref"] == 1
+
+
 def test_write_pack_loads(tmp_path):
     obs = np.full((2, 3), -1, np.int64)
     obs[0, 0] = 100
     p = write_pack(_timeline(2, 3), _pack(tmp_path, obs), tmp_path, "variant")
     wp = load_worldpack(p)
     assert wp.manifest["arrival"]["algorithm"] == "external-composite-v1"
-    assert wp.manifest["layers"]["arrival_s"]["stats"]["valid"] == 2
+    # observed (0,0), forecast growth (0,2), the start perimeter (1,0), (1,1) at the run time
+    assert wp.manifest["layers"]["arrival_s"]["stats"]["valid"] == 4

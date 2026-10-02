@@ -11,9 +11,14 @@ For a forecast timeline issued at ``t_ref`` (= R seconds after the pack's t0):
 
 The forecast is sampled onto the pack grid by nearest neighbour (each pack cell takes the source
 cell under its centre); same CRS and cell size is required, and the sub-cell shift is recorded.
-The seams between the two are counted, not resolved (plan D3: report and ask):
+The seams between the two are counted (plan D3) and resolved by one rule (Brad 2026-10-01: "when
+we render off models, we render true to what they predict" - the observation is the contrast, a
+separate replay, not a patch on the model's):
 - ``source_start_not_observed``: the forecast's starting perimeter has these cells as burned at
-  t_ref, the observation does not - left unburned (the source gives no time for them);
+  t_ref, the observation does not. ``start="source"`` (default) burns them AT t_ref - one step at
+  the run time, the forecast's own starting state (the source gives no earlier time; ELMFIRE's
+  starting perimeter is its ignition, so a fresh burn at t_ref is its own picture);
+  ``start="observed"`` leaves them unburned (the strict first pass, kept for the record);
 - ``observed_not_in_source_start``: observed burned by t_ref, outside the forecast's starting
   perimeter and new growth - kept (they come from the observation);
 - ``forecast_growth_already_observed``: forecast new growth the observation had already burned -
@@ -75,7 +80,9 @@ def sample_onto(tl: FireTimeline, grid: dict[str, Any]) -> tuple[np.ndarray, np.
     return rr, cc, shift
 
 
-def composite(tl: FireTimeline, pack_dir: str | Path) -> dict[str, Any]:
+def composite(tl: FireTimeline, pack_dir: str | Path, start: str = "source") -> dict[str, Any]:
+    if start not in ("source", "observed"):
+        raise ValueError(f"start must be source | observed, not {start!r}")
     pack_dir = Path(pack_dir)
     m, obs, conf = _pack(pack_dir)
     t0 = _utc(m["t0_utc"])
@@ -92,6 +99,9 @@ def composite(tl: FireTimeline, pack_dir: str | Path) -> dict[str, Any]:
     out[obs_before] = obs[obs_before]
     take = fc & ~obs_before
     out[take] = R + np.rint(fa[take]).astype(np.int64)
+    start_step = fb & ~obs_before & (out < 0)
+    if start == "source":
+        out[start_step] = R           # the forecast's own starting state, at the run time
     cell_ac = m["grid"]["cell_size_m"] ** 2 / 4046.8564224
     seams = {
         "source_start_not_observed": int((fb & ~obs_before).sum()),
@@ -106,15 +116,21 @@ def composite(tl: FireTimeline, pack_dir: str | Path) -> dict[str, Any]:
     conf_out = np.where(obs_before, conf, 0).astype(np.uint8)
     return {"meta": m, "arrival_s": out, "confidence": conf_out,
             "t_ref_s": R, "shift": shift, "seams": seams,
+            "start": {"policy": start,
+                      "cells_shown_at_t_ref": int(start_step.sum()) if start == "source" else 0,
+                      "note": "the forecast's starting perimeter: the source gives no time; shown "
+                              "burned at the run time" if start == "source" else
+                              "the forecast's starting perimeter left unburned where unobserved"},
             "forecast_cells_on_pack": int(take.sum()),
             "observed_cells_before": int(obs_before.sum()),
             "outside_source_cells": int((~inside).sum())}
 
 
-def write_pack(tl: FireTimeline, pack_dir: str | Path, out_dir: str | Path, name: str) -> Path:
+def write_pack(tl: FireTimeline, pack_dir: str | Path, out_dir: str | Path, name: str,
+               start: str = "source") -> Path:
     """The pack variant ``<out_dir>/<name>.ewp`` with the composite arrival."""
     pack_dir = Path(pack_dir)
-    c = composite(tl, pack_dir)
+    c = composite(tl, pack_dir, start)
     m = c["meta"]
     dst = Path(out_dir) / f"{name}.ewp"
     if dst.exists():
@@ -140,6 +156,7 @@ def write_pack(tl: FireTimeline, pack_dir: str | Path, out_dir: str | Path, name
         "forecast": {k: tl.provenance.get(k) for k in
                      ("source", "fire", "run_ts", "run_utc", "member", "licence", "attribution")},
         "t_ref_s": c["t_ref_s"], "grid_shift": c["shift"], "seams": c["seams"],
+        "start": c["start"],
         "forecast_cells_on_pack": c["forecast_cells_on_pack"],
         "observed_cells_before": c["observed_cells_before"],
         "outside_source_cells": c["outside_source_cells"],
