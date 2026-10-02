@@ -45,8 +45,14 @@ not. No skill metrics, no precision / recall, no "the model was wrong" framing i
    `checkpoints/`. Every sheet or video made from them carries the line
    "Data source: PyreCast Wildfire Forecasting Platform (pyrecast.org)" and "internal".
 2. **Tests use synthetic fixtures** shaped like the real files (same dtype, nodata, grid offset).
-3. **Outputs of our own ELMFIRE runs (X3) are ours** (ELMFIRE is EPL-2.0) and may be committed
-   and shown, subject to the usual size limits.
+3. **ELMFIRE runs (X3) are under ELMFIRE's free licence** (corrected 2026-10-02; the plan
+   assumed EPL-2.0). At the pinned commit `cbf924a` ELMFIRE is AGPL-3.0 + Commons Clause, with a
+   separate CloudFire, Inc. commercial licence for "any activity primarily intended for
+   commercial advantage". D8 (Brad, 2026-10-02): "We move forward with the Free version. Before
+   we pitch for grant money we'll re-evaluate." So X3 runs as research / internal development;
+   its outputs may be committed and reviewed internally (usual size limits), carry the ELMFIRE
+   (AGPL + Commons Clause) notice in their provenance, and go into no grant pitch, sale or
+   commercial material until Brad has re-evaluated the licence.
 4. **Stream v1 and its golden hashes do not change in this plan.** No edit to `.ess` v1, to
    `state_hash`, or to the conformance suite's existing checks.
 5. Standing rules still apply: download ledger with an estimate before any fetch; no heredocs;
@@ -75,6 +81,7 @@ not. No skill metrics, no precision / recall, no "the model was wrong" framing i
 | D4 ✔ | Checkpoints (memo Q2) | Three light checkpoints X1-X3: a sheet, one MP4, a one-page memo, explicit sign-off. **Confirmed (Brad, 2026-10-01): "Light it is. Make progress and if it isn't up to snuff, we pivot and take those lessons learned."** So: get each phase to a reviewable result quickly, do not polish ahead of the gate, and end every memo with a short "what we learned / what we would change" section so a pivot has something to stand on | Same rhythm as the HCPs, smaller bundles |
 | D5 | Canonical units | Channels are stored in SI (m, m/h, kW/m); adapters convert at the boundary and record the source unit | One conversion point |
 | D6 | Percentiles | X1 renders p10 / p50 / p90 as three separate replays. Drawing the envelope as lines in the 3D scene waits for the HCP5 overlay layer and becomes a stated requirement on it | No overlay framework exists yet |
+| D8 ✔ | ELMFIRE licence | **Free (AGPL + Commons Clause) version, re-evaluate before any grant pitch** (Brad, 2026-10-02) | The licence is not EPL-2.0 as first assumed (rule 3) |
 | D7 ⚑ | Approaching PyreCast / SIG | Not executor work. Brad decides after the X1 bundle exists | A working render of their own forecast is the opening; the strategy must not depend on their answer (X3 is the independent path) |
 
 ## 4. Phases
@@ -153,7 +160,8 @@ Goal: a forecast we produced ourselves, from our own store, rendered through the
 is what can be shown outside.
 
 - **X3.1 Build** ELMFIRE in WSL at a pinned commit (outside the repo), run its own verification
-  case, add a check to `ember-dev doctor`. Record the EPL-2.0 notice in the provenance pattern.
+  case, add a check to `ember-dev doctor`. Record the ELMFIRE licence notice (AGPL-3.0 + Commons
+  Clause, rule 3 / D8) in the provenance pattern.
 - **X3.2 Inputs from the store** (`ember sim elmfire-inputs`): fuels, canopy and topography
   rasters in the units ELMFIRE expects; an ignition from the NIROPS perimeter of
   2026-08-20 05:11 UTC; hourly weather for 2026-08-20 to 08-23. The pack has no weather, so this
