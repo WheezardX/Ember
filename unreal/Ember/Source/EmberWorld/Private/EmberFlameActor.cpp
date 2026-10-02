@@ -45,7 +45,10 @@ namespace
 	constexpr double GroundUnderCrownM = 2.5;
 	constexpr int32 MaxSitesPerCell = 500;
 	// M_Flame instance data: intensity, seed, half height, half width, card centre (UE cm), lean x / y
-	constexpr int32 DataFloats = 9;   // + the lean (tan, along UE X / Y) - flames v3
+	constexpr int32 DataFloats = 10;  // + the axis tilt (tan, along UE X / Y) and the bend - flames v3
+	// the lean splits into a straight tilt of the axis and a bend that grows with height (the tip
+	// curls over; Brad: "a bend to the top of long flames would help")
+	constexpr double TiltShare = 0.3;
 }
 
 AEmberFlameActor::AEmberFlameActor()
@@ -166,9 +169,12 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 		Lk.BaseUp = static_cast<float>(BaseUp);
 		// lean: toward the spread (and the wind) - the whole tongue tilts (M_Flame's axis), and it
 		// rises along that axis; a little per-lick jitter so a front is not a combed row
-		Lk.Lean = static_cast<float>(LeanTan * FMath::Lerp(0.8, 1.15, H2));
-		Lk.Lx = static_cast<float>(DirE);
-		Lk.Ly = static_cast<float>(DirN);
+		// (review: "the lean seems a bit much ... uniform amongst all cards" - each lick now varies
+		// its lean a lot more and its direction by up to ~17 deg)
+		Lk.Lean = static_cast<float>(LeanTan * FMath::Lerp(0.45, 1.25, H2));
+		const double Jit = (H3 - 0.5) * 0.6;
+		Lk.Lx = static_cast<float>(DirE * FMath::Cos(Jit) - DirN * FMath::Sin(Jit));
+		Lk.Ly = static_cast<float>(DirE * FMath::Sin(Jit) + DirN * FMath::Cos(Jit));
 		Lk.Seed = static_cast<float>(H1 * 0.7 + H3 * 0.3);
 		Pool.Add(Lk);
 	};
@@ -303,7 +309,7 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 					DirN = Dn > 1e-6 ? DirN / Dn : 0.0;
 				}
 			}
-			const double LeanTan = FMath::Clamp(0.3 + 0.55 * FMath::Sqrt(Ros) + 0.04 * Ws, 0.2, 1.2)
+			const double LeanTan = FMath::Clamp(0.12 + 0.35 * FMath::Sqrt(Ros) + 0.03 * Ws, 0.08, 0.75)
 				* (bCrownLick ? 1.2 : 1.0) * ((DirE != 0.0 || DirN != 0.0) ? 1.0 : 0.0);
 			// Fuller tongues (v3: "thin and transparent"): ~0.42 of their height (0.35 in the crowns);
 			// far off they widen toward the point spacing so the line stays continuous.
@@ -356,8 +362,8 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 		const double Hh = L.H * (0.6 + 0.4 * SmoothStep(0.0, 0.35, Uf));   // grows, never shrinks
 		const double Lift = 0.55 * L.H * Uf * Uf;                           // tears off and rises
 		const double Up = Lift + 0.5 * Hh;
-		const double X = L.Ox + L.Lx * Up * L.Lean;
-		const double Y = L.Oy + L.Ly * Up * L.Lean;
+		const double X = L.Ox + L.Lx * Up * L.Lean * TiltShare;   // the axis tilt; the bend is M_Flame's
+		const double Y = L.Oy + L.Ly * Up * L.Lean * TiltShare;
 		const double DistM = FMath::Sqrt(FMath::Square(X - CamX) + FMath::Square(Y - CamY));
 		const double Far = 1.0 - FMath::Clamp((DistM - FadeStartM) / (RadiusM - FadeStartM), 0.0, 1.0);
 		// a lick at the lens would fill the frame with a glow column: fade it out instead
@@ -380,9 +386,10 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 		// The flame's axis leans (v3): east / north -> UE +X / -Y. The card contains that axis (local
 		// X along it) and turns to the camera as far as it can (local Z = the view direction made
 		// perpendicular to the axis); M_Flame draws the tongue along the same axis.
-		const double LeanUx = L.Lx * L.Lean, LeanUy = -L.Ly * L.Lean;
+		const double Tilt = L.Lean * TiltShare, Bend = L.Lean * (1.0 - TiltShare);
+		const double LeanUx = L.Lx * Tilt, LeanUy = -L.Ly * Tilt;
 		const FVector Axis = FVector(LeanUx, LeanUy, 1.0).GetSafeNormal();
-		const double AxisLen = FMath::Sqrt(1.0 + L.Lean * L.Lean);
+		const double AxisLen = FMath::Sqrt(1.0 + Tilt * Tilt);
 		FVector Normal = ToCam - Axis * FVector::DotProduct(ToCam, Axis);
 		if (!Normal.Normalize())
 		{
@@ -392,10 +399,11 @@ void AEmberFlameActor::Rebuild(const FVector& CameraLoc)
 		// The flame's shape is defined in world units from the centre (M_Flame); the card is
 		// oversized so the tongue never meets its edge (a clipped card reads as a rectangle).
 		FOut& O = Outs.AddDefaulted_GetRef();
-		O.Xf = FTransform(Q, Centre, FVector(Hh * 1.3 * AxisLen, Wf * 2.0, 1.0));   // the engine plane is 1 m
+		O.Xf = FTransform(Q, Centre, FVector(Hh * 1.3 * AxisLen, 2.0 * (Wf + Bend * Hh), 1.0));   // room for the bent tip; the engine plane is 1 m
 		const float D[DataFloats] = {static_cast<float>(Alpha), L.Seed, static_cast<float>(Hh * 50.0),
 			static_cast<float>(Wf * 50.0), static_cast<float>(Centre.X), static_cast<float>(Centre.Y),
-			static_cast<float>(Centre.Z), static_cast<float>(LeanUx), static_cast<float>(LeanUy)};
+			static_cast<float>(Centre.Z), static_cast<float>(LeanUx), static_cast<float>(LeanUy),
+			static_cast<float>(Bend)};
 		FMemory::Memcpy(O.D, D, sizeof(D));
 		O.Dist2 = FVector::DistSquared(Centre, CameraLoc);
 	}

@@ -11,7 +11,8 @@ the card centre, so the card's UV layout does not matter. Per-instance custom da
     2  half height  (cm)
     3  half width   (cm)
     4-6 card centre (UE cm, world)
-    7-8 lean (v3): the tilt of the flame axis, tan along UE X / Y (the tongue is drawn along it)
+    7-8 tilt (v3): the tilt of the flame axis, tan along UE X / Y (the tongue is drawn along it)
+    9   bend (v3): the tip curls downwind by bend x height (x y^2)
 Parameters:
     FireTime   scalar  the fire clock (s)            default 0
     Gain       scalar  overall brightness            default 1
@@ -69,6 +70,7 @@ def build_material():
     px, py, pz = cdata(4, -500), cdata(5, -400), cdata(6, -300)
     # flames v3: the lean (tan of the tilt, along UE X / Y) - the tongue is drawn along that axis
     lx, ly = cdata(7, -800), cdata(8, -700)
+    bd = cdata(9, -600)       # the bend: the tip curls over by BD x height, growing with height^2
 
     one = mel.create_material_expression(mat, unreal.MaterialExpressionConstant, -1100, 650)
     one.set_editor_property("r", 1.0)
@@ -80,7 +82,7 @@ def build_material():
     link(dist, "", fade, next(n for n in names if "Fade" in n))
 
     cam = mel.create_material_expression(mat, unreal.MaterialExpressionCameraPositionWS, -1100, -600)
-    flame = custom("EmberFlame", -500, 0, ["WP", "PX", "PY", "PZ", "Cam", "I", "S", "HH", "HW", "T", "G", "DF", "LX", "LY"], (
+    flame = custom("EmberFlame", -500, 0, ["WP", "PX", "PY", "PZ", "Cam", "I", "S", "HH", "HW", "T", "G", "DF", "LX", "LY", "BD"], (
         "float3 P = float3(PX, PY, PZ);\n"
         # card-local coordinates: y 0 base .. 1 tip, x 0 centre .. 1 edge (cards are vertical)
         # flames v3: along the leaning axis ax (the card contains it); across = perpendicular to ax
@@ -92,6 +94,10 @@ def build_material():
         "float3 vd = normalize(P - Cam + 1e-3);\n"
         "float3 r = normalize(cross(ax, vd) + 1e-5);\n"
         "float xs0 = dot(d, r) / HW;\n"
+        # the bend (Brad: "a bend to the top of long flames"): the tongue's centre line drifts
+        # downwind by BD x height x y^2 - straight at the base, curling over at the tip
+        "float3 dh = normalize(float3(LX, LY, 0.0) + 1e-6);\n"
+        "xs0 -= dot(dh, r) * BD * (2.0 * HH) * y * y / HW;\n"
         "float x = abs(xs0);\n"
         # Tuned offline (scratch flame_proto.py mirrors this maths in numpy: seconds per look
         # instead of a UE round trip).
@@ -134,11 +140,13 @@ def build_material():
         # flames v3 (Brad 2026-10-02: "the fire still looks thin and transparent"): alpha-blended,
         # not additive - the body OCCLUDES what is behind it (opacity from the body, a solid core,
         # soft ragged edges), and the colour is the flame's own HDR emission (bright core).
-        "float a = saturate(I * DF * body * 1.6);\n"
+        # opaque at the base, thinning toward the tips (Brad: "more opaque in the base of it and
+        # thins out towards the tips")
+        "float a = saturate(I * DF * body * (2.0 - 1.6 * y));\n"
         "return float4(G * c * (0.7 + 0.6 * body), a);\n"))
     flame.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT4)
     for src, inp in ((wp, "WP"), (px, "PX"), (py, "PY"), (pz, "PZ"), (cam, "Cam"), (inten, "I"), (seed, "S"), (hh, "HH"), (hw, "HW"),
-                     (t, "T"), (gain, "G"), (fade, "DF"), (lx, "LX"), (ly, "LY")):
+                     (t, "T"), (gain, "G"), (fade, "DF"), (lx, "LX"), (ly, "LY"), (bd, "BD")):
         link(src, "", flame, inp)
 
     def mask(rgb: bool, x: int, y: int):
